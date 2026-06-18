@@ -1,1 +1,7 @@
 /vendor/
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/.gitignore
+/.idea/laravel.iml
+/.idea/modules.xml
+/.idea/php.xml
+/.idea/vcs.xml
