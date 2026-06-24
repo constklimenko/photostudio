@@ -6,20 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('mediaables', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('media_id')->constrained()->cascadeOnDelete();
+            $table->morphs('mediaable');
+            $table->integer('sort_order')->default(0);
             $table->timestamps();
+
+            $table->index('sort_order');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('mediaables');

@@ -6,20 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('testimonials', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('media_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('client_name');
+            $table->text('content');
+            $table->integer('sort_order')->default(0);
+            $table->boolean('is_published')->default(true);
             $table->timestamps();
+
+            $table->index('is_published');
+            $table->index('sort_order');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('testimonials');
