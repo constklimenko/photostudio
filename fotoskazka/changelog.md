@@ -81,3 +81,17 @@
   - Работа без обложки
   - Привязка альбома к проекту (type=project)
   - null project_id для type=client
+
+## 2026-06-25 — Исправления проблем
+
+### Критические
+- **Media.php**: удалён сломанный метод `mediaables()` — класс `Mediaable` не существует.
+- **UserForm.php**: `Toggle` для `status` заменён на `Select` — Toggle возвращает boolean, а БД ожидает enum('active', 'inactive').
+
+### Высокие/Средние
+- **UsersTable.php**: `IconColumn::make('status')->boolean()` заменён на `TextColumn` с badge и цветом (success/danger) — 'inactive' как непустая строка всегда была truthy.
+- **Новая миграция**: `add_indexes_to_users_table` — добавлены индексы для `phone` и `status`.
+
+### Низкие
+- **CreateAlbum Action**: логика создания альбома вынесена в `app/Actions/Album/CreateAlbum.php` — теперь тестируется Action, а не дублируется логика.
+- **UploadPhotos.php**: добавлен явный `$this->form->validate()` перед `getState()`.

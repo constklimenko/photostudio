@@ -2,10 +2,8 @@
 
 namespace App\Filament\Resources\Albums\Pages;
 
+use App\Actions\Album\CreateAlbum;
 use App\Filament\Resources\Albums\AlbumResource;
-use App\Models\Album;
-use App\Models\Media;
-use App\Models\Photo;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -13,7 +11,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\DB;
 
 class UploadPhotos extends Page
 {
@@ -86,42 +83,10 @@ class UploadPhotos extends Page
 
     public function create(): void
     {
+        $this->form->validate();
         $data = $this->form->getState();
 
-        DB::transaction(function () use ($data) {
-            $album = Album::create([
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'type' => $data['type'] ?? 'portfolio',
-                'project_id' => $data['type'] === 'project' ? ($data['project_id'] ?? null) : null,
-                'slug' => str($data['title'])->slug()->append('-'.now()->format('YmdHis')),
-            ]);
-
-            if (! empty($data['cover'])) {
-                $coverMedia = Media::create([
-                    'file_path' => $data['cover'],
-                    'disk' => 'public',
-                    'collection' => 'covers',
-                    'title' => $album->title,
-                ]);
-                $album->update(['cover_media_id' => $coverMedia->id]);
-            }
-
-            foreach ($data['photos'] as $index => $photoPath) {
-                $media = Media::create([
-                    'file_path' => $photoPath,
-                    'disk' => 'public',
-                    'collection' => 'gallery',
-                    'title' => $album->title.' — '.($index + 1),
-                ]);
-
-                Photo::create([
-                    'album_id' => $album->id,
-                    'media_id' => $media->id,
-                    'sort_order' => $index,
-                ]);
-            }
-        });
+        app(CreateAlbum::class)->execute($data);
 
         $this->redirect(AlbumResource::getUrl('index'));
     }

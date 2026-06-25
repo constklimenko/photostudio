@@ -2,9 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Album;
-use App\Models\Media;
-use App\Models\Photo;
+use App\Actions\Album\CreateAlbum;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,7 +33,7 @@ class UploadPhotosTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_upload_creates_album_media_and_photos(): void
+    public function test_create_album_with_photos(): void
     {
         $cover = UploadedFile::fake()->image('cover.jpg', 800, 600);
         $photo1 = UploadedFile::fake()->image('photo1.jpg', 1920, 1080);
@@ -47,45 +45,18 @@ class UploadPhotosTest extends TestCase
             $photo2->store('temp', 'public'),
         ];
 
-        $album = Album::create([
+        $action = app(CreateAlbum::class);
+        $album = $action->execute([
             'title' => 'Test Album',
-            'slug' => 'test-album-20260625120000',
+            'type' => 'portfolio',
             'description' => 'Album description',
-            'type' => 'portfolio',
+            'cover' => $coverPath,
+            'photos' => $photoPaths,
         ]);
 
-        if ($coverPath) {
-            $coverMedia = Media::create([
-                'file_path' => $coverPath,
-                'disk' => 'public',
-                'collection' => 'covers',
-                'title' => $album->title,
-            ]);
-            $album->update(['cover_media_id' => $coverMedia->id]);
-        }
-
-        foreach ($photoPaths as $index => $photoPath) {
-            $media = Media::create([
-                'file_path' => $photoPath,
-                'disk' => 'public',
-                'collection' => 'gallery',
-                'title' => $album->title.' — '.($index + 1),
-            ]);
-
-            Photo::create([
-                'album_id' => $album->id,
-                'media_id' => $media->id,
-                'sort_order' => $index,
-            ]);
-        }
-
-        $this->assertDatabaseHas('albums', [
-            'id' => $album->id,
-            'title' => 'Test Album',
-            'type' => 'portfolio',
-            'cover_media_id' => $coverMedia->id ?? null,
-        ]);
-
+        $this->assertEquals('Test Album', $album->title);
+        $this->assertEquals('portfolio', $album->type);
+        $this->assertNotNull($album->cover_media_id);
         $this->assertEquals(2, $album->photos()->count());
 
         foreach ($album->photos as $i => $photo) {
@@ -99,27 +70,32 @@ class UploadPhotosTest extends TestCase
         Storage::disk('public')->assertExists($photoPaths[1]);
     }
 
-    public function test_upload_without_cover_works(): void
+    public function test_upload_without_cover(): void
     {
-        $album = Album::create([
+        $photo = UploadedFile::fake()->image('p.jpg', 100, 100);
+
+        $action = app(CreateAlbum::class);
+        $album = $action->execute([
             'title' => 'No Cover Album',
-            'slug' => 'no-cover-album',
             'type' => 'client',
+            'photos' => [$photo->store('temp', 'public')],
         ]);
 
         $this->assertNull($album->cover_media_id);
         $this->assertEquals('client', $album->type);
     }
 
-    public function test_project_album_can_have_project_id(): void
+    public function test_project_album_gets_project_id(): void
     {
         $project = Project::factory()->create();
+        $photo = UploadedFile::fake()->image('p.jpg', 100, 100);
 
-        $album = Album::create([
+        $action = app(CreateAlbum::class);
+        $album = $action->execute([
             'title' => 'Project Album',
-            'slug' => 'project-album',
             'type' => 'project',
             'project_id' => $project->id,
+            'photos' => [$photo->store('temp', 'public')],
         ]);
 
         $this->assertEquals($project->id, $album->project_id);
@@ -128,10 +104,13 @@ class UploadPhotosTest extends TestCase
 
     public function test_non_project_album_has_null_project_id(): void
     {
-        $album = Album::create([
+        $photo = UploadedFile::fake()->image('p.jpg', 100, 100);
+
+        $action = app(CreateAlbum::class);
+        $album = $action->execute([
             'title' => 'Client Gallery',
-            'slug' => 'client-gallery',
             'type' => 'client',
+            'photos' => [$photo->store('temp', 'public')],
         ]);
 
         $this->assertNull($album->project_id);

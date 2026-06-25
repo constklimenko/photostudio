@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Observers\MediaObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
 class Media extends Model
 {
@@ -19,10 +18,5 @@ class Media extends Model
     protected static function booted(): void
     {
         static::observe(MediaObserver::class);
-    }
-
-    public function mediaables(): MorphToMany
-    {
-        return $this->morphToMany(Mediaable::class, 'mediaable');
     }
 }
