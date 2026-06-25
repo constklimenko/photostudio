@@ -10,7 +10,6 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
@@ -18,8 +17,6 @@ use Illuminate\Support\Facades\DB;
 
 class UploadPhotos extends Page
 {
-    use InteractsWithForms;
-
     protected static string $resource = AlbumResource::class;
 
     protected string $view = 'filament.resources.albums.pages.upload-photos';
