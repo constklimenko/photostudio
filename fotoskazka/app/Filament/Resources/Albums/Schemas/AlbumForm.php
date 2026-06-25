@@ -25,22 +25,38 @@ class AlbumForm
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255),
+                        Select::make('type')
+                            ->required()
+                            ->default('portfolio')
+                            ->options([
+                                'portfolio' => 'Портфолио',
+                                'project' => 'Проект (съёмка)',
+                                'homepage' => 'Главная страница',
+                                'service' => 'Услуга',
+                                'client' => 'Клиентская галерея',
+                            ])
+                            ->live(),
                         Select::make('project_id')
                             ->relationship('project', 'title')
                             ->preload()
                             ->searchable()
-                            ->required(),
+                            ->nullable()
+                            ->hidden(fn ($get) => $get('type') !== 'project')
+                            ->label('Проект'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Cover'),
-                        Toggle::make('is_featured'),
+                            ->label('Обложка'),
+                        Toggle::make('is_featured')
+                            ->label('Избранный'),
                         Toggle::make('is_published')
-                            ->default(true),
+                            ->default(true)
+                            ->label('Опубликован'),
                         TextInput::make('sort_order')
                             ->integer()
-                            ->default(0),
+                            ->default(0)
+                            ->label('Порядок сортировки'),
                     ]),
                 Section::make('SEO')
                     ->schema([
@@ -48,7 +64,7 @@ class AlbumForm
                             ->maxLength(255),
                         Textarea::make('seo_description'),
                     ]),
-                Section::make('Description')
+                Section::make('Описание')
                     ->schema([
                         Textarea::make('description'),
                     ]),

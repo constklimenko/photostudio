@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Albums;
 use App\Filament\Resources\Albums\Pages\CreateAlbum;
 use App\Filament\Resources\Albums\Pages\EditAlbum;
 use App\Filament\Resources\Albums\Pages\ListAlbums;
+use App\Filament\Resources\Albums\Pages\UploadPhotos;
+use App\Filament\Resources\Albums\RelationManagers\PhotosRelationManager;
 use App\Filament\Resources\Albums\Schemas\AlbumForm;
 use App\Filament\Resources\Albums\Tables\AlbumsTable;
 use App\Models\Album;
@@ -43,7 +45,7 @@ class AlbumResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            PhotosRelationManager::class,
         ];
     }
 
@@ -53,6 +55,7 @@ class AlbumResource extends Resource
             'index' => ListAlbums::route('/'),
             'create' => CreateAlbum::route('/create'),
             'edit' => EditAlbum::route('/{record}/edit'),
+            'upload' => UploadPhotos::route('/upload'),
         ];
     }
 }

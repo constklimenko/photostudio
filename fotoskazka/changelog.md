@@ -23,3 +23,61 @@
   - **Заявки** (`/admin/inquiries`) — статусы, услуга, связанный пользователь
 - Навигация сгруппирована: **Контент**, **Администрирование**, **Заявки**
 - Все ресурсы поддерживают: поиск, фильтры, bulk actions
+
+## 2026-06-25 — Media UX: Альбомы, загрузка, превью
+
+### Изменения БД
+- **Новая миграция**: `modify_albums_add_type_and_make_project_id_nullable`
+- `albums.project_id` теперь NULL (альбом не обязан быть в проекте)
+- Добавлено поле `albums.type` (portfolio/project/homepage/service/client)
+
+### Модели
+- `Album`: добавлен `type`, `project()` теперь nullable BelongsTo
+- `Media`: подключён `MediaObserver` для авто-заполнения метаданных
+
+### MediaObserver
+- Автоматическое определение: `mime_type`, `width`, `height`, `file_size`
+- Автоматическая генерация WebP-превью (400px) при загрузке изображения
+
+### Filament: MediaResource
+- Из формы удалены технические поля: disk, thumbnail_path, mime_type, width, height, file_size
+- Оставлены только: title, alt_text, file_path (FileUpload), collection
+- Из таблицы скрыты disk, mime_type, file_size (доступны по toggle)
+
+### Filament: AlbumResource
+- В форму добавлено поле `type` (с условным показом `project_id` для type=project)
+- В таблицу добавлена колонка `type` (badge с цветом), сортировка, фильтр
+- Добавлена новая страница **«Загрузить фотографии»** (`/admin/albums/upload`)
+  - Drag & drop, множественный выбор (до 500 файлов)
+  - Поля альбома: название, тип, описание, обложка
+  - Для type=project показывается выбор проекта
+  - Массовое создание: Album → Media (с метаданными/превью) → Photo
+- Добавлен **RelationManager** фотографий на странице редактирования альбома
+  - Сетка превью (80px), подпись, порядок сортировки
+  - Редактирование, удаление, перетаскивание для сортировки
+- Добавлена кнопка «Загрузить фотографии» на странице списка альбомов
+
+## 2026-06-25 — Тесты: Unit + Feature
+
+### Модели
+- User реализует `FilamentUser` с `canAccessPanel()` (доступ в админку для авторизованных)
+
+### Фабрики
+- Созданы фабрики для всех 11 моделей (Role, Category, Media, Page, Service, Project, Album, Photo, Post, Testimonial, Inquiry)
+- Обновлена UserFactory (добавлены phone, status)
+
+### Unit-тесты
+- `tests/Unit/Models/ModelRelationshipsTest.php` — 22 теста всех связей моделей (BelongsTo, HasMany, BelongsToMany, nullable)
+- `tests/Unit/Observers/MediaObserverTest.php` — 6 тестов MediaObserver:
+  - Заполнение метаданных (mime_type, width, height, file_size)
+  - Генерация WebP-превью (400px) для landscape и portrait
+  - Отсутствие превью для non-image файлов
+  - Отсутствие ошибок для отсутствующего файла
+
+### Feature-тесты
+- `tests/Feature/UploadPhotosTest.php` — 5 тестов логики массовой загрузки:
+  - Рендеринг страницы загрузки
+  - Создание альбома + Media + Photo
+  - Работа без обложки
+  - Привязка альбома к проекту (type=project)
+  - null project_id для type=client

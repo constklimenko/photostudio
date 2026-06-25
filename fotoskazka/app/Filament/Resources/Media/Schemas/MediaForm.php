@@ -19,26 +19,12 @@ class MediaForm
                             ->maxLength(255),
                         TextInput::make('alt_text')
                             ->maxLength(255),
-                        TextInput::make('disk')
-                            ->required()
-                            ->maxLength(50),
                         FileUpload::make('file_path')
                             ->required()
-                            ->disk('public'),
-                        TextInput::make('thumbnail_path')
-                            ->maxLength(1000),
-                        TextInput::make('mime_type')
-                            ->maxLength(255),
-                        TextInput::make('width')
-                            ->integer()
-                            ->nullable(),
-                        TextInput::make('height')
-                            ->integer()
-                            ->nullable(),
-                        TextInput::make('file_size')
-                            ->integer()
-                            ->nullable()
-                            ->label('File Size (bytes)'),
+                            ->disk('public')
+                            ->visibility('public')
+                            ->image()
+                            ->maxSize(51200),
                         TextInput::make('collection')
                             ->maxLength(100),
                     ]),

@@ -382,12 +382,12 @@ INDEX(shooting_date)
 
 ## albums
 
-Фотоальбом проекта.
+Фотоальбом.
 
 ```sql
 id BIGINT PRIMARY KEY
 
-project_id BIGINT
+project_id BIGINT NULL
 
 cover_media_id BIGINT NULL
 
@@ -396,6 +396,8 @@ title VARCHAR(255)
 slug VARCHAR(255)
 
 description TEXT NULL
+
+type VARCHAR(20) DEFAULT 'portfolio'
 
 is_featured BOOLEAN DEFAULT FALSE
 
@@ -410,6 +412,16 @@ seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 ```
 
+Возможные значения type:
+
+| type       | Назначение                 |
+| ---------- | -------------------------- |
+| portfolio  | Галереи портфолио          |
+| project    | Альбомы съёмок             |
+| homepage   | Слайдеры главной страницы  |
+| service    | Галереи услуг              |
+| client     | Клиентские галереи         |
+
 Indexes:
 
 ```sql
@@ -420,6 +432,8 @@ INDEX(project_id)
 INDEX(is_featured)
 
 INDEX(is_published)
+
+INDEX(type)
 ```
 
 ---

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Page extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'cover_media_id', 'title', 'slug', 'excerpt', 'content',
         'seo_title', 'seo_description', 'is_published', 'sort_order',
