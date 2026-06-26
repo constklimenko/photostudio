@@ -69,6 +69,7 @@ class HomeController extends Controller
             'phone' => 'required|string|max:50',
             'service_id' => 'nullable|exists:services,id',
             'message' => 'nullable|string',
+            'agreed_to_terms' => 'required|accepted',
         ]);
 
         Inquiry::create($validated);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Inquiries\Schemas;
 
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -50,6 +51,10 @@ class InquiryForm
                         DatePicker::make('shooting_date'),
                     ]),
                 Textarea::make('message'),
+                Checkbox::make('agreed_to_terms')
+                    ->label('Согласен на обработку персональных данных')
+                    ->required()
+                    ->default(false),
             ]);
     }
 }

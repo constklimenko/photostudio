@@ -12,7 +12,7 @@ class Inquiry extends Model
 
     protected $fillable = [
         'user_id', 'service_id', 'name', 'phone', 'email',
-        'message', 'shooting_date', 'status',
+        'message', 'agreed_to_terms', 'shooting_date', 'status',
     ];
 
     public function user(): BelongsTo

@@ -634,6 +634,8 @@ email VARCHAR(255) NULL
 
 message TEXT NULL
 
+agreed_to_terms BOOLEAN DEFAULT FALSE
+
 shooting_date DATE NULL
 
 status ENUM(

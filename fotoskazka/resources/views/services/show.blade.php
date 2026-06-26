@@ -78,6 +78,15 @@
                           class="w-full rounded-lg border-gray-300 px-4 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500"></textarea>
             </div>
 
+            <div class="flex items-start gap-2">
+                <input type="checkbox" name="agreed_to_terms" id="agreed_to_terms" required
+                       class="mt-1 rounded border-gray-300 text-amber-600 focus:ring-amber-500">
+                <label for="agreed_to_terms" class="text-sm text-gray-500">
+                    Согласен на обработку персональных данных
+                    @error('agreed_to_terms') <span class="text-red-600">{{ $message }}</span> @enderror
+                </label>
+            </div>
+
             <button type="submit"
                     class="w-full px-6 py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition">
                 Отправить заявку

@@ -119,6 +119,27 @@
 - Маршруты: `GET /` (HomeController), `POST /inquiry` (storeInquiry)
 - CSS: добавлен `@source '../views'` в `app.css` для Tailwind-сканирования Blade-шаблонов
 
+## 2026-06-26 — Соглашение о персональных данных
+
+### Миграции
+- **Новая миграция**: `add_agreed_to_terms_to_inquiries_table`
+- Добавлено поле `inquiries.agreed_to_terms` (boolean, default false)
+
+### Модели
+- `Inquiry`: `agreed_to_terms` добавлен в `$fillable`
+
+### Filament: InquiryForm
+- Добавлен чекбокс `agreed_to_terms` (required)
+
+### Публичные формы
+- Чекбокс «Согласен на обработку персональных данных» добавлен во все три формы:
+  - Главная страница (`home.blade.php`)
+  - Список услуг (`services/index.blade.php`)
+  - Детальная страница услуги (`services/show.blade.php`)
+- Валидация: `required|accepted` в `HomeController::storeInquiry()`
+
+---
+
 ## 2026-06-26 — Улучшение работы с фотоальбомами
 
 ### Миграции
