@@ -16,12 +16,32 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
+    use HasFactory, Notifiable;
+
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return $this->status === 'active' && $this->isAdmin();
     }
 
-    use HasFactory, Notifiable;
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function hasRole(string $slug): bool
+    {
+        return $this->roles()->where('slug', $slug)->exists();
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('slug', $roles)->exists();
+    }
+
+    public function hasAllRoles(array $roles): bool
+    {
+        return $this->roles()->whereIn('slug', $roles)->count() === count($roles);
+    }
 
     protected function casts(): array
     {

@@ -119,6 +119,56 @@
 - Маршруты: `GET /` (HomeController), `POST /inquiry` (storeInquiry)
 - CSS: добавлен `@source '../views'` в `app.css` для Tailwind-сканирования Blade-шаблонов
 
+## 2026-06-26 — Этап 2.3: Реализация доступа и ролей пользователя
+
+### Изменения БД
+- **Новая миграция**: `add_is_system_to_roles_table`
+- Добавлено поле `roles.is_system` (boolean, default true) + индекс
+
+### Модели
+- **User**: метод `canAccessPanel()` теперь требует `status = active` И роль `admin`
+- **User**: добавлены методы `isAdmin()`, `hasRole()`, `hasAnyRole()`, `hasAllRoles()`
+- **Role**: добавлен `casts` для `is_system` (boolean)
+- **Role**: защита от удаления и изменения slug у системных ролей (LogicException)
+- **Role**: в `$fillable` добавлено `is_system`
+
+### Команды
+- Создана `MakeFilamentUserCommand` — `php artisan make:filament-user` создаёт админа с ролью admin
+
+### Filament: RoleResource
+- **RoleForm**: slug disabled для системных ролей
+- **RolesTable**: добавлена колонка `is_system` (badge)
+- **EditRole**: кнопка удаления скрыта для системных ролей
+- **RolesTable**: bulk delete скрыт
+
+### Пользовательский кабинет
+- Создан `CabinetController` с `index()`
+- Создан `resources/views/cabinet/index.blade.php` — приветствие
+- Маршрут `GET /cabinet` защищён middleware `auth`
+
+### Аутентификация
+- Создан `Auth\LoginController` (create, store, destroy)
+- Создана страница входа `resources/views/auth/login.blade.php`
+- Созданы маршруты в `routes/auth.php`: login, logout
+- Подготовлена структура для подключения Breeze
+
+### Шапка сайта
+- Для гостя: Главная, Услуги, Портфолио, Блог, Оставить заявку, Войти
+- Для авторизованного: добавлен «Личный кабинет», убран «Войти»
+- Для администратора: дополнительно «Админка» (ссылка на /admin)
+
+### Тесты
+- `tests/Feature/Auth/AccessTest.php` — 7 тестов: доступ ролей к панели, редирект гостя, доступ в кабинет
+- `tests/Feature/Auth/RoleMethodsTest.php` — 8 тестов: isAdmin, hasRole, hasAnyRole, hasAllRoles, inactive user
+- `tests/Feature/Auth/SystemRolesTest.php` — 4 теста: защита удаления, защита slug, создание кастомной роли, seeded roles
+- Исправлен `UploadPhotosTest` — тестовый пользователь теперь получает роль admin
+
+### Документация
+- Обновлены `database.md` (описание is_system, системы ролей и доступа)
+- Обновлена `architecture.md` (система ролей, доступ, кабинет, аутентификация)
+
+---
+
 ## 2026-06-25 — Этап 3.2: Страница услуг
 
 ### Выполнено

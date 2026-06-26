@@ -121,6 +121,8 @@ name VARCHAR(255)
 
 slug VARCHAR(100) UNIQUE
 
+is_system BOOLEAN DEFAULT TRUE
+
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
@@ -129,6 +131,7 @@ Indexes:
 
 ```sql
 UNIQUE(slug)
+INDEX(is_system)
 ```
 
 Начальные данные:
@@ -159,6 +162,24 @@ Foreign keys:
 user_id -> users.id ON DELETE CASCADE
 role_id -> roles.id ON DELETE CASCADE
 ```
+
+### Система ролей
+
+Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
+
+Системные роли (`is_system = true`) защищены от удаления и изменения `slug`.
+Пользовательские роли (`is_system = false`) доступны для полного редактирования.
+
+Поле `is_system` добавлено миграцией `add_is_system_to_roles_table`.
+
+### Доступ в административную панель
+
+Доступ к `/admin` (Filament) разрешён только пользователям:
+- со статусом `active`;
+- имеющим роль `admin`.
+
+Метод `User::canAccessPanel()` проверяет оба условия.
+Остальные пользователи перенаправляются на страницу входа.
 
 ---
 

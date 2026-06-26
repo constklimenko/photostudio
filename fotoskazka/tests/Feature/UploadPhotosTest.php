@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Actions\Album\CreateAlbum;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -20,9 +22,12 @@ class UploadPhotosTest extends TestCase
     {
         parent::setUp();
 
+        $this->seed(RoleSeeder::class);
+
         Storage::fake('public');
 
         $this->admin = User::factory()->create();
+        $this->admin->roles()->attach(Role::where('slug', 'admin')->first());
         $this->actingAs($this->admin);
     }
 

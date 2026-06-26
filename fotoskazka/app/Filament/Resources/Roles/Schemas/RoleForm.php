@@ -20,7 +20,9 @@ class RoleForm
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true)
-                            ->maxLength(100),
+                            ->maxLength(100)
+                            ->disabled(fn ($record) => $record?->is_system ?? false)
+                            ->hint(fn ($record) => $record?->is_system ? 'Системную роль нельзя переименовать' : null),
                     ]),
             ]);
     }

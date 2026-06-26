@@ -102,6 +102,47 @@ app/
 - `Schemas/UserForm.php`
 - `Tables/UsersTable.php`
 
+## Система ролей и доступа
+
+### Модель доступа
+
+- Filament доступен только администраторам с активным статусом
+- `User::canAccessPanel()` проверяет `status === 'active'` и `hasRole('admin')`
+- `User` содержит методы: `isAdmin()`, `hasRole()`, `hasAnyRole()`, `hasAllRoles()`
+
+### Защита системных ролей
+
+- Поле `roles.is_system` (boolean, default true)
+- Системные роли нельзя удалить (исключение `LogicException` на deleting)
+- Системным ролям нельзя изменить `slug` (исключение `LogicException` на saving)
+- В Filament форме slug отключается (disabled) для системных ролей
+- Кнопка удаления скрыта на странице редактирования системной роли
+
+### Пользовательские роли
+
+Администратор может создавать произвольные роли (`is_system = false`):
+retoucher, assistant, manager, designer и т.д.
+
+### Команда создания администратора
+
+`php artisan make:filament-user` — создаёт пользователя со статусом `active`
+и автоматически назначает роль `admin` (создаёт её при необходимости).
+
+### Пользовательский кабинет
+
+- Маршрут: `GET /cabinet` (middleware `auth`)
+- Контроллер: `CabinetController@index`
+- Защищён middleware `auth`
+- Временно выводит приветствие пользователя
+- Развитие кабинета — в следующих этапах
+
+### Аутентификация
+
+- Стандартная Laravel-аутентификация (сессии)
+- `POST /login`, `POST /logout`, `GET /login`
+- `LoginController` с валидацией и редиректом в кабинет
+- Структура маршрутов готова к подключению Breeze
+
 ## Frontend
 
 - **Blade** — серверный рендеринг

@@ -13,7 +13,17 @@ class EditRole extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->visible(fn ($record) => $record && ! $record->is_system),
         ];
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if ($this->record->is_system) {
+            unset($data['slug']);
+        }
+
+        return $data;
     }
 }

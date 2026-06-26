@@ -10,9 +10,22 @@
                 <a href="{{ route('services.index') }}" class="hover:text-gray-900 transition">Услуги</a>
                 <a href="{{ route('portfolio.index') }}" class="hover:text-gray-900 transition">Портфолио</a>
                 <a href="{{ route('blog.index') }}" class="hover:text-gray-900 transition">Блог</a>
-                <a href="#inquiry-form" class="inline-block px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">
-                    Оставить заявку
-                </a>
+
+                @auth
+                    <a href="{{ route('cabinet.index') }}" class="hover:text-gray-900 transition">Личный кабинет</a>
+                    @if (Auth::user()->isAdmin())
+                        <a href="/admin" class="hover:text-amber-600 transition font-semibold">Админка</a>
+                    @endif
+                    <form method="POST" action="{{ route('logout') }}" class="inline">
+                        @csrf
+                        <button type="submit" class="hover:text-gray-900 transition cursor-pointer">Выйти</button>
+                    </form>
+                @else
+                    <a href="#inquiry-form" class="inline-block px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition">
+                        Оставить заявку
+                    </a>
+                    <a href="{{ route('login') }}" class="hover:text-gray-900 transition">Войти</a>
+                @endauth
             </nav>
 
             <button type="button" id="menu-toggle" class="md:hidden p-2 text-gray-600" aria-label="Меню" aria-expanded="false">
@@ -28,9 +41,22 @@
                 <a href="{{ route('services.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Услуги</a>
                 <a href="{{ route('portfolio.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Портфолио</a>
                 <a href="{{ route('blog.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Блог</a>
-                <a href="#inquiry-form" class="inline-block px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-center mt-2">
-                    Оставить заявку
-                </a>
+
+                @auth
+                    <a href="{{ route('cabinet.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Личный кабинет</a>
+                    @if (Auth::user()->isAdmin())
+                        <a href="/admin" class="hover:text-amber-600 transition px-2 py-1.5 rounded hover:bg-gray-50 font-semibold">Админка</a>
+                    @endif
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">Выйти</button>
+                    </form>
+                @else
+                    <a href="#inquiry-form" class="inline-block px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-center mt-2">
+                        Оставить заявку
+                    </a>
+                    <a href="{{ route('login') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Войти</a>
+                @endauth
             </nav>
         </div>
     </div>

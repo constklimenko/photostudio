@@ -21,6 +21,11 @@ class RolesTable
                     ->searchable()
                     ->sortable()
                     ->badge(),
+                TextColumn::make('is_system')
+                    ->label('Системная')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'Да' : 'Нет')
+                    ->color(fn (bool $state): string => $state ? 'gray' : 'success'),
                 TextColumn::make('users_count')
                     ->counts('users')
                     ->label('Users'),
@@ -33,11 +38,13 @@ class RolesTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record) => true),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn () => false),
                 ]),
             ]);
     }
