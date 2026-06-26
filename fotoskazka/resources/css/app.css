@@ -9,3 +9,88 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Hero Slider */
+#hero-block {
+    position: relative;
+    height: 90vh;
+    min-height: 600px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0.5;
+}
+
+.hero-col {
+    flex: 0 0 auto;
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.hero-col-center {
+    margin-top: -4rem;
+}
+
+.hero-col img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.hero-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.hero-text {
+    text-align: center;
+    color: white;
+    padding: 2rem;
+}
+
+.banner-content h3 {
+    font-size: 3.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.banner-content p {
+    font-size: 1.25rem;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+.hero-content .btn {
+    display: inline-block;
+    padding: 0.875rem 2.5rem;
+    background: #d97706;
+    color: white;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: background 0.3s ease;
+}
+
+.hero-content .btn:hover {
+    background: #b45309;
+}

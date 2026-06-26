@@ -44,12 +44,21 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'title']);
 
+        $heroAlbum = Album::query()
+            ->where('type', 'homepage')
+            ->where('is_published', true)
+            ->with(['photos' => fn ($q) => $q->orderBy('sort_order')->with('media')])
+            ->first();
+
+        $heroImages = $heroAlbum?->photos->pluck('media');
+
         return view('home', compact(
             'services',
             'featuredWorks',
             'testimonials',
             'latestPosts',
             'serviceList',
+            'heroImages',
         ));
     }
 

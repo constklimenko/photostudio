@@ -5,23 +5,40 @@
 
 @section('content')
 
-<section class="relative bg-gray-50 overflow-hidden">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
-        <div class="max-w-2xl">
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                Сохраняем ваши самые важные моменты
-            </h1>
-            <p class="mt-6 text-lg text-gray-600 leading-relaxed">
-                Профессиональная фотосъёмка для выпускных альбомов, семейных праздников и индивидуальных фотосессий.
-            </p>
-            <div class="mt-8 flex gap-4">
-                <a href="#inquiry-form" class="inline-block px-6 py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition">
-                    Оставить заявку
-                </a>
-                <a href="{{ route('portfolio.index') }}" class="inline-block px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition">
-                    Смотреть портфолио
-                </a>
+<section class="hero" id="hero-block">
+    <div class="hero-bg">
+        @if ($heroImages && $heroImages->isNotEmpty())
+            @php
+                $cols = $heroImages->chunk(ceil($heroImages->count() / 3));
+            @endphp
+
+            <div class="hero-col" data-speed="-0.15">
+                @foreach (($cols[0] ?? collect()) as $img)
+                    <img src="{{ Storage::url($img->file_path) }}" alt="">
+                @endforeach
             </div>
+
+            <div class="hero-col hero-col-center" data-speed="0.1">
+                @foreach (($cols[1] ?? collect()) as $img)
+                    <img src="{{ Storage::url($img->file_path) }}" alt="">
+                @endforeach
+            </div>
+
+            <div class="hero-col" data-speed="-0.2">
+                @foreach (($cols[2] ?? collect()) as $img)
+                    <img src="{{ Storage::url($img->file_path) }}" alt="">
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    <div class="hero-content">
+        <div class="hero-text">
+            <span class="banner-content">
+                <h3>ФОТОСКАЗКА УФА</h3>
+                <p>Выпускные альбомы под ключ в Уфе — красиво, вовремя, без стресса</p>
+                <a class="btn btn-style mt-sm-5 mt-4" href="#inquiry-form">Узнать больше</a>
+            </span>
         </div>
     </div>
 </section>
@@ -209,4 +226,30 @@
     </div>
 </section>
 
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const cols = document.querySelectorAll('.hero-bg .hero-col');
+    if (!cols.length) return;
+
+    let scrollY = window.scrollY;
+    let mouseX = 0;
+
+    function animateHero() {
+        scrollY = window.scrollY;
+        cols.forEach(col => {
+            const speed = parseFloat(col.dataset.speed);
+            const y = scrollY * speed;
+            const x = (mouseX - window.innerWidth / 3) * speed * 0.01;
+            col.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        });
+        requestAnimationFrame(animateHero);
+    }
+
+    window.addEventListener('mousemove', e => {
+        mouseX = e.clientX;
+    });
+
+    animateHero();
+});
+</script>
 @endsection
