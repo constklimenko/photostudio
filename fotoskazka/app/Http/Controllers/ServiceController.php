@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Service;
-use Illuminate\Database\Eloquent\Builder;
 
 class ServiceController extends Controller
 {
@@ -13,7 +12,7 @@ class ServiceController extends Controller
         $categories = Category::query()
             ->where('type', 'service')
             ->orderBy('sort_order')
-            ->with(['services' => function (Builder $query) {
+            ->with(['services' => function ($query) {
                 $query->where('is_published', true)
                     ->orderBy('sort_order')
                     ->with('cover');

@@ -16,4 +16,11 @@ class EditPage extends EditRecord
             DeleteAction::make(),
         ];
     }
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['_slug_manual'] = '1';
+
+        return $data;
+    }
 }

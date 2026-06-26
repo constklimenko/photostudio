@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -10,6 +11,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class PageForm
 {
@@ -21,11 +23,27 @@ class PageForm
                     ->schema([
                         TextInput::make('title')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                if ($get('_slug_manual')) {
+                                    return;
+                                }
+                                $set('slug', Str::slug($state));
+                            }),
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $set('_slug_manual', '1');
+                                $slugged = Str::slug($state);
+                                if ($state !== $slugged) {
+                                    $set('slug', $slugged);
+                                }
+                            }),
+                        Hidden::make('_slug_manual'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
                             ->preload()
@@ -36,6 +54,15 @@ class PageForm
                         TextInput::make('sort_order')
                             ->integer()
                             ->default(0),
+                    ]),
+                Section::make('Альбомы')
+                    ->schema([
+                        Select::make('albums')
+                            ->relationship('albums', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->label('Привязанные альбомы'),
                     ]),
                 Section::make('SEO')
                     ->schema([

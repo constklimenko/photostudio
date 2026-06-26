@@ -666,6 +666,46 @@ INDEX(created_at)
 
 ---
 
+## page_album
+
+Pivot-таблица для связи страниц с альбомами (many-to-many).
+
+```sql
+page_id BIGINT
+album_id BIGINT
+
+PRIMARY KEY(page_id, album_id)
+```
+
+Foreign keys:
+
+```sql
+page_id -> pages.id ON DELETE CASCADE
+album_id -> albums.id ON DELETE CASCADE
+```
+
+---
+
+## post_album
+
+Pivot-таблица для связи статей с альбомами (many-to-many).
+
+```sql
+post_id BIGINT
+album_id BIGINT
+
+PRIMARY KEY(post_id, album_id)
+```
+
+Foreign keys:
+
+```sql
+post_id -> posts.id ON DELETE CASCADE
+album_id -> albums.id ON DELETE CASCADE
+```
+
+---
+
 # Storage Strategy
 
 Текущий этап:

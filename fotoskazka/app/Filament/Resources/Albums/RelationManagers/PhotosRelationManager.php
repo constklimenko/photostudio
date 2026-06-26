@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Albums\RelationManagers;
 
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DetachAction;
@@ -57,10 +58,20 @@ class PhotosRelationManager extends RelationManager
                     ->label('Удалить из альбома'),
             ])
             ->recordActions([
+                Action::make('setCover')
+                    ->label('Сделать обложкой')
+                    ->icon('heroicon-o-photo')
+                    ->action(function ($record) {
+                        $this->ownerRecord->update(['cover_media_id' => $record->media_id]);
+                    }),
                 EditAction::make()
                     ->label('Редактировать'),
-                DetachAction::make()
-                    ->label('Удалить'),
+                Action::make('delete')
+                    ->label('Удалить')
+                    ->icon('heroicon-o-trash')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(fn ($record) => $record->delete()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

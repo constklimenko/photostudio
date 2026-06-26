@@ -8,4 +8,11 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateAlbum extends CreateRecord
 {
     protected static string $resource = AlbumResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        unset($data['_slug_manual']);
+
+        return $data;
+    }
 }

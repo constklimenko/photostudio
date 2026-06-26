@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Albums\Schemas;
 
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -9,6 +10,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class AlbumForm
 {
@@ -20,11 +22,31 @@ class AlbumForm
                     ->schema([
                         TextInput::make('title')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $slugManual = $get('_slug_manual');
+                                if ($slugManual && $slugManual !== '') {
+                                    return;
+                                }
+                                $set('slug', Str::slug($state));
+                            }),
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $set('_slug_manual', '1');
+                                $slugged = Str::slug($state);
+                                if ($state !== $slugged) {
+                                    $set('slug', $slugged);
+                                }
+                            }),
+                        Hidden::make('_slug_manual'),
+                    ]),
+                Section::make('Основное')
+                    ->schema([
                         Select::make('type')
                             ->required()
                             ->default('portfolio')
