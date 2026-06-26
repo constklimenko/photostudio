@@ -57,9 +57,8 @@ erDiagram
 
     PROJECTS ||--o{ ALBUMS : contains
     ALBUMS ||--o{ PHOTOS : contains
-    
-    MEDIA ||--o{ PHOTOS : source 
-    MEDIA ||--o{ MEDIAABLES : attached
+
+    MEDIA ||--o{ PHOTOS : source
 
     MEDIA ||--o{ POSTS : cover
     MEDIA ||--o{ SERVICES : cover
@@ -101,6 +100,8 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys: (none)
+
 Indexes:
 
 ```sql
@@ -118,7 +119,7 @@ id BIGINT PRIMARY KEY
 
 name VARCHAR(255)
 
-slug VARCHAR(100)
+slug VARCHAR(100) UNIQUE
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -152,10 +153,11 @@ role_id BIGINT
 PRIMARY KEY(user_id, role_id)
 ```
 
-Indexes:
+Foreign keys:
 
 ```sql
-INDEX(role_id)
+user_id -> users.id ON DELETE CASCADE
+role_id -> roles.id ON DELETE CASCADE
 ```
 
 ---
@@ -211,11 +213,11 @@ thumbnail_path VARCHAR(1000) NULL
 
 mime_type VARCHAR(255) NULL
 
-width INT NULL
+width INT UNSIGNED NULL
 
-height INT NULL
+height INT UNSIGNED NULL
 
-file_size BIGINT NULL
+file_size BIGINT UNSIGNED NULL
 
 collection VARCHAR(100) NULL
 
@@ -231,49 +233,66 @@ INDEX(created_at)
 ```
 
 ---
+
 ## mediaables
 
+Полиморфная pivot-таблица для привязки медиа к любым сущностям.
+Зарезервирована для будущего использования (модель `Mediaable` пока не создана).
+
 ```sql
-id BIGINT PRIMARY KEY 
-media_id BIGINT 
-mediaable_type VARCHAR(255) 
-mediaable_id BIGINT 
+id BIGINT PRIMARY KEY
+media_id BIGINT
+mediaable_type VARCHAR(255)
+mediaable_id BIGINT UNSIGNED
 sort_order INT DEFAULT 0
-created_at TIMESTAMP 
+created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
+
+Foreign keys:
+
+```sql
+media_id -> media.id ON DELETE CASCADE
+```
+
 Indexes:
 
 ```sql
-INDEX(media_id) 
-INDEX(mediaable_type, mediaable_id) 
+INDEX(media_id)
+INDEX(mediaable_type, mediaable_id)
 INDEX(sort_order)
 ```
+
 ---
+
 ## Pages
 
 ```sql
-id BIGINT PRIMARY KEY 
-cover_media_id BIGINT NULL 
-title VARCHAR(255) 
-slug VARCHAR(255) 
-excerpt TEXT NULL 
-content LONGTEXT NULL 
-seo_title VARCHAR(255) NULL 
-seo_description TEXT NULL 
-is_published BOOLEAN DEFAULT TRUE 
-sort_order INT DEFAULT 0 
-created_at TIMESTAMP 
+id BIGINT PRIMARY KEY
+cover_media_id BIGINT NULL
+title VARCHAR(255)
+slug VARCHAR(255) UNIQUE
+excerpt TEXT NULL
+content LONGTEXT NULL
+seo_title VARCHAR(255) NULL
+seo_description TEXT NULL
+is_published BOOLEAN DEFAULT TRUE
+sort_order INT DEFAULT 0
+created_at TIMESTAMP
 updated_at TIMESTAMP
-
 ```
+
+Foreign keys:
+
+```sql
+cover_media_id -> media.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 UNIQUE(slug)
-
 INDEX(is_published)
-
 INDEX(sort_order)
 ```
 
@@ -290,7 +309,7 @@ cover_media_id BIGINT NULL
 
 title VARCHAR(255)
 
-slug VARCHAR(255)
+slug VARCHAR(255) UNIQUE
 
 short_description TEXT NULL
 
@@ -305,8 +324,15 @@ sort_order INT DEFAULT 0
 created_at TIMESTAMP
 updated_at TIMESTAMP
 
-seo_title VARCHAR(255) NULL 
+seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE SET NULL
+cover_media_id -> media.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -342,7 +368,7 @@ manager_id BIGINT NULL
 
 title VARCHAR(255)
 
-slug VARCHAR(255) NULL
+slug VARCHAR(255) NULL UNIQUE
 
 type ENUM(
     'individual',
@@ -366,6 +392,13 @@ status ENUM(
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+client_id -> users.id ON DELETE SET NULL
+manager_id -> users.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -393,7 +426,7 @@ cover_media_id BIGINT NULL
 
 title VARCHAR(255)
 
-slug VARCHAR(255)
+slug VARCHAR(255) UNIQUE
 
 description TEXT NULL
 
@@ -408,7 +441,7 @@ sort_order INT DEFAULT 0
 created_at TIMESTAMP
 updated_at TIMESTAMP
 
-seo_title VARCHAR(255) NULL 
+seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 ```
 
@@ -422,17 +455,20 @@ seo_description TEXT NULL
 | service    | Галереи услуг              |
 | client     | Клиентские галереи         |
 
+Foreign keys:
+
+```sql
+project_id -> projects.id ON DELETE SET NULL
+cover_media_id -> media.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 UNIQUE(slug)
-
 INDEX(project_id)
-
 INDEX(is_featured)
-
 INDEX(is_published)
-
 INDEX(type)
 ```
 
@@ -457,13 +493,18 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys:
+
+```sql
+album_id -> albums.id ON DELETE CASCADE
+media_id -> media.id ON DELETE CASCADE
+```
+
 Indexes:
 
 ```sql
 INDEX(album_id)
-
 INDEX(media_id)
-
 INDEX(sort_order)
 ```
 
@@ -482,7 +523,7 @@ cover_media_id BIGINT NULL
 
 title VARCHAR(255)
 
-slug VARCHAR(255)
+slug VARCHAR(255) UNIQUE
 
 excerpt TEXT NULL
 
@@ -495,19 +536,23 @@ is_published BOOLEAN DEFAULT TRUE
 created_at TIMESTAMP
 updated_at TIMESTAMP
 
-seo_title VARCHAR(255) NULL 
+seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE SET NULL
+cover_media_id -> media.id ON DELETE SET NULL
 ```
 
 Indexes:
 
 ```sql
 UNIQUE(slug)
-
 INDEX(category_id)
-
 INDEX(is_published)
-
 INDEX(published_at)
 ```
 
@@ -534,11 +579,16 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys:
+
+```sql
+media_id -> media.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 INDEX(is_published)
-
 INDEX(sort_order)
 ```
 
@@ -576,17 +626,20 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys:
+
+```sql
+user_id -> users.id ON DELETE SET NULL
+service_id -> services.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 INDEX(user_id)
-
 INDEX(service_id)
-
 INDEX(status)
-
 INDEX(phone)
-
 INDEX(created_at)
 ```
 
@@ -602,14 +655,16 @@ Laravel Filesystem
 Local/Public Storage
 ```
 
+MediaObserver генерирует WebP-превью (400px) в директории `thumbnails/`.
+
 Будущий этап:
 
 ```text
 Laravel Filesystem
 ↓
-Yandex Disk API
+Yandex Disk API (оригиналы)
 ↓
-Local Thumbnail Cache
+Local Thumbnail Cache (превью)
 ```
 
 Все обращения к файлам должны происходить через Laravel Storage API.
