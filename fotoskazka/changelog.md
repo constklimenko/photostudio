@@ -95,3 +95,46 @@
 ### Низкие
 - **CreateAlbum Action**: логика создания альбома вынесена в `app/Actions/Album/CreateAlbum.php` — теперь тестируется Action, а не дублируется логика.
 - **UploadPhotos.php**: добавлен явный `$this->form->validate()` перед `getState()`.
+
+## 2026-06-25 — Этап 3.1: Главная страница
+
+### Выполнено
+- Создан базовый Blade Layout (`resources/views/layouts/site.blade.php`):
+  - HTML5-разметка, title, meta description, Vite, Header/Footer
+- Созданы Blade-компоненты:
+  - `resources/views/components/site/header.blade.php` — логотип, меню (Главная, Услуги, Портфолио, Блог), кнопка заявки
+  - `resources/views/components/site/footer.blade.php` — копирайт, телефон, email, ссылка на политику конфиденциальности
+- Контактные данные вынесены в `config/contacts.php` (подгружаются из .env)
+- Создан **HomeController** (`app/Http/Controllers/HomeController.php`):
+  - Все выборки из БД выполняются в контроллере, Blade получает готовые коллекции
+  - Eager loading для cover/photo
+  - Метод `storeInquiry()` — валидация и создание записи в inquiries
+- Создана главная страница (`resources/views/home.blade.php`):
+  - **Hero** — заголовок, описание, кнопки (статика)
+  - **Услуги** — опубликованные, сортировка по sort_order, обложка, цена
+  - **Избранные работы** — albums (type=portfolio, is_featured=true, is_published=true)
+  - **Отзывы** — опубликованные, с фото клиента
+  - **Последние статьи** — 3 последних опубликованных поста, обложка, дата
+  - **Форма заявки** — имя, телефон, услуга (select), комментарий; POST → inquiries
+- Маршруты: `GET /` (HomeController), `POST /inquiry` (storeInquiry)
+- CSS: добавлен `@source '../views'` в `app.css` для Tailwind-сканирования Blade-шаблонов
+
+## 2026-06-25 — Этап 3.2: Страница услуг
+
+### Выполнено
+- Создан **ServiceController** (`app/Http/Controllers/ServiceController.php`):
+  - `index()` — все опубликованные услуги, сгруппированные по категориям
+  - `show($slug)` — детальная страница услуги с формой заявки
+  - Eager loading для cover/category, выборка только нужных полей
+- Создана страница списка услуг (`resources/views/services/index.blade.php`):
+  - Группировка по категориям с заголовками
+  - Карточки с обложкой, кратким описанием и ценой
+  - Форма заявки внизу (без привязки к конкретной услуге)
+- Создана детальная страница услуги (`resources/views/services/show.blade.php`):
+  - Хлебные крошки (Главная / Услуги / Категория)
+  - Обложка, заголовок, цена, описание (RichEditor — `prose`)
+  - Форма заявки с предвыбранной услугой (hidden service_id)
+  - Блок «Другие услуги»
+- Заменены маршруты-редиректы на реальные контроллеры в `routes/web.php`
+- Создан **CategorySeeder** с 7 категориями услуг согласно roadmap
+- Исправлен Vite-баг в тестах: `@vite` теперь загружается только при наличии manifest или hot файла

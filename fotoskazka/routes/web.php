@@ -1,7 +1,20 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ServiceController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::get('/', HomeController::class)->name('home');
+
+Route::controller(ServiceController::class)->prefix('services')->name('services.')->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/{slug}', 'show')->name('show');
 });
+
+Route::redirect('/portfolio', '/')->name('portfolio.index');
+Route::redirect('/portfolio/{slug}', '/')->name('portfolio.show');
+
+Route::redirect('/blog', '/')->name('blog.index');
+Route::redirect('/blog/{slug}', '/')->name('blog.show');
+
+Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
