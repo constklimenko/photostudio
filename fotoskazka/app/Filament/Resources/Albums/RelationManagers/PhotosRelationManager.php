@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Albums\RelationManagers;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DetachAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -54,8 +53,7 @@ class PhotosRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                DetachAction::make()
-                    ->label('Удалить из альбома'),
+                //
             ])
             ->recordActions([
                 Action::make('setCover')

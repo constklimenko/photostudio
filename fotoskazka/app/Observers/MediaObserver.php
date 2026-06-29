@@ -15,8 +15,9 @@ class MediaObserver
 
     protected function fillMetadata(Media $media): void
     {
+        $media->disk = $media->disk ?? 'public';
         $path = $media->file_path;
-        $disk = $media->disk ?? 'public';
+        $disk = $media->disk;
 
         if (! Storage::disk($disk)->exists($path)) {
             return;
@@ -39,7 +40,7 @@ class MediaObserver
     protected function generateThumbnail(Media $media): void
     {
         $path = $media->file_path;
-        $disk = $media->disk ?? 'public';
+        $disk = $media->disk;
 
         if (! Storage::disk($disk)->exists($path)) {
             return;
