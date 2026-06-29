@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Services\Schemas;
 
+use App\Models\Service;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -29,7 +30,13 @@ class ServiceForm
                                 if ($get('_slug_manual')) {
                                     return;
                                 }
-                                $set('slug', Str::slug($state));
+                                $base = Str::slug($state);
+                                $slug = $base;
+                                $counter = 1;
+                                while (Service::where('slug', $slug)->exists()) {
+                                    $slug = $base.'-'.$counter++;
+                                }
+                                $set('slug', $slug);
                             }),
                         TextInput::make('slug')
                             ->required()

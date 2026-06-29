@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Albums\Schemas;
 
+use App\Models\Album;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -29,7 +30,13 @@ class AlbumForm
                                 if ($slugManual && $slugManual !== '') {
                                     return;
                                 }
-                                $set('slug', Str::slug($state));
+                                $base = Str::slug($state);
+                                $slug = $base;
+                                $counter = 1;
+                                while (Album::where('slug', $slug)->exists()) {
+                                    $slug = $base.'-'.$counter++;
+                                }
+                                $set('slug', $slug);
                             }),
                         TextInput::make('slug')
                             ->required()

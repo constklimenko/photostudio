@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use App\Models\Page;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -29,7 +30,13 @@ class PageForm
                                 if ($get('_slug_manual')) {
                                     return;
                                 }
-                                $set('slug', Str::slug($state));
+                                $base = Str::slug($state);
+                                $slug = $base;
+                                $counter = 1;
+                                while (Page::where('slug', $slug)->exists()) {
+                                    $slug = $base.'-'.$counter++;
+                                }
+                                $set('slug', $slug);
                             }),
                         TextInput::make('slug')
                             ->required()

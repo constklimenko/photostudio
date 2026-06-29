@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Posts\Schemas;
 
+use App\Models\Post;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
@@ -30,7 +31,13 @@ class PostForm
                                 if ($get('_slug_manual')) {
                                     return;
                                 }
-                                $set('slug', Str::slug($state));
+                                $base = Str::slug($state);
+                                $slug = $base;
+                                $counter = 1;
+                                while (Post::where('slug', $slug)->exists()) {
+                                    $slug = $base.'-'.$counter++;
+                                }
+                                $set('slug', $slug);
                             }),
                         TextInput::make('slug')
                             ->required()
