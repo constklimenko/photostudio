@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PortfolioController;
@@ -18,8 +19,10 @@ Route::controller(PortfolioController::class)->prefix('portfolio')->name('portfo
     Route::get('/{slug}', 'show')->name('show');
 });
 
-Route::redirect('/blog', '/')->name('blog.index');
-Route::redirect('/blog/{slug}', '/')->name('blog.show');
+Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/{slug}', 'show')->name('show');
+});
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 

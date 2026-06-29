@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
+use App\Models\Service;
 
 class PortfolioController extends Controller
 {
@@ -23,9 +24,14 @@ class PortfolioController extends Controller
         $album = Album::query()
             ->where('is_published', true)
             ->where('slug', $slug)
-            ->with(['cover', 'photos' => fn ($q) => $q->orderBy('sort_order')->with('media')])
+            ->with(['cover', 'photos' => fn ($q) => $q->orderBy('sort_order')->with('media'), 'services' => fn ($q) => $q->with('cover')])
             ->firstOrFail();
 
-        return view('portfolio.show', compact('album'));
+        $services = Service::query()
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'title', 'slug']);
+
+        return view('portfolio.show', compact('album', 'services'));
     }
 }

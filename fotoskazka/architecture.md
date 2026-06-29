@@ -4,42 +4,53 @@
 
 | Компонент     | Версия        |
 |---------------|---------------|
-| PHP           | 8.4           |
-| Laravel       | 13.16         |
+| PHP           | 8.4.22        |
+| Laravel       | 13.16.1       |
 | MySQL         | 8.x           |
-| Filament      | 4.11          |
-| Livewire      | 3.8           |
+| Filament      | 4.11.7        |
+| Livewire      | 3.8.1         |
 | Node          | 20+           |
-| Vite          | 6.x           |
+| Vite          | 8.x           |
 
 ## Структура приложения
 
 ```
 app/
-├── Actions/                  # Action-классы (бизнес-логика)
+├── Actions/                    # Action-классы (бизнес-логика)
 │   └── Album/
-│       └── CreateAlbum.php   # Создание альбома с медиа и фото
+│       └── CreateAlbum.php     # Создание альбома с медиа и фото
 ├── Filament/
-│   ├── Resources/            # Filament ресурсы (CRUD)
+│   ├── Resources/              # Filament ресурсы (CRUD)
 │   │   ├── Albums/
 │   │   │   ├── AlbumResource.php
 │   │   │   ├── Pages/
-│   │   │   │   └── UploadPhotos.php   # Drag&drop загрузка
+│   │   │   │   ├── EditAlbum.php       # Дозагрузка фото
+│   │   │   │   └── UploadPhotos.php    # Drag&drop загрузка
 │   │   │   ├── RelationManagers/
 │   │   │   │   └── PhotosRelationManager.php
 │   │   │   └── Schemas/
 │   │   │       └── AlbumForm.php
 │   │   ├── Categories/
 │   │   ├── Inquiries/
+│   │   │   └── Schemas/
+│   │   │       └── InquiryForm.php
 │   │   ├── Media/
 │   │   │   └── Schemas/
 │   │   │       └── MediaForm.php
 │   │   ├── Pages/
+│   │   │   └── Schemas/
+│   │   │       └── PageForm.php
 │   │   ├── Photos/
 │   │   ├── Posts/
+│   │   │   └── Schemas/
+│   │   │       └── PostForm.php
 │   │   ├── Projects/
 │   │   ├── Roles/
+│   │   ├── ServiceItems/       # Мастер-справочник пунктов услуг
+│   │   │   └── ServiceItemResource.php
 │   │   ├── Services/
+│   │   │   └── Schemas/
+│   │   │       └── ServiceForm.php
 │   │   ├── Testimonials/
 │   │   └── Users/
 │   │       ├── Schemas/
@@ -49,8 +60,15 @@ app/
 │   └── Resources/Users/UserResource.php
 ├── Http/
 │   ├── Controllers/
+│   │   ├── Auth/
+│   │   │   └── LoginController.php
+│   │   ├── BlogController.php
+│   │   ├── CabinetController.php
+│   │   ├── HomeController.php
+│   │   ├── PortfolioController.php
+│   │   └── ServiceController.php
 │   └── Middleware/
-├── Models/                   # Eloquent модели (12 шт.)
+├── Models/                     # Eloquent модели (13 шт.)
 │   ├── Album.php
 │   ├── Category.php
 │   ├── Inquiry.php
@@ -61,18 +79,72 @@ app/
 │   ├── Project.php
 │   ├── Role.php
 │   ├── Service.php
+│   ├── ServiceItem.php
 │   ├── Testimonial.php
 │   └── User.php
 ├── Observers/
-│   └── MediaObserver.php     # Авто-метаданные + WebP превью
+│   └── MediaObserver.php       # Авто-метаданные + WebP превью
 └── Providers/
     └── Filament/
         └── AdminPanelProvider.php
 ```
 
-## Шаблоны
+## Публичные страницы (Blade)
 
-### Action-классы (`app/Actions/`)
+```
+resources/views/
+├── layouts/
+│   └── site.blade.php          # Базовый layout (header, footer, @vite)
+├── components/site/
+│   ├── header.blade.php        # Шапка (меню, auth-условные ссылки, бургер)
+│   └── footer.blade.php        # Подвал (контакты, политика)
+├── home.blade.php              # Главная (hero, услуги, портфолио, отзывы, блог, форма)
+├── blog/
+│   ├── index.blade.php         # Список статей (сетка 2 колонки, сайдбар, пагинация)
+│   └── show.blade.php          # Детальная (контент, альбомы-слайдер, форма заявки)
+├── portfolio/
+│   ├── index.blade.php         # Сетка альбомов (masonry, fadeInUp)
+│   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
+├── services/
+│   ├── index.blade.php         # Услуги по категориям (блоки с items, CTA)
+│   └── show.blade.php          # Детальная (items, альбомы-примеры, форма)
+├── cabinet/
+│   └── index.blade.php         # Личный кабинет (заглушка)
+└── auth/
+    └── login.blade.php         # Страница входа
+```
+
+## Маршруты
+
+| Метод | URI | Контроллер | Middleware |
+|-------|-----|-----------|-----------|
+| GET | `/` | `HomeController` | — |
+| GET | `/services` | `ServiceController@index` | — |
+| GET | `/services/{slug}` | `ServiceController@show` | — |
+| GET | `/portfolio` | `PortfolioController@index` | — |
+| GET | `/portfolio/{slug}` | `PortfolioController@show` | — |
+| GET | `/blog` | `BlogController@index` | — |
+| GET | `/blog/{slug}` | `BlogController@show` | — |
+| POST | `/inquiry` | `HomeController@storeInquiry` | — |
+| GET | `/cabinet` | `CabinetController@index` | `auth` |
+| GET | `/login` | `Auth\LoginController@create` | `guest` |
+| POST | `/login` | `Auth\LoginController@store` | `guest` |
+| POST | `/logout` | `Auth\LoginController@destroy` | `auth` |
+
+## Blade Layout и условный Vite
+
+- Базовый layout `layouts/site.blade.php`
+- `@vite()` загружается только при наличии `manifest.json` или `hot` файла
+- Условная загрузка позволяет тестам работать без Vite-билда
+
+## Шапка (Header)
+
+- Для гостя: Главная, Услуги, Портфолио, Блог, Оставить заявку, Войти
+- Для авторизованного: + Личный кабинет, — Войти
+- Для администратора: + Админка (/admin)
+- Бургер-меню на мобильных (vanilla JS)
+
+## Action-классы (`app/Actions/`)
 
 Инкапсулируют бизнес-логику, вынесенную из контроллеров / Filament-страниц.
 Позволяют:
@@ -81,26 +153,30 @@ app/
 
 Пример: `CreateAlbum` — транзакция создания альбома с медиа и фото.
 
-### Наблюдатели (`app/Observers/`)
+## Наблюдатели (`app/Observers/`)
 
-`MediaObserver` — автоматически заполняет mime_type, width, height, file_size
-и генерирует WebP-превью (400px) при создании Media.
+`MediaObserver` — автоматически заполняет `mime_type`, `width`, `height`, `file_size`,
+гарантирует `disk = 'public'` и генерирует WebP-превью (400px) при создании Media.
 
-### Filament Resources
+## Filament Resources
 
 Для каждой сущности создан Resource с:
 - Form (Schema)
 - Table (колонки, фильтры, bulk-actions)
 - Поиск
 
-Страницы (Pages) могут дополнять стандартный CRUD:
+Дополнительные страницы:
 - `UploadPhotos` — массовая загрузка фото в альбом
+- `EditAlbum` — дозагрузка фото
 
-### Вынесенные Schema/Table
+Дополнительные RelationManagers:
+- `PhotosRelationManager` — сетка фото, перетаскивание, «Сделать обложкой»
 
-Для Users ресурса форма и таблица вынесены в отдельные классы:
-- `Schemas/UserForm.php`
-- `Tables/UsersTable.php`
+### Auto-slug на формах
+
+На формах Album, Page, Post, Service slug генерируется автоматически
+через `Str::slug($state)` при вводе названия. При дубликате добавляется
+числовой суффикс (`-1`, `-2`). Ручное редактирование прекращает автогенерацию.
 
 ## Система ролей и доступа
 
@@ -134,7 +210,6 @@ retoucher, assistant, manager, designer и т.д.
 - Контроллер: `CabinetController@index`
 - Защищён middleware `auth`
 - Временно выводит приветствие пользователя
-- Развитие кабинета — в следующих этапах
 
 ### Аутентификация
 
@@ -145,11 +220,13 @@ retoucher, assistant, manager, designer и т.д.
 
 ## Frontend
 
-- **Blade** — серверный рендеринг
-- **Vite** — сборка JS/CSS
-- Филаментовские компоненты (Livewire) для админ-панели
+- **Blade** — серверный рендеринг (все публичные страницы)
+- **Vite** — сборка CSS (Tailwind v4)
+- **Filament (Livewire)** — только админ-панель
+- **Vanilla JS** — бургер-меню, lightbox, слайдер альбомов
 
-Публичная часть (главная, услуги, портфолио, блог) будет на Blade.
+Tailwind v4: `@source`-директивы вместо `safelist` для сканирования Blade-шаблонов.
+Добавлен `@source '../../app'` для сканирования классов в контроллерах/моделях.
 
 ## Хранение файлов
 
@@ -172,7 +249,17 @@ storage/app/public/
 
 ## База данных
 
-См. `database.md` — 14 бизнес-таблиц + служебные (cache, jobs, sessions).
+См. `database.md` — 16 бизнес-таблиц + 3 pivot-таблицы + служебные.
+
+### Пivot-таблицы
+- `service_service_item` — услуги ↔ пункты (с полями `is_included`, `sort_order`)
+- `album_service` — услуги ↔ альбомы-примеры работ
+- `page_album` — страницы ↔ альбомы
+- `post_album` — статьи ↔ альбомы
+
+### ServiceItems — мастер-справочник
+`service_items` — независимая таблица без FK, связь с услугами через
+BelongsToMany + pivot. Позволяет переиспользовать пункты в разных услугах.
 
 ## Тестирование
 
@@ -184,7 +271,8 @@ storage/app/public/
 
 - БД: SQLite in-memory
 - RefreshDatabase для тестов, изменяющих БД
-- 35 тестов, 67 утверждений
+- 69 тестов, 119 утверждений
+- CI: `php artisan config:clear && php artisan test`
 
 ## Ключевые решения
 
@@ -200,6 +288,18 @@ storage/app/public/
 ### Action-классы вместо логики в Pages
 Бизнес-логика создания альбома вынесена в `CreateAlbum` Action
 для тестируемости и переиспользования.
+
+### service_items как мастер-справочник
+Вместо вложенных JSON или копирования пунктов в каждую услугу —
+отдельная таблица `service_items` с BelongsToMany + pivot (`is_included`, `sort_order`).
+
+### Auto-slug с уникализацией
+Slug генерируется уникальным сразу (base + `-N`), вместо `unique`-валидации с ошибкой.
+Ручное редактирование slug отключает автогенерацию.
+
+### Условный @vite в тестах
+`@vite()` загружается только при наличии `manifest.json` или `hot` файла,
+чтобы тесты проходили без Vite-билда.
 
 ## Правила разработки
 
