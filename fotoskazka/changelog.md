@@ -1,16 +1,6 @@
 # Changelog
 
-## 2026-06-29 — Исправление критических ошибок
 
-### Критические
-- **MediaObserver**: добавлена принудительная установка `$media->disk = $media->disk ?? 'public'` — колонка `disk` в БД `NOT NULL`, но форма MediaResource её не содержит. Observer теперь гарантирует, что `disk` никогда не будет null.
-- **PhotosRelationManager**: удалён `DetachAction` из headerActions — он использовался на `HasMany`-связи `photos`, а `DetachAction` вызывает `$relationship->detach()`, доступный только для `BelongsToMany`. Это приводило бы к `BadMethodCallException`.
-
-### Прочее
-- Проведён полный аудит проекта: 55 тестов пройдено, Pint чистый.
-- Все маршруты, контроллеры, модели, миграции, Filament-ресурсы и Blade-шаблоны проверены на соответствие и целостность.
-
----
 
 ## 2026-06-24 — Этап 2: Filament ресурсы (CRUD)
 
@@ -261,3 +251,17 @@
 - Заменены маршруты-редиректы на реальные контроллеры в `routes/web.php`
 - Создан **CategorySeeder** с 7 категориями услуг согласно roadmap
 - Исправлен Vite-баг в тестах: `@vite` теперь загружается только при наличии manifest или hot файла
+
+---
+
+## 2026-06-29 — Исправление критических ошибок
+
+### Критические
+- **MediaObserver**: добавлена принудительная установка `$media->disk = $media->disk ?? 'public'` — колонка `disk` в БД `NOT NULL`, но форма MediaResource её не содержит. Observer теперь гарантирует, что `disk` никогда не будет null.
+- **PhotosRelationManager**: удалён `DetachAction` из headerActions — он использовался на `HasMany`-связи `photos`, а `DetachAction` вызывает `$relationship->detach()`, доступный только для `BelongsToMany`. Это приводило бы к `BadMethodCallException`.
+
+### Прочее
+- Проведён полный аудит проекта: 55 тестов пройдено, Pint чистый.
+- Все маршруты, контроллеры, модели, миграции, Filament-ресурсы и Blade-шаблоны проверены на соответствие и целостность.
+
+---
