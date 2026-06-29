@@ -21,7 +21,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($albums as $i => $album)
                     <a href="{{ route('portfolio.show', $album->slug) }}"
-                       class="group block relative overflow-hidden rounded-xl bg-gray-100 {{ $i % 5 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 7 === 0 ? 'sm:row-span-2' : '') }}"
+                       class="group block relative overflow-hidden rounded-xl bg-gray-100 {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
                        style="opacity: 0; animation: fadeInUp 0.5s ease {{ $i * 0.05 }}s forwards;">
                         @if ($album->cover)
                             <img src="{{ Storage::url( $album->cover->file_path ) }}"
