@@ -12,6 +12,7 @@ use App\Models\Post;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\Service;
+use App\Models\ServiceItem;
 use App\Models\Testimonial;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,5 +197,30 @@ class ModelRelationshipsTest extends TestCase
         $album = Album::factory()->create(['type' => 'client']);
 
         $this->assertEquals('client', $album->type);
+    }
+
+    public function test_service_has_many_items(): void
+    {
+        $service = Service::factory()->create();
+        $items = ServiceItem::factory()->count(3)->create(['service_id' => $service->id]);
+
+        $this->assertCount(3, $service->items);
+        $this->assertInstanceOf(ServiceItem::class, $service->items->first());
+    }
+
+    public function test_service_item_belongs_to_service(): void
+    {
+        $service = Service::factory()->create();
+        $item = ServiceItem::factory()->create(['service_id' => $service->id]);
+
+        $this->assertTrue($item->service->is($service));
+    }
+
+    public function test_service_item_casts_is_included_to_boolean(): void
+    {
+        $service = Service::factory()->create();
+        $item = ServiceItem::factory()->create(['service_id' => $service->id, 'is_included' => true]);
+
+        $this->assertTrue($item->is_included);
     }
 }

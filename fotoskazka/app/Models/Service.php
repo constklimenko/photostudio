@@ -13,7 +13,7 @@ class Service extends Model
 
     protected $fillable = [
         'category_id', 'cover_media_id', 'title', 'slug',
-        'short_description', 'description', 'price_from',
+        'short_description', 'description', 'price_from', 'price_note',
         'is_published', 'sort_order', 'seo_title', 'seo_description',
     ];
 
@@ -30,5 +30,10 @@ class Service extends Model
     public function inquiries(): HasMany
     {
         return $this->hasMany(Inquiry::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(ServiceItem::class)->orderBy('sort_order');
     }
 }

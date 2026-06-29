@@ -18,36 +18,59 @@
     @if ($category->services->isNotEmpty())
         <section class="py-16 {{ $loop->even ? 'bg-gray-50' : '' }}">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="text-2xl font-bold text-gray-900">{{ $category->name }}</h2>
+                <h2 class="text-3xl font-bold text-gray-900 mb-12">{{ $category->name }}</h2>
 
-                <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    @foreach ($category->services as $service)
-                        <a href="{{ route('services.show', $service->slug) }}" class="group block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
-                            @if ($service->cover)
-                                <div class="aspect-[4/3] bg-gray-100">
-                                    <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                         alt="{{ $service->title }}"
-                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                                </div>
-                            @else
-                                <div class="aspect-[4/3] bg-gray-100 flex items-center justify-center text-gray-400">
-                                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                    </svg>
-                                </div>
-                            @endif
-                            <div class="p-5">
-                                <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $service->title }}</h3>
-                                @if ($service->short_description)
-                                    <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $service->short_description }}</p>
-                                @endif
-                                @if ($service->price_from)
-                                    <p class="mt-3 font-medium text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
-                                @endif
+                @foreach ($category->services as $service)
+                    <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0">
+                        @if ($service->cover)
+                            <div class="lg:w-5/12 shrink-0">
+                                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
+                                     alt="{{ $service->title }}"
+                                     class="w-full h-80 object-cover rounded-xl"
+                                     loading="lazy">
                             </div>
-                        </a>
-                    @endforeach
-                </div>
+                        @endif
+
+                        <div class="flex-1 flex flex-col justify-center">
+                            <h3 class="text-2xl font-bold text-gray-900">{{ $service->title }}</h3>
+                            @if ($service->short_description)
+                                <p class="mt-3 text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
+                            @endif
+
+                            @if ($service->items->isNotEmpty())
+                                <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+                                    @foreach ($service->items as $item)
+                                        <li class="flex items-center gap-2 text-sm {{ $item->is_included ? 'text-gray-700' : 'text-gray-400' }}">
+                                            @if ($item->is_included)
+                                                <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                </svg>
+                                            @else
+                                                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                                </svg>
+                                            @endif
+                                            {{ $item->label }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+
+                            <div class="mt-6 flex items-center gap-6">
+                                @if ($service->price_from)
+                                    <span class="text-2xl font-bold text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                                @endif
+                                <a href="{{ route('services.show', $service->slug) }}"
+                                   class="inline-flex items-center px-6 py-2.5 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition text-sm">
+                                    Подробнее
+                                </a>
+                            </div>
+                            @if ($service->price_note)
+                                <p class="mt-2 text-xs text-gray-400">{{ $service->price_note }}</p>
+                            @endif
+                        </div>
+                    </article>
+                @endforeach
             </div>
         </section>
     @endif
@@ -56,34 +79,57 @@
 @if ($servicesWithoutCategory->isNotEmpty())
     <section class="py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                @foreach ($servicesWithoutCategory as $service)
-                    <a href="{{ route('services.show', $service->slug) }}" class="group block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
-                        @if ($service->cover)
-                            <div class="aspect-[4/3] bg-gray-100">
-                                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                     alt="{{ $service->title }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            </div>
-                        @else
-                            <div class="aspect-[4/3] bg-gray-100 flex items-center justify-center text-gray-400">
-                                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                        @endif
-                        <div class="p-5">
-                            <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $service->title }}</h3>
-                            @if ($service->short_description)
-                                <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $service->short_description }}</p>
-                            @endif
-                            @if ($service->price_from)
-                                <p class="mt-3 font-medium text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
-                            @endif
+            @foreach ($servicesWithoutCategory as $service)
+                <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0">
+                    @if ($service->cover)
+                        <div class="lg:w-5/12 shrink-0">
+                            <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
+                                 alt="{{ $service->title }}"
+                                 class="w-full h-80 object-cover rounded-xl"
+                                 loading="lazy">
                         </div>
-                    </a>
-                @endforeach
-            </div>
+                    @endif
+
+                    <div class="flex-1 flex flex-col justify-center">
+                        <h3 class="text-2xl font-bold text-gray-900">{{ $service->title }}</h3>
+                        @if ($service->short_description)
+                            <p class="mt-3 text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
+                        @endif
+
+                        @if ($service->items->isNotEmpty())
+                            <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+                                @foreach ($service->items as $item)
+                                    <li class="flex items-center gap-2 text-sm {{ $item->is_included ? 'text-gray-700' : 'text-gray-400' }}">
+                                        @if ($item->is_included)
+                                            <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @else
+                                            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                            </svg>
+                                        @endif
+                                        {{ $item->label }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+
+                        <div class="mt-6 flex items-center gap-6">
+                            @if ($service->price_from)
+                                <span class="text-2xl font-bold text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                            @endif
+                            <a href="{{ route('services.show', $service->slug) }}"
+                               class="inline-flex items-center px-6 py-2.5 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition text-sm">
+                                Подробнее
+                            </a>
+                        </div>
+                        @if ($service->price_note)
+                            <p class="mt-2 text-xs text-gray-400">{{ $service->price_note }}</p>
+                        @endif
+                    </div>
+                </article>
+            @endforeach
         </div>
     </section>
 @endif

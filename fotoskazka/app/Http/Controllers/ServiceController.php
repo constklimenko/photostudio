@@ -15,7 +15,7 @@ class ServiceController extends Controller
             ->with(['services' => function ($query) {
                 $query->where('is_published', true)
                     ->orderBy('sort_order')
-                    ->with('cover');
+                    ->with(['cover', 'items']);
             }])
             ->get(['id', 'name', 'slug']);
 
@@ -23,8 +23,8 @@ class ServiceController extends Controller
             ->where('is_published', true)
             ->whereNull('category_id')
             ->orderBy('sort_order')
-            ->with('cover')
-            ->get(['id', 'cover_media_id', 'title', 'slug', 'short_description', 'price_from']);
+            ->with(['cover', 'items'])
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'short_description', 'price_from', 'price_note']);
 
         return view('services.index', compact('categories', 'servicesWithoutCategory'));
     }
@@ -34,8 +34,8 @@ class ServiceController extends Controller
         $service = Service::query()
             ->where('is_published', true)
             ->where('slug', $slug)
-            ->with(['cover', 'category', 'inquiries'])
-            ->firstOrFail(['id', 'category_id', 'cover_media_id', 'title', 'slug', 'short_description', 'description', 'price_from', 'seo_title', 'seo_description']);
+            ->with(['cover', 'category', 'items'])
+            ->firstOrFail(['id', 'category_id', 'cover_media_id', 'title', 'slug', 'short_description', 'description', 'price_from', 'price_note', 'seo_title', 'seo_description']);
 
         $serviceList = Service::query()
             ->where('is_published', true)

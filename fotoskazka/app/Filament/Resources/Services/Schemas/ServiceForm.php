@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Services\Schemas;
 
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -57,6 +58,8 @@ class ServiceForm
                             ->numeric()
                             ->prefix('₽')
                             ->nullable(),
+                        Textarea::make('price_note')
+                            ->nullable(),
                         Toggle::make('is_published')
                             ->default(true),
                         TextInput::make('sort_order')
@@ -73,6 +76,27 @@ class ServiceForm
                     ->schema([
                         Textarea::make('short_description'),
                         RichEditor::make('description'),
+                    ]),
+                Section::make('Что входит')
+                    ->schema([
+                        Repeater::make('items')
+                            ->relationship()
+                            ->schema([
+                                Grid::make(2)
+                                    ->schema([
+                                        TextInput::make('label')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->label('Пункт'),
+                                        Toggle::make('is_included')
+                                            ->default(true)
+                                            ->label('Включено'),
+                                    ]),
+                            ])
+                            ->orderColumn('sort_order')
+                            ->reorderable()
+                            ->addActionLabel('Добавить пункт')
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

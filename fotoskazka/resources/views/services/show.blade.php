@@ -29,10 +29,35 @@
 
         @if ($service->price_from)
             <p class="mt-4 text-2xl font-bold text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
+            @if ($service->price_note)
+                <p class="mt-1 text-xs text-gray-400">{{ $service->price_note }}</p>
+            @endif
         @endif
 
         @if ($service->short_description)
             <p class="mt-4 text-lg text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
+        @endif
+
+        @if ($service->items->isNotEmpty())
+            <div class="mt-8 p-6 bg-gray-50 rounded-xl">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Что входит</h3>
+                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                    @foreach ($service->items as $item)
+                        <li class="flex items-center gap-2 text-sm {{ $item->is_included ? 'text-gray-700' : 'text-gray-400' }}">
+                            @if ($item->is_included)
+                                <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            @else
+                                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                            @endif
+                            {{ $item->label }}
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         @endif
 
         @if ($service->description)

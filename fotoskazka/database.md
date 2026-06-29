@@ -67,6 +67,7 @@ erDiagram
     MEDIA ||--o{ TESTIMONIALS : photo
 
     SERVICES ||--o{ INQUIRIES : receives
+    SERVICES ||--o{ SERVICE_ITEMS : includes
 
 ```
 
@@ -337,6 +338,8 @@ short_description TEXT NULL
 description LONGTEXT NULL
 
 price_from DECIMAL(10,2) NULL
+
+price_note TEXT NULL
 
 is_published BOOLEAN DEFAULT TRUE
 
@@ -704,6 +707,40 @@ Foreign keys:
 ```sql
 post_id -> posts.id ON DELETE CASCADE
 album_id -> albums.id ON DELETE CASCADE
+```
+
+---
+
+## service_items
+
+Пункты/характеристики, входящие в услугу (ретушь, печать, видеосъёмка и т.п.).
+
+```sql
+id BIGINT PRIMARY KEY
+
+service_id BIGINT NOT NULL
+
+label VARCHAR(255)
+
+is_included BOOLEAN DEFAULT TRUE
+
+sort_order INT DEFAULT 0
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+service_id -> services.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(service_id)
+INDEX(sort_order)
 ```
 
 ---

@@ -284,5 +284,43 @@
   - Сетка фотографий (1/2/3 колонки)
   - Пустое состояние
 - Заменены маршруты-редиректы на реальный контроллер в `routes/web.php`
+- Lightbox для полноэкранного просмотра фото (vanilla JS, без зависимостей)
+
+---
+
+## 2026-06-29 — Редизайн /services + service_items
+
+### Изменения БД
+- **Новая миграция**: `create_service_items_table`
+  - `service_id` (FK → services, CASCADE)
+  - `label` — название пункта (ретушь, печать, видеосъёмка)
+  - `is_included` — включено или нет (галочка/крестик)
+  - `sort_order` — порядок сортировки
+- **Новая миграция**: `add_price_note_to_services`
+  - `services.price_note` (TEXT, nullable) — примечание к цене
+
+### Модели
+- **ServiceItem** — новая модель, `BelongsTo Service`
+- **Service** — добавлена связь `items()` (HasMany, ordered by sort_order)
+
+### Filament
+- **ServiceForm** — добавлен `Repeater` для `items`:
+  - drag-n-drop сортировка, добавление/удаление
+  - поля: label (TextInput) + is_included (Toggle)
+- **ServicesTable** — добавлена колонка `items_count` (счётчик пунктов)
+
+### Публичные страницы
+- **services/index.blade.php** — полный редизайн в стиле референса:
+  - Каждая услуга — полноценный блок: cover + описание + список items с галочками (2 колонки) + цена + CTA
+  - Группировка по категориям, фон чередуется
+- **services/show.blade.php** — добавлен блок «Что входит» со списком items
+
+### Тесты
+- Добавлены 3 теста: `service_has_many_items`, `service_item_belongs_to_service`, `service_item_casts_is_included_to_boolean`
+- Всего 58 тестов, 104 assertions
+
+### Документация
+- Обновлены `database.md` (service_items, price_note, ER-диаграмма)
+- Обновлён `changelog.md`
 
 ---

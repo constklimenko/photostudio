@@ -28,6 +28,10 @@ class ServicesTable
                     ->sortable(),
                 IconColumn::make('is_published')
                     ->boolean(),
+                TextColumn::make('items_count')
+                    ->label('Пункты')
+                    ->counts('items')
+                    ->sortable(),
                 TextColumn::make('sort_order')
                     ->sortable(),
             ])
