@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ServiceController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,8 +13,10 @@ Route::controller(ServiceController::class)->prefix('services')->name('services.
     Route::get('/{slug}', 'show')->name('show');
 });
 
-Route::redirect('/portfolio', '/')->name('portfolio.index');
-Route::redirect('/portfolio/{slug}', '/')->name('portfolio.show');
+Route::controller(PortfolioController::class)->prefix('portfolio')->name('portfolio.')->group(function () {
+    Route::get('/', 'index')->name('index');
+    Route::get('/{slug}', 'show')->name('show');
+});
 
 Route::redirect('/blog', '/')->name('blog.index');
 Route::redirect('/blog/{slug}', '/')->name('blog.show');
