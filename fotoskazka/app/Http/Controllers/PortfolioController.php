@@ -21,7 +21,6 @@ class PortfolioController extends Controller
     public function show(string $slug)
     {
         $album = Album::query()
-            ->where('type', 'portfolio')
             ->where('is_published', true)
             ->where('slug', $slug)
             ->with(['cover', 'photos' => fn ($q) => $q->orderBy('sort_order')->with('media')])

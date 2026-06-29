@@ -5,7 +5,7 @@ namespace App\Models;
 use Database\Factories\ServiceItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ServiceItem extends Model
 {
@@ -13,7 +13,7 @@ class ServiceItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'service_id', 'label', 'is_included', 'sort_order',
+        'label', 'is_included', 'sort_order',
     ];
 
     protected function casts(): array
@@ -23,8 +23,9 @@ class ServiceItem extends Model
         ];
     }
 
-    public function service(): BelongsTo
+    public function services(): BelongsToMany
     {
-        return $this->belongsTo(Service::class);
+        return $this->belongsToMany(Service::class)
+            ->withPivot('is_included', 'sort_order');
     }
 }

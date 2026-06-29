@@ -199,28 +199,39 @@ class ModelRelationshipsTest extends TestCase
         $this->assertEquals('client', $album->type);
     }
 
-    public function test_service_has_many_items(): void
+    public function test_service_belongs_to_many_items(): void
     {
         $service = Service::factory()->create();
-        $items = ServiceItem::factory()->count(3)->create(['service_id' => $service->id]);
+        $items = ServiceItem::factory()->count(3)->create();
+        $service->items()->attach($items->pluck('id'));
 
         $this->assertCount(3, $service->items);
         $this->assertInstanceOf(ServiceItem::class, $service->items->first());
     }
 
-    public function test_service_item_belongs_to_service(): void
+    public function test_service_item_belongs_to_many_services(): void
     {
         $service = Service::factory()->create();
-        $item = ServiceItem::factory()->create(['service_id' => $service->id]);
+        $item = ServiceItem::factory()->create();
+        $service->items()->attach($item);
 
-        $this->assertTrue($item->service->is($service));
+        $this->assertTrue($item->services->contains($service));
     }
 
     public function test_service_item_casts_is_included_to_boolean(): void
     {
-        $service = Service::factory()->create();
-        $item = ServiceItem::factory()->create(['service_id' => $service->id, 'is_included' => true]);
+        $item = ServiceItem::factory()->create(['is_included' => true]);
 
         $this->assertTrue($item->is_included);
+    }
+
+    public function test_service_belongs_to_many_albums(): void
+    {
+        $service = Service::factory()->create();
+        $albums = Album::factory()->count(2)->create();
+        $service->albums()->attach($albums->pluck('id'));
+
+        $this->assertCount(2, $service->albums);
+        $this->assertInstanceOf(Album::class, $service->albums->first());
     }
 }

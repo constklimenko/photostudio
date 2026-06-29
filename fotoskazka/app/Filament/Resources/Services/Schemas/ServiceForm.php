@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Services\Schemas;
 
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -79,23 +78,25 @@ class ServiceForm
                     ]),
                 Section::make('Что входит')
                     ->schema([
-                        Repeater::make('items')
-                            ->relationship()
-                            ->schema([
-                                Grid::make(2)
-                                    ->schema([
-                                        TextInput::make('label')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->label('Пункт'),
-                                        Toggle::make('is_included')
-                                            ->default(true)
-                                            ->label('Включено'),
-                                    ]),
+                        Select::make('items')
+                            ->multiple()
+                            ->relationship('items', 'label')
+                            ->preload()
+                            ->searchable()
+                            ->createOptionForm([
+                                TextInput::make('label')
+                                    ->required()
+                                    ->maxLength(255),
                             ])
-                            ->orderColumn('sort_order')
-                            ->reorderable()
-                            ->addActionLabel('Добавить пункт')
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Примеры работ')
+                    ->schema([
+                        Select::make('albums')
+                            ->multiple()
+                            ->relationship('albums', 'title')
+                            ->preload()
+                            ->searchable()
                             ->columnSpanFull(),
                     ]),
             ]);

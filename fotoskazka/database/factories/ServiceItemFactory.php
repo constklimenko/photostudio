@@ -23,4 +23,14 @@ class ServiceItemFactory extends Factory
             'sort_order' => fake()->numberBetween(0, 100),
         ];
     }
+
+    public function included(): static
+    {
+        return $this->state(fn () => ['is_included' => true]);
+    }
+
+    public function excluded(): static
+    {
+        return $this->state(fn () => ['is_included' => false]);
+    }
 }

@@ -43,8 +43,9 @@
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Что входит</h3>
                 <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                     @foreach ($service->items as $item)
-                        <li class="flex items-center gap-2 text-sm {{ $item->is_included ? 'text-gray-700' : 'text-gray-400' }}">
-                            @if ($item->is_included)
+                        @php $included = $item->pivot->is_included ?? true; @endphp
+                        <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-700' : 'text-gray-400' }}">
+                            @if ($included)
                                 <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
@@ -58,6 +59,34 @@
                     @endforeach
                 </ul>
             </div>
+        @endif
+
+        @if ($service->albums->isNotEmpty())
+            <section class="mt-16">
+                <h2 class="text-2xl font-bold text-gray-900 mb-8">Примеры работ</h2>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    @foreach ($service->albums as $album)
+                        <a href="{{ route('portfolio.show', $album->slug) }}"
+                           class="group block rounded-xl overflow-hidden bg-gray-100">
+                            @if ($album->cover)
+                                <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
+                                     alt="{{ $album->title }}"
+                                     class="w-full aspect-[4/3] object-cover group-hover:scale-105 transition duration-500"
+                                     loading="lazy">
+                            @else
+                                <div class="w-full aspect-[4/3] flex items-center justify-center text-gray-400">
+                                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                            @endif
+                            <div class="p-3">
+                                <h3 class="text-sm font-medium text-gray-900 group-hover:text-amber-600 transition truncate">{{ $album->title }}</h3>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </section>
         @endif
 
         @if ($service->description)

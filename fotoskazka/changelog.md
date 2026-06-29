@@ -288,39 +288,43 @@
 
 ---
 
-## 2026-06-29 — Редизайн /services + service_items
+## 2026-06-29 — Редизайн /services + service_items + albums ↔ services
 
 ### Изменения БД
-- **Новая миграция**: `create_service_items_table`
-  - `service_id` (FK → services, CASCADE)
-  - `label` — название пункта (ретушь, печать, видеосъёмка)
-  - `is_included` — включено или нет (галочка/крестик)
-  - `sort_order` — порядок сортировки
+- **Новая миграция**: `create_service_items_table` (первая версия)
+  - `service_id` (FK → services, CASCADE) — позже удалено
+  - `label`, `is_included`, `sort_order`
 - **Новая миграция**: `add_price_note_to_services`
-  - `services.price_note` (TEXT, nullable) — примечание к цене
+  - `services.price_note` (TEXT, nullable)
+- **Новая миграция**: `create_service_service_item_table` — pivot для many-to-many
+  - `service_id`, `service_item_id`, `is_included`, `sort_order`
+- **Новая миграция**: `drop_service_id_from_service_items` — `service_items` становится мастер-справочником
+- **Новая миграция**: `create_album_service_table` — pivot для many-to-many услуг ↔ альбомов
 
 ### Модели
-- **ServiceItem** — новая модель, `BelongsTo Service`
-- **Service** — добавлена связь `items()` (HasMany, ordered by sort_order)
+- **ServiceItem** — мастер-справочник (без FK), `BelongsToMany services()`
+- **Service**
+  - `items()` → BelongsToMany `ServiceItem` (с pivot `is_included`, `sort_order`)
+  - `albums()` → BelongsToMany `Album`
+- **Album** — добавлена `services()` BelongsToMany
 
 ### Filament
-- **ServiceForm** — добавлен `Repeater` для `items`:
-  - drag-n-drop сортировка, добавление/удаление
-  - поля: label (TextInput) + is_included (Toggle)
-- **ServicesTable** — добавлена колонка `items_count` (счётчик пунктов)
+- **ServiceItemResource** — новый CRUD-ресурс для управления мастер-списком пунктов
+- **ServiceForm** — `items` теперь `Select(multiple)` с `createOptionForm` (выбор существующих + создание новых)
+- **ServiceForm** — добавлен `albums` `Select(multiple)` для привязки альбомов-примеров
+- **ServicesTable** — `items_count` через `counts('items')`
 
 ### Публичные страницы
-- **services/index.blade.php** — полный редизайн в стиле референса:
-  - Каждая услуга — полноценный блок: cover + описание + список items с галочками (2 колонки) + цена + CTA
-  - Группировка по категориям, фон чередуется
-- **services/show.blade.php** — добавлен блок «Что входит» со списком items
+- **services/index.blade.php** — полный редизайн (предыдущий этап), адаптация под BelongsToMany (pivot)
+- **services/show.blade.php** — добавлен блок «Примеры работ» — сетка альбомов-примеров с превью и ссылкой на портфолио
 
 ### Тесты
-- Добавлены 3 теста: `service_has_many_items`, `service_item_belongs_to_service`, `service_item_casts_is_included_to_boolean`
-- Всего 58 тестов, 104 assertions
+- Обновлены тесты: `service_belongs_to_many_items`, `service_item_belongs_to_many_services`, `service_item_casts_is_included_to_boolean`
+- Добавлен тест: `service_belongs_to_many_albums`
+- Всего 59 тестов, 106 assertions
 
 ### Документация
-- Обновлены `database.md` (service_items, price_note, ER-диаграмма)
+- Обновлены `database.md` (pivot-таблицы, service_items как справочник)
 - Обновлён `changelog.md`
 
 ---

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Service extends Model
@@ -32,8 +33,15 @@ class Service extends Model
         return $this->hasMany(Inquiry::class);
     }
 
-    public function items(): HasMany
+    public function items(): BelongsToMany
     {
-        return $this->hasMany(ServiceItem::class)->orderBy('sort_order');
+        return $this->belongsToMany(ServiceItem::class)
+            ->withPivot('is_included', 'sort_order')
+            ->orderByPivot('sort_order');
+    }
+
+    public function albums(): BelongsToMany
+    {
+        return $this->belongsToMany(Album::class);
     }
 }

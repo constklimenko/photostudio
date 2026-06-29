@@ -164,6 +164,63 @@ user_id -> users.id ON DELETE CASCADE
 role_id -> roles.id ON DELETE CASCADE
 ```
 
+---
+
+## service_service_item
+
+Pivot для many-to-many связи услуг и пунктов услуг.
+
+```sql
+service_id BIGINT UNSIGNED
+service_item_id BIGINT UNSIGNED
+is_included BOOLEAN DEFAULT TRUE
+sort_order INT DEFAULT 0
+
+PRIMARY KEY(service_id, service_item_id)
+```
+
+Foreign keys:
+
+```sql
+service_id -> services.id ON DELETE CASCADE
+service_item_id -> service_items.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(service_id)
+INDEX(sort_order)
+```
+
+---
+
+## album_service
+
+Pivot для many-to-many связи услуг и альбомов-примеров.
+
+```sql
+album_id BIGINT UNSIGNED
+service_id BIGINT UNSIGNED
+
+PRIMARY KEY(album_id, service_id)
+```
+
+Foreign keys:
+
+```sql
+album_id -> albums.id ON DELETE CASCADE
+service_id -> services.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(service_id)
+```
+
+---
+
 ### Система ролей
 
 Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
@@ -713,12 +770,11 @@ album_id -> albums.id ON DELETE CASCADE
 
 ## service_items
 
-Пункты/характеристики, входящие в услугу (ретушь, печать, видеосъёмка и т.п.).
+Мастер-справочник пунктов/характеристик услуг (ретушь, печать, видеосъёмка и т.п.).
+Связаны с услугами many-to-many через `service_service_item`.
 
 ```sql
 id BIGINT PRIMARY KEY
-
-service_id BIGINT NOT NULL
 
 label VARCHAR(255)
 
@@ -730,16 +786,9 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
-Foreign keys:
-
-```sql
-service_id -> services.id ON DELETE CASCADE
-```
-
 Indexes:
 
 ```sql
-INDEX(service_id)
 INDEX(sort_order)
 ```
 

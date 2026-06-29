@@ -34,7 +34,7 @@ class ServiceController extends Controller
         $service = Service::query()
             ->where('is_published', true)
             ->where('slug', $slug)
-            ->with(['cover', 'category', 'items'])
+            ->with(['cover', 'category', 'items', 'albums' => fn ($q) => $q->where('is_published', true)->with('cover')])
             ->firstOrFail(['id', 'category_id', 'cover_media_id', 'title', 'slug', 'short_description', 'description', 'price_from', 'price_note', 'seo_title', 'seo_description']);
 
         $serviceList = Service::query()
