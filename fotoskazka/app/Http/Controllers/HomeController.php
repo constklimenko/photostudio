@@ -69,7 +69,7 @@ class HomeController extends Controller
             'phone' => 'required|string|max:50',
             'email' => 'required|email|max:255',
             'service_id' => 'nullable|exists:services,id',
-            'shooting_date' => 'nullable|date',
+            'shooting_date' => 'nullable|date|after_or_equal:today',
             'message' => 'nullable|string',
             'agreed_to_terms' => 'required|accepted',
         ]);
