@@ -56,6 +56,7 @@ erDiagram
     CATEGORIES ||--o{ POSTS : categorizes
 
     PROJECTS ||--o{ ALBUMS : contains
+    PROJECTS ||--o| INQUIRIES : source
     ALBUMS ||--o{ PHOTOS : contains
 
     MEDIA ||--o{ PHOTOS : source
@@ -464,6 +465,12 @@ description TEXT NULL
 
 shooting_date DATE NULL
 
+contact_name VARCHAR(255) NULL
+
+contact_phone VARCHAR(50) NULL
+
+contact_email VARCHAR(255) NULL
+
 status ENUM(
     'draft',
     'active',
@@ -490,6 +497,7 @@ INDEX(manager_id)
 INDEX(type)
 INDEX(status)
 INDEX(shooting_date)
+INDEX(contact_phone)
 ```
 
 ---
@@ -554,8 +562,6 @@ INDEX(type)
 ```
 
 ---
-
-## photos
 
 Фотографии альбома.
 
@@ -698,12 +704,18 @@ agreed_to_terms BOOLEAN DEFAULT FALSE
 
 shooting_date DATE NULL
 
+project_id BIGINT NULL
+
+agreed_to_terms BOOLEAN DEFAULT FALSE
+
+notification_error TEXT NULL
+
 status ENUM(
     'new',
     'in_progress',
     'completed',
     'cancelled'
-)
+) DEFAULT 'new'
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -714,6 +726,7 @@ Foreign keys:
 ```sql
 user_id -> users.id ON DELETE SET NULL
 service_id -> services.id ON DELETE SET NULL
+project_id -> projects.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -721,6 +734,7 @@ Indexes:
 ```sql
 INDEX(user_id)
 INDEX(service_id)
+INDEX(project_id)
 INDEX(status)
 INDEX(phone)
 INDEX(created_at)
@@ -790,6 +804,29 @@ Indexes:
 
 ```sql
 INDEX(sort_order)
+```
+
+---
+
+## notification_settings
+
+Настройки уведомлений (email, Telegram). Единая запись.
+
+```sql
+id BIGINT PRIMARY KEY
+
+email_enabled BOOLEAN DEFAULT TRUE
+
+email_recipients TEXT NULL
+
+telegram_enabled BOOLEAN DEFAULT FALSE
+
+telegram_bot_token VARCHAR(500) NULL
+
+telegram_chat_id VARCHAR(100) NULL
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
 ```
 
 ---

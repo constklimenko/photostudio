@@ -61,6 +61,23 @@ class ProjectForm
                     ->schema([
                         Textarea::make('description'),
                     ]),
+                Section::make('Контактные данные (из заявки)')
+                    ->schema([
+                        Grid::make(3)
+                            ->schema([
+                                TextInput::make('contact_name')
+                                    ->label('Имя')
+                                    ->maxLength(255),
+                                TextInput::make('contact_phone')
+                                    ->label('Телефон')
+                                    ->tel()
+                                    ->maxLength(50),
+                                TextInput::make('contact_email')
+                                    ->label('Email')
+                                    ->email()
+                                    ->maxLength(255),
+                            ]),
+                    ]),
             ]);
     }
 }

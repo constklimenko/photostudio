@@ -34,6 +34,15 @@ class InquiriesTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
+                TextColumn::make('project.title')
+                    ->label('Проект')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('project_id')
+                    ->label('Есть проект')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state ? 'Да' : 'Нет')
+                    ->color(fn ($state) => $state ? 'success' : 'gray'),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
@@ -50,6 +59,17 @@ class InquiriesTable
                     ->relationship('service', 'title')
                     ->multiple()
                     ->preload(),
+                SelectFilter::make('has_project')
+                    ->label('Проект')
+                    ->options([
+                        'yes' => 'Только с проектом',
+                        'no' => 'Только без проекта',
+                    ])
+                    ->query(fn ($query, $state) => match ($state) {
+                        'yes' => $query->whereNotNull('project_id'),
+                        'no' => $query->whereNull('project_id'),
+                        default => $query,
+                    }),
             ])
             ->recordActions([
                 EditAction::make(),

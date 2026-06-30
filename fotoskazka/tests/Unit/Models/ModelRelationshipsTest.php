@@ -234,4 +234,22 @@ class ModelRelationshipsTest extends TestCase
         $this->assertCount(2, $service->albums);
         $this->assertInstanceOf(Album::class, $service->albums->first());
     }
+
+    public function test_inquiry_belongs_to_project(): void
+    {
+        $project = Project::factory()->create();
+        $inquiry = Inquiry::factory()->create(['project_id' => $project->id]);
+
+        $this->assertInstanceOf(Project::class, $inquiry->project);
+        $this->assertEquals($project->id, $inquiry->project->id);
+    }
+
+    public function test_project_has_one_inquiry(): void
+    {
+        $project = Project::factory()->create();
+        $inquiry = Inquiry::factory()->create(['project_id' => $project->id]);
+
+        $this->assertInstanceOf(Inquiry::class, $project->inquiry);
+        $this->assertEquals($inquiry->id, $project->inquiry->id);
+    }
 }

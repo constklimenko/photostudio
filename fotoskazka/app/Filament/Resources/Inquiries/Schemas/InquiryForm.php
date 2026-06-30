@@ -8,6 +8,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class InquiryForm
@@ -51,10 +52,32 @@ class InquiryForm
                         DatePicker::make('shooting_date'),
                     ]),
                 Textarea::make('message'),
+                Textarea::make('notification_error')
+                    ->label('Ошибка отправки уведомлений')
+                    ->disabled()
+                    ->visible(fn ($livewire) => filled($livewire->record?->notification_error))
+                    ->columnSpanFull(),
                 Checkbox::make('agreed_to_terms')
                     ->label('Согласен на обработку персональных данных')
                     ->required()
                     ->default(false),
+
+                Section::make('Проект')
+                    ->visible(fn ($livewire) => $livewire->record?->project_id !== null)
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('project.title')
+                                    ->label('Название проекта')
+                                    ->disabled(),
+                                TextInput::make('project.status')
+                                    ->label('Статус')
+                                    ->disabled(),
+                                TextInput::make('project.type')
+                                    ->label('Тип')
+                                    ->disabled(),
+                            ]),
+                    ]),
             ]);
     }
 }

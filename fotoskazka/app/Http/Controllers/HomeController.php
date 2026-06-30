@@ -67,10 +67,15 @@ class HomeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:50',
+            'email' => 'required|email|max:255',
             'service_id' => 'nullable|exists:services,id',
+            'shooting_date' => 'nullable|date',
             'message' => 'nullable|string',
             'agreed_to_terms' => 'required|accepted',
         ]);
+
+        $validated['agreed_to_terms'] = true;
+        $validated['status'] = 'new';
 
         Inquiry::create($validated);
 

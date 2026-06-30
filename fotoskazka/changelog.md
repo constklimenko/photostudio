@@ -1,5 +1,131 @@
 # Changelog
 
+## 2026-06-30 — Исправление ошибок отправки уведомлений при создании заявки
+
+### Критические
+- **HomeController::storeInjection()**: добавлено `$validated['status'] = 'new'` — при создании заявки через форму не передавался `status`, что вызывало SQL-ошибку (поле ENUM NOT NULL без default).
+- **Новая миграция**: `add_default_status_to_inquiries_table` — установлен DEFAULT `'new'` на колонку `status`.
+
+### Формы заявки (все 5 шаблонов)
+- Добавлено обязательное поле **Email** (с валидацией на бэкенде)
+- Добавлено опциональное поле **Желаемая дата съёмки** (`date`)
+
+### Валидация
+- `email` — required|email|max:255
+- `shooting_date` — nullable|date
+
+### Модели
+- **Inquiry**: `notification_error` убран из `$fillable` (не должен быть массово назначаем)
+
+### Чистка
+- Удалён мёртвый класс `NewInquiryNotification.php` (не использовался — заменён на `NewInquiryMail`)
+
+---
+
+## 2026-06-29 — Очередь отправки уведомлений + повторная отправка
+
+### Изменения БД
+- **Новая миграция**: `add_notification_error_to_inquiries`
+- `inquiries.notification_error` (TEXT, nullable) — сообщение об ошибке при отправке уведомлений
+
+### Job
+- **SendInquiryNotifications** — `app/Jobs/SendInquiryNotifications.php`
+  - Отправляет email (через Mail) и Telegram в рамках одного job
+  - При ошибке пишет сообщение в `inquiry.notification_error`
+  - При успехе очищает поле (`null`)
+
+### Observer
+- **InquiryObserver** — упрощён: теперь только диспатчит `SendInquiryNotifications` в очередь
+
+### TelegramNotifier
+- Метод `sendMessage()` теперь выбрасывает исключение при неудаче (вместо тихого логирования)
+- Ошибка перехватывается в job и записывается в `notification_error`
+
+### Filament: InquiryResource
+- **InquiryForm** — добавлено поле `notification_error` (textarea, disabled, видно только при наличии ошибки)
+- **EditInquiry** — добавлена header-action «Отправить повторно» (warning, с иконкой PaperAirplane)
+  - Очищает `notification_error`, диспатчит job, показывает success-уведомление
+  - Видна только когда есть ошибка
+
+### Тесты
+- 81 тест, 144 assertions — все пройдены
+- Pint чистый
+
+---
+
+## 2026-06-29 — Настройки уведомлений через админку
+
+### Изменения БД
+- **Новая таблица**: `notification_settings` (email_enabled, email_recipients, telegram_enabled, telegram_bot_token, telegram_chat_id)
+- **Seeder**: `NotificationSettingSeeder` — дефолтная запись (email включён, telegram выключен)
+
+### Модели
+- **NotificationSetting**: новая модель с casts (boolean для enabled-полей)
+
+### Filament
+- **NotificationSettingResource** — CRUD для настроек уведомлений в разделе «Администрирование»
+- Форма: секции Email (чекбокс + tags для получателей) и Telegram (чекбокс + токен + chat_id)
+- Таблица: колонки получателей, иконки включения Email/Telegram
+
+### Уведомления
+- **InquiryObserver**: получатели email берутся из `notification_settings.email_recipients` (через запятую), а не из всех admin-пользователей
+- **TelegramNotifier**: принимает botToken/chatId из настроек, с fallback на config/services.php
+- **NewInquiryMail** — Mailable с markdown-шаблоном (`resources/views/emails/new-inquiry.blade.php`)
+- Старый `NewInquiryNotification` (Notification) заменён на `NewInquiryMail` (Mailable) — отправка на произвольные email из настроек
+
+### Тесты
+- 10 тестов в InquiryTest (81 всего, 144 assertions)
+- Добавлены тесты: отключение email не отправляет, отключение telegram не отправляет
+- Все тесты создают `NotificationSetting` в setUp
+
+---
+
+## 2026-06-29 — Этап 3.5: Улучшение работы с заявками
+
+### Изменения БД
+- **Новая миграция**: `add_project_id_to_inquiries_and_contact_fields_to_projects`
+- `inquiries.project_id` (BIGINT, NULL, FK → projects ON DELETE SET NULL) + индекс
+- `projects.contact_name`, `projects.contact_phone`, `projects.contact_email` + индекс на phone
+
+### Модели
+- **Inquiry**: добавлено отношение `project()` (BelongsTo)
+- **Project**: добавлено отношение `inquiry()` (HasOne, через `project_id`)
+- **Project**: `contact_name`, `contact_phone`, `contact_email` добавлены в `$fillable`
+
+### Action
+- Создан `app/Actions/Inquiry/CreateProjectFromInquiry.php` — транзакционное создание проекта с копированием контактных данных из заявки
+
+### Filament: InquiryResource
+- **EditInquiry**: header-actions «Создать проект» (форма: название, тип, менеджер, клиент, дата) и «Открыть проект» (когда проект уже создан)
+- **InquiryForm**: секция «Проект» с выводом названия, статуса, типа (только для чтения, когда проект привязан)
+- **InquiriesTable**: колонки «Проект» (название) и «Есть проект» (Да/Нет badge), фильтр «Только с проектом / Только без проекта»
+
+### Filament: ProjectResource
+- **ProjectForm**: секция «Контактные данные (из заявки)» — contact_name, contact_phone, contact_email
+- **EditProject**: header-action «Открыть заявку» (когда проект создан из заявки)
+
+### Уведомления
+- **Email**: `NewInquiryNotification` — письмо администраторам при создании заявки (имя, телефон, email, услуга, дата, комментарий, ссылка)
+- **Telegram**: `TelegramNotifier` — сервис отправки через Telegram API (конфигурация через `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`); ошибки логируются, не ломают создание заявки
+- **InquiryObserver**: автоматический вызов email и telegram уведомлений при создании заявки
+
+### Архитектура
+- Бизнес-логика вынесена в `app/Actions/Inquiry/CreateProjectFromInquiry.php`
+- Уведомления в `app/Notifications/NewInquiryNotification.php` и `app/Services/TelegramNotifier.php`
+
+### Тесты
+- 8 тестов в `tests/Feature/InquiryTest.php`:
+  - создание проекта из заявки, контактные данные, транзакция
+  - email-уведомление отправляется
+  - telegram-уведомление отправляется
+  - ошибка telegram не ломает создание заявки
+  - inquiry → project / project → inquiry relationships
+
+### Документация
+- Обновлены `database.md` (новые поля и индексы), `changelog.md`
+
+---
+
 ## 2026-06-29 — Блог: альбомы-слайдер на детальной странице
 
 ### Изменения
