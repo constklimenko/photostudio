@@ -19,7 +19,7 @@
 
         @if ($service->cover)
             <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10">
-                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
+                <img src="{{ Storage::url($service->cover->file_path) }}"
                      alt="{{ $service->title }}"
                      class="w-full h-full object-cover">
             </div>
@@ -119,8 +119,17 @@
 
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($serviceList as $other)
-                    <a href="{{ route('services.show', $other->slug) }}" class="group block bg-white rounded-xl border border-gray-100 p-5 hover:shadow-lg transition">
-                        <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $other->title }}</h3>
+                    <a href="{{ route('services.show', $other->slug) }}" class="group block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
+                        <div class="aspect-[16/9] bg-gray-100">
+                            @if ($other->cover)
+                                <img src="{{ Storage::url($other->cover->thumbnail_path) }}"
+                                     alt="{{ $other->title }}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                            @endif
+                        </div>
+                        <div class="p-5">
+                            <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $other->title }}</h3>
+                        </div>
                     </a>
                 @endforeach
             </div>

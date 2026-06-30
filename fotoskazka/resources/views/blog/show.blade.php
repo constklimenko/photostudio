@@ -22,7 +22,7 @@
 
                 @if ($post->cover)
                     <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-8">
-                        <img src="{{ Storage::url($post->cover->thumbnail_path ?? $post->cover->file_path) }}"
+                        <img src="{{ Storage::url($post->cover->file_path) }}"
                              alt="{{ $post->title }}"
                              class="w-full h-full object-cover">
                     </div>

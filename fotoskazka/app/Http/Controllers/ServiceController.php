@@ -41,7 +41,8 @@ class ServiceController extends Controller
             ->where('is_published', true)
             ->whereKeyNot($service->id)
             ->orderBy('sort_order')
-            ->get(['id', 'title', 'slug']);
+            ->with('cover')
+            ->get(['id', 'cover_media_id', 'title', 'slug']);
 
         return view('services.show', compact('service', 'serviceList'));
     }
