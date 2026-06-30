@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-30 — Рефакторинг: форма заявки вынесена в Blade-компонент
+
+### Blade-компонент
+- Создан `resources/views/components/site/inquiry-form.blade.php` — `x-site.inquiry-form`
+- Параметры:
+  - `services` (Collection|null) — список услуг для `<select>`
+  - `selectedServiceId` (int|null) — предвыбор в select
+  - `hiddenServiceId` (int|null) — скрытый input (для страницы услуги)
+  - `buttonText` (string, default: «Отправить заявку») — текст кнопки
+  - Поддержка произвольных HTML-атрибутов через `$attributes->merge()`
+
+### Изменения в шаблонах
+- **home.blade.php**, **services/index.blade.php**, **services/show.blade.php**, **portfolio/show.blade.php**, **blog/show.blade.php** — дублирующийся HTML формы заменён на `<x-site.inquiry-form>`
+
+---
+
 ## 2026-06-30 — Исправление ошибок отправки уведомлений при создании заявки
 
 ### Критические
