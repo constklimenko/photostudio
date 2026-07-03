@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Album;
 use App\Models\Service;
+use App\Services\PageContentService;
 
 class PortfolioController extends Controller
 {
-    public function index()
+    public function index(PageContentService $pageContent)
     {
+        $page = $pageContent->get('portfolio');
+
         $albums = Album::query()
             ->where('type', 'portfolio')
             ->where('is_published', true)
@@ -16,11 +19,13 @@ class PortfolioController extends Controller
             ->with('cover')
             ->get(['id', 'cover_media_id', 'title', 'slug', 'description']);
 
-        return view('portfolio.index', compact('albums'));
+        return view('portfolio.index', compact('page', 'albums'));
     }
 
-    public function show(string $slug)
+    public function show(string $slug, PageContentService $pageContent)
     {
+        $page = $pageContent->get('portfolio');
+
         $album = Album::query()
             ->where('is_published', true)
             ->where('slug', $slug)
@@ -32,6 +37,6 @@ class PortfolioController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'title', 'slug']);
 
-        return view('portfolio.show', compact('album', 'services'));
+        return view('portfolio.show', compact('page', 'album', 'services'));
     }
 }

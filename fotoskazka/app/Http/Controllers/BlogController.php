@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\Service;
+use App\Services\PageContentService;
 use Illuminate\Http\Request;
 
 class BlogController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, PageContentService $pageContent)
     {
+        $page = $pageContent->get('blog');
+
         $posts = Post::query()
             ->where('is_published', true)
             ->whereNotNull('published_at')
@@ -37,11 +40,13 @@ class BlogController extends Controller
             ->limit(5)
             ->get();
 
-        return view('blog.index', compact('posts', 'categories', 'recentPosts'));
+        return view('blog.index', compact('page', 'posts', 'categories', 'recentPosts'));
     }
 
-    public function show(string $slug)
+    public function show(string $slug, PageContentService $pageContent)
     {
+        $page = $pageContent->get('blog');
+
         $post = Post::query()
             ->where('is_published', true)
             ->whereNotNull('published_at')
@@ -70,6 +75,6 @@ class BlogController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'title']);
 
-        return view('blog.show', compact('post', 'categories', 'recentPosts', 'services'));
+        return view('blog.show', compact('page', 'post', 'categories', 'recentPosts', 'services'));
     }
 }

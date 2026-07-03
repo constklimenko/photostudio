@@ -1,15 +1,15 @@
 @extends('layouts.site')
 
-@section('title', 'Блог — Фотосказка')
-@section('meta_description', 'Полезные статьи о фотосъёмке, подготовке к выпускному и семейных фотосессиях.')
+@section('title', $page?->seo_title ?: 'Блог — Фотосказка')
+@section('meta_description', $page?->seo_description ?: 'Полезные статьи о фотосъёмке, подготовке к выпускному и семейных фотосессиях.')
 
 @section('content')
 
 <section class="bg-gray-50 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-900">Блог</h1>
+        <h1 class="text-4xl font-bold text-gray-900">{{ $page?->title ?: 'Блог' }}</h1>
         <p class="mt-3 text-gray-500 max-w-2xl mx-auto">
-            Полезные статьи, советы и новости из мира фотографии
+            {{ $page?->subtitle ?: 'Полезные статьи, советы и новости из мира фотографии' }}
         </p>
     </div>
 </section>

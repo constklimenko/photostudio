@@ -7,12 +7,17 @@ use App\Models\Inquiry;
 use App\Models\Post;
 use App\Models\Service;
 use App\Models\Testimonial;
+use App\Services\PageContentService;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    public function __invoke()
+    public function __invoke(PageContentService $pageContent)
     {
+        $page = $pageContent->get('home');
+
+        $homeSections = $pageContent->getHomeSections();
+
         $services = Service::query()
             ->where('is_published', true)
             ->orderBy('sort_order')
@@ -53,6 +58,8 @@ class HomeController extends Controller
         $heroImages = $heroAlbum?->photos->pluck('media');
 
         return view('home', compact(
+            'page',
+            'homeSections',
             'services',
             'featuredWorks',
             'testimonials',

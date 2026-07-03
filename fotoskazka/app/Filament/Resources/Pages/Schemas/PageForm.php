@@ -20,11 +20,13 @@ class PageForm
     {
         return $schema
             ->components([
-                Grid::make(2)
+                Section::make('Основная информация')
+                    ->columns(2)
                     ->schema([
                         TextInput::make('title')
                             ->required()
                             ->maxLength(255)
+                            ->label('Заголовок')
                             ->live(true)
                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                 if ($get('_slug_manual')) {
@@ -38,6 +40,10 @@ class PageForm
                                 }
                                 $set('slug', $slug);
                             }),
+                        TextInput::make('menu_title')
+                            ->maxLength(255)
+                            ->label('Название в меню')
+                            ->helperText('Если не заполнено — используется заголовок'),
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true)
@@ -51,17 +57,47 @@ class PageForm
                                 }
                             }),
                         Hidden::make('_slug_manual'),
+                    ]),
+
+                Section::make('Заголовок страницы')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('subtitle')
+                            ->maxLength(255)
+                            ->label('Подзаголовок'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Cover'),
-                        Toggle::make('is_published')
-                            ->default(true),
-                        TextInput::make('sort_order')
-                            ->integer()
-                            ->default(0),
+                            ->label('Обложка'),
+                        RichEditor::make('content')
+                            ->columnSpanFull()
+                            ->label('Описание'),
                     ]),
+
+                Section::make('Главная страница')
+                    ->schema([
+                        Toggle::make('show_on_home')
+                            ->label('Показывать блок на главной')
+                            ->live(true),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('home_title')
+                                    ->maxLength(255)
+                                    ->label('Заголовок блока на главной')
+                                    ->visible(fn (callable $get) => $get('show_on_home')),
+                                TextInput::make('home_sort_order')
+                                    ->integer()
+                                    ->default(0)
+                                    ->label('Порядок на главной')
+                                    ->visible(fn (callable $get) => $get('show_on_home')),
+                                Textarea::make('home_subtitle')
+                                    ->label('Подзаголовок блока на главной')
+                                    ->visible(fn (callable $get) => $get('show_on_home'))
+                                    ->columnSpanFull(),
+                            ]),
+                    ]),
+
                 Section::make('Альбомы')
                     ->schema([
                         Select::make('albums')
@@ -71,16 +107,12 @@ class PageForm
                             ->searchable()
                             ->label('Привязанные альбомы'),
                     ]),
+
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')
                             ->maxLength(255),
                         Textarea::make('seo_description'),
-                    ]),
-                Section::make('Content')
-                    ->schema([
-                        Textarea::make('excerpt'),
-                        RichEditor::make('content'),
                     ]),
             ]);
     }

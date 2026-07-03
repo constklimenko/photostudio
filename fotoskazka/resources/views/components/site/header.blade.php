@@ -6,10 +6,9 @@
             </a>
 
             <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-                <a href="/" class="hover:text-gray-900 transition">Главная</a>
-                <a href="{{ route('services.index') }}" class="hover:text-gray-900 transition">Услуги</a>
-                <a href="{{ route('portfolio.index') }}" class="hover:text-gray-900 transition">Портфолио</a>
-                <a href="{{ route('blog.index') }}" class="hover:text-gray-900 transition">Блог</a>
+                @foreach ($menuItems as $item)
+                    <a href="{{ $item['url'] }}" class="hover:text-gray-900 transition">{{ $item['title'] }}</a>
+                @endforeach
 
                 @auth
                     <a href="{{ route('cabinet.index') }}" class="hover:text-gray-900 transition">Личный кабинет</a>
@@ -37,10 +36,9 @@
 
         <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-gray-100 pt-4">
             <nav class="flex flex-col gap-3 text-sm font-medium text-gray-600">
-                <a href="/" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Главная</a>
-                <a href="{{ route('services.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Услуги</a>
-                <a href="{{ route('portfolio.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Портфолио</a>
-                <a href="{{ route('blog.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Блог</a>
+                @foreach ($menuItems as $item)
+                    <a href="{{ $item['url'] }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">{{ $item['title'] }}</a>
+                @endforeach
 
                 @auth
                     <a href="{{ route('cabinet.index') }}" class="hover:text-gray-900 transition px-2 py-1.5 rounded hover:bg-gray-50">Личный кабинет</a>

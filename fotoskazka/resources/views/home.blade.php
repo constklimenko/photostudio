@@ -1,7 +1,7 @@
 @extends('layouts.site')
 
-@section('title', 'Фотосказка — профессиональная фотосъёмка')
-@section('meta_description', 'Профессиональная фотосъёмка для ваших важных событий. Услуги фотографа, портфолио, выпускные альбомы.')
+@section('title', $page?->seo_title ?: 'Фотосказка — профессиональная фотосъёмка')
+@section('meta_description', $page?->seo_description ?: 'Профессиональная фотосъёмка для ваших важных событий. Услуги фотографа, портфолио, выпускные альбомы.')
 
 @section('content')
 
@@ -35,8 +35,8 @@
     <div class="hero-content">
         <div class="hero-text">
             <span class="banner-content">
-                <h3>ФОТОСКАЗКА УФА</h3>
-                <p>Выпускные альбомы под ключ в Уфе — красиво, вовремя, без стресса</p>
+                <h3>{{ $page?->title ?: 'ФОТОСКАЗКА УФА' }}</h3>
+                <p>{{ $page?->subtitle ?: 'Выпускные альбомы под ключ в Уфе — красиво, вовремя, без стресса' }}</p>
                 <a class="btn btn-style mt-sm-5 mt-4" href="#inquiry-form">Узнать больше</a>
             </span>
         </div>
@@ -46,8 +46,8 @@
 @if ($services->isNotEmpty())
     <section class="py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">Наши услуги</h2>
-            <p class="mt-3 text-gray-500 text-center">Выберите подходящий формат съёмки</p>
+            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['services']->home_title ?? 'Наши услуги' }}</h2>
+            <p class="mt-3 text-gray-500 text-center">{{ $homeSections['services']->home_subtitle ?? 'Выберите подходящий формат съёмки' }}</p>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($services as $service)
@@ -84,8 +84,8 @@
 @if ($featuredWorks->isNotEmpty())
     <section class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">Избранные работы</h2>
-            <p class="mt-3 text-gray-500 text-center">Наши лучшие проекты</p>
+            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
+            <p class="mt-3 text-gray-500 text-center">{{ $homeSections['portfolio']->home_subtitle ?? 'Наши лучшие проекты' }}</p>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($featuredWorks as $album)
@@ -109,8 +109,8 @@
 @if ($testimonials->isNotEmpty())
     <section class="py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">Отзывы</h2>
-            <p class="mt-3 text-gray-500 text-center">Что говорят наши клиенты</p>
+            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['testimonials']->home_title ?? 'Отзывы' }}</h2>
+            <p class="mt-3 text-gray-500 text-center">{{ $homeSections['testimonials']->home_subtitle ?? 'Что говорят наши клиенты' }}</p>
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($testimonials as $testimonial)
@@ -142,8 +142,8 @@
 @if ($latestPosts->isNotEmpty())
     <section class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">Последние статьи</h2>
-            <p class="mt-3 text-gray-500 text-center">Полезная информация из мира фотографии</p>
+            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['blog']->home_title ?? 'Последние статьи' }}</h2>
+            <p class="mt-3 text-gray-500 text-center">{{ $homeSections['blog']->home_subtitle ?? 'Полезная информация из мира фотографии' }}</p>
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
                 @foreach ($latestPosts as $post)

@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Service;
+use App\Services\PageContentService;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function index(PageContentService $pageContent)
     {
+        $page = $pageContent->get('services');
+
         $categories = Category::query()
             ->where('type', 'service')
             ->orderBy('sort_order')
@@ -26,11 +29,13 @@ class ServiceController extends Controller
             ->with(['cover', 'items'])
             ->get(['id', 'cover_media_id', 'title', 'slug', 'short_description', 'price_from', 'price_note']);
 
-        return view('services.index', compact('categories', 'servicesWithoutCategory'));
+        return view('services.index', compact('page', 'categories', 'servicesWithoutCategory'));
     }
 
-    public function show(string $slug)
+    public function show(string $slug, PageContentService $pageContent)
     {
+        $page = $pageContent->get('services');
+
         $service = Service::query()
             ->where('is_published', true)
             ->where('slug', $slug)
@@ -44,6 +49,6 @@ class ServiceController extends Controller
             ->with('cover')
             ->get(['id', 'cover_media_id', 'title', 'slug']);
 
-        return view('services.show', compact('service', 'serviceList'));
+        return view('services.show', compact('page', 'service', 'serviceList'));
     }
 }

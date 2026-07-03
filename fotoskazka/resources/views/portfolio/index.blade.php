@@ -1,15 +1,15 @@
 @extends('layouts.site')
 
-@section('title', 'Портфолио — Фотосказка')
-@section('meta_description', 'Фотопортфолио профессионального фотографа. Свадебные, семейные, индивидуальные фотосессии и выпускные альбомы.')
+@section('title', $page?->seo_title ?: 'Портфолио — Фотосказка')
+@section('meta_description', $page?->seo_description ?: 'Фотопортфолио профессионального фотографа. Свадебные, семейные, индивидуальные фотосессии и выпускные альбомы.')
 
 @section('content')
 
 <section class="relative bg-gray-900 text-white py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl sm:text-5xl font-bold">Портфолио</h1>
+        <h1 class="text-4xl sm:text-5xl font-bold">{{ $page?->title ?: 'Портфолио' }}</h1>
         <p class="mt-4 text-lg text-gray-300 max-w-2xl mx-auto">
-            Избранные проекты, которые рассказывают истории
+            {{ $page?->subtitle ?: 'Избранные проекты, которые рассказывают истории' }}
         </p>
     </div>
     <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>

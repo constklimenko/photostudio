@@ -1,15 +1,15 @@
 @extends('layouts.site')
 
-@section('title', 'Услуги — Фотосказка')
-@section('meta_description', 'Профессиональная фотосъёмка для выпускных альбомов, детских садов, школ, семейных и индивидуальных фотосессий, мероприятий и свадеб.')
+@section('title', $page?->seo_title ?: 'Услуги — Фотосказка')
+@section('meta_description', $page?->seo_description ?: 'Профессиональная фотосъёмка для выпускных альбомов, детских садов, школ, семейных и индивидуальных фотосессий, мероприятий и свадеб.')
 
 @section('content')
 
 <section class="bg-gray-50 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-900">Наши услуги</h1>
+        <h1 class="text-4xl font-bold text-gray-900">{{ $page?->title ?: 'Наши услуги' }}</h1>
         <p class="mt-3 text-gray-500 max-w-2xl mx-auto">
-            Профессиональная фотосъёмка для любых событий. Выберите подходящий формат.
+            {{ $page?->subtitle ?: 'Профессиональная фотосъёмка для любых событий. Выберите подходящий формат.' }}
         </p>
     </div>
 </section>
