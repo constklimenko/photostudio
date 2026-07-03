@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-07-03 — Контент страниц вынесен в CMS
+
+### Изменения БД
+- **Новая миграция**: `add_page_content_fields_to_pages`
+- `pages.subtitle` (TEXT, nullable) — подзаголовок страницы
+- `pages.home_title` (VARCHAR(255), nullable) — заголовок блока на главной
+- `pages.home_subtitle` (TEXT, nullable) — подзаголовок блока на главной
+- `pages.show_on_home` (BOOLEAN, default false) — показывать блок на главной
+- `pages.home_sort_order` (INT, default 0) — порядок блока на главной
+- `pages.menu_title` (VARCHAR(255), nullable) — название пункта меню
+
+### Модели
+- **Page**: добавлены новые поля в `$fillable`, добавлен `casts` для `show_on_home` (boolean)
+- **Page**: подключён `PageObserver` (инвалидация кэша при сохранении/удалении)
+
+### Сидер
+- **PageSeeder** — добавлены записи с фиксированными slug: `home`, `services`, `portfolio`, `blog`
+- Каждая запись содержит начальные заголовки, подзаголовки, SEO, настройки для главной и меню
+
+### Сервис
+- **PageContentService** — новый сервис с кэшированием:
+  - `get(slug)` — получение опубликованной страницы по slug (Cache::rememberForever)
+  - `getHomeSections()` — все блоки для главной, отсортированные по home_sort_order
+  - `getMenuItems()` — пункты меню (menu_title ?? title) для шапки
+  - `clearCache(slug?)` — сброс кэша
+
+### Filament: PageResource
+- **PageForm** — поля разделены на секции:
+  - Основная информация (title, menu_title, slug)
+  - Заголовок страницы (subtitle, cover, content)
+  - Главная страница (show_on_home, home_sort_order, home_title, home_subtitle)
+  - Альбомы, SEO
+  - Поля блока главной скрываются при `show_on_home = false`
+
+### Контроллеры
+- **HomeController** — передаёт `$page` и `$homeSections` в Blade
+- **ServiceController** — передаёт `$page` (slug: services)
+- **PortfolioController** — передаёт `$page` (slug: portfolio)
+- **BlogController** — передаёт `$page` (slug: blog)
+
+### Blade-шаблоны
+- Все захардкоженные заголовки заменены на `$page?->title`, `$page?->subtitle`
+- Главная использует `$homeSections[slug]->home_title / home_subtitle` для блоков
+- SEO-метаданные (title, meta_description) берутся из `$page->seo_title / seo_description`
+
+### Меню сайта
+- Header больше не содержит захардкоженных пунктов
+- Пункты загружаются через ViewComposerServiceProvider (View::share)
+- Название: menu_title (если заполнено), иначе title
+- URL формируется по slug (home → /, остальные → /{slug})
+
+### PageObserver
+- При `saved` — сбрасывается кэш конкретной страницы
+- При `deleted` — сбрасывается весь кэш страниц
+
+### Тесты
+- 81 тест, 144 assertions — все пройдены
+- Pint чистый
+
+---
+
 ## 2026-06-30 — Рефакторинг: форма заявки вынесена в Blade-компонент
 
 ### Blade-компонент

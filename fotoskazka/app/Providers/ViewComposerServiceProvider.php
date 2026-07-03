@@ -12,9 +12,13 @@ class ViewComposerServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        View::composer('layouts.site', function ($view) {
+        try {
             $pageContent = app(PageContentService::class);
-            $view->with('menuItems', $pageContent->getMenuItems());
-        });
+            $menuItems = $pageContent->getMenuItems();
+        } catch (\Throwable) {
+            $menuItems = [];
+        }
+
+        View::share('menuItems', $menuItems);
     }
 }

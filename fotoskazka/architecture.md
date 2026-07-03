@@ -17,8 +17,12 @@
 ```
 app/
 ├── Actions/                    # Action-классы (бизнес-логика)
-│   └── Album/
-│       └── CreateAlbum.php     # Создание альбома с медиа и фото
+│   ├── Album/
+│   │   └── CreateAlbum.php     # Создание альбома с медиа и фото
+│   └── Inquiry/
+│       └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
+├── Jobs/
+│   └── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
 │   │   ├── Albums/
@@ -83,7 +87,12 @@ app/
 │   ├── Testimonial.php
 │   └── User.php
 ├── Observers/
-│   └── MediaObserver.php       # Авто-метаданные + WebP превью
+│   ├── InquiryObserver.php       # Диспатч SendInquiryNotifications в очередь
+│   ├── MediaObserver.php         # Авто-метаданные + WebP превью
+│   └── PageObserver.php          # Сброс кэша PageContentService
+├── Services/
+│   ├── PageContentService.php    # Кэшируемый сервис получения страниц
+│   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
     └── Filament/
         └── AdminPanelProvider.php
@@ -139,10 +148,14 @@ resources/views/
 
 ## Шапка (Header)
 
-- Для гостя: Главная, Услуги, Портфолио, Блог, Оставить заявку, Войти
+- Пункты меню загружаются из таблицы `pages` через `PageContentService::getMenuItems()`
+- Название: `menu_title` (если заполнено), иначе `title`
+- URL формируется по slug (`home` → `/`, остальные → `/{slug}`)
+- Для гостя: пункты из страниц + Оставить заявку + Войти
 - Для авторизованного: + Личный кабинет, — Войти
 - Для администратора: + Админка (/admin)
 - Бургер-меню на мобильных (vanilla JS)
+- Передача данных: `ViewComposerServiceProvider` (View::share) для всех views, использующих layout `layouts.site`
 
 ## Action-классы (`app/Actions/`)
 
@@ -152,6 +165,19 @@ resources/views/
 - переиспользовать в разных точках входа (HTTP, CLI, API).
 
 Пример: `CreateAlbum` — транзакция создания альбома с медиа и фото.
+
+### PageContentService (`app/Services/`)
+
+Кэшируемый сервис для доступа к контенту страниц:
+
+| Метод            | Кэш                  | Назначение                                |
+|------------------|----------------------|-------------------------------------------|
+| `get(slug)`      | `page_content_{slug}` | Опубликованная страница по slug           |
+| `getHomeSections`| `pages_home_sections` | Все страницы с show_on_home = true        |
+| `getMenuItems`   | `pages_menu`          | Пункты меню (menu_title ?? title)         |
+| `clearCache(slug?)` | —                  | Сброс кэша (одной страницы или всего)     |
+
+Кэш инвалидируется `PageObserver` при сохранении или удалении страницы.
 
 ## Наблюдатели (`app/Observers/`)
 
@@ -271,7 +297,10 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 
 - БД: SQLite in-memory
 - RefreshDatabase для тестов, изменяющих БД
-- 69 тестов, 119 утверждений
+- `PageContentService` с кэшированием (get, getHomeSections, getMenuItems, clearCache)
+- PageObserver — сброс кэша при сохранении/удалении страницы
+- ViewComposerServiceProvider — передача menuItems в шапку
+- 81 тест, 144 утверждения
 - CI: `php artisan config:clear && php artisan test`
 
 ## Ключевые решения
@@ -300,6 +329,13 @@ Slug генерируется уникальным сразу (base + `-N`), в�
 ### Условный @vite в тестах
 `@vite()` загружается только при наличии `manifest.json` или `hot` файла,
 чтобы тесты проходили без Vite-билда.
+
+### Контент страниц из БД
+Вместо хардкода в Blade — контент (заголовки, подзаголовки, SEO) хранится
+в таблице `pages` и передаётся в шаблоны через `PageContentService` с кэшированием.
+Меню сайта строится динамически из тех же записей.
+Контент блоков (услуги, альбомы, статьи, отзывы) продолжает загружаться
+из соответствующих моделей.
 
 ## Правила разработки
 

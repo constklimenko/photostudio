@@ -347,13 +347,21 @@ INDEX(sort_order)
 
 ## Pages
 
+Страницы с контентом, управляемым через CMS.
+
 ```sql
 id BIGINT PRIMARY KEY
 cover_media_id BIGINT NULL
 title VARCHAR(255)
+subtitle TEXT NULL
 slug VARCHAR(255) UNIQUE
 excerpt TEXT NULL
 content LONGTEXT NULL
+home_title VARCHAR(255) NULL
+home_subtitle TEXT NULL
+show_on_home BOOLEAN DEFAULT FALSE
+home_sort_order INT DEFAULT 0
+menu_title VARCHAR(255) NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
@@ -361,6 +369,20 @@ sort_order INT DEFAULT 0
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
+
+Описание полей:
+
+| Поле            | Назначение                                     |
+|-----------------|-------------------------------------------------|
+| title           | Заголовок страницы                              |
+| subtitle        | Подзаголовок страницы                           |
+| menu_title      | Название пункта меню (если пусто → title)       |
+| home_title      | Заголовок блока на главной                      |
+| home_subtitle   | Подзаголовок блока на главной                   |
+| show_on_home    | Показывать блок на главной                      |
+| home_sort_order | Порядок блока на главной                        |
+
+Фиксированные slug: `home`, `services`, `portfolio`, `blog`.
 
 Foreign keys:
 
@@ -374,6 +396,7 @@ Indexes:
 UNIQUE(slug)
 INDEX(is_published)
 INDEX(sort_order)
+INDEX(show_on_home)
 ```
 
 ---
