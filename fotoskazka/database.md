@@ -854,6 +854,66 @@ updated_at TIMESTAMP
 
 ---
 
+## faq_items
+
+Вопросы и ответы для секции FAQ на главной странице.
+
+```sql
+id BIGINT PRIMARY KEY
+
+question VARCHAR(255)
+
+answer TEXT
+
+sort_order INT DEFAULT 0
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Indexes:
+
+```sql
+INDEX(is_active)
+INDEX(sort_order)
+```
+
+---
+
+## social_links
+
+Ссылки на социальные сети для отображения в футере.
+
+```sql
+id BIGINT PRIMARY KEY
+
+name VARCHAR(255)
+
+icon VARCHAR(100)
+
+url VARCHAR(1000)
+
+sort_order INT DEFAULT 0
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Поддерживаемые иконки: `instagram`, `telegram`, `whatsapp`, `vkontakte`, `youtube`, `viber`, `odnoklassniki`, `dzen`, `rutube`.
+
+Indexes:
+
+```sql
+INDEX(is_active)
+INDEX(sort_order)
+```
+
+---
+
 # Storage Strategy
 
 Текущий этап:

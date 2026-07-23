@@ -5,7 +5,7 @@
 
 @section('content')
 
-<section class="py-24" data-aos="fade-up">
+<section class="py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav class="text-sm text-gray-500 mb-8">
             <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
@@ -20,6 +20,9 @@
             @if ($album->description)
                 <p class="mt-4 text-lg text-gray-400">{{ $album->description }}</p>
             @endif
+            <div class="mt-6 flex justify-center">
+                <x-site.share-button :title="$album->title" />
+            </div>
         </div>
 
         @if ($album->photos->isNotEmpty())
@@ -28,7 +31,7 @@
                     <a href="{{ Storage::url($photo->media->file_path) }}"
                        class="rounded-xl overflow-hidden bg-[#1a1a1a] block cursor-pointer group lightbox-trigger shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-index="{{ $loop->index }}"
-                       data-aos="fade-up" data-aos-delay="{{ $loop->index * 50 }}">
+                       data-aos="{{ $loop->even ? 'flip-left' : 'flip-right' }}">
                         <img src="{{ Storage::url($photo->media->file_path) }}"
                              alt="{{ $photo->caption ?? $album->title }}"
                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
@@ -46,6 +49,14 @@
                      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl select-none">
 
                 <button id="lightboxNext" class="fixed right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white text-5xl leading-none z-10 w-12 h-12 flex items-center justify-center">&rsaquo;</button>
+
+                <button id="lightboxShare"
+                        class="absolute bottom-6 right-6 flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:text-[#d4af37] border border-white/20 hover:border-[#d4af37] rounded-lg transition z-10">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                    <span>Поделиться</span>
+                </button>
             </div>
 
             <script>
@@ -58,6 +69,8 @@
                 const closeBtn = document.getElementById('lightboxClose');
                 const prevBtn = document.getElementById('lightboxPrev');
                 const nextBtn = document.getElementById('lightboxNext');
+                const shareBtn = document.getElementById('lightboxShare');
+                const shareSpan = shareBtn?.querySelector('span');
 
                 const images = Array.from(triggers).map(t => ({
                     src: t.getAttribute('href'),
@@ -107,6 +120,26 @@
                 });
                 prevBtn.addEventListener('click', prev);
                 nextBtn.addEventListener('click', next);
+
+                if (shareBtn) {
+                    shareBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const img = images[currentIndex];
+                        const url = img.src;
+                        const title = img.alt || '{{ $album->title }}';
+
+                        if (navigator.share) {
+                            navigator.share({ title, url }).catch(() => {});
+                        } else {
+                            navigator.clipboard.writeText(url).then(() => {
+                                if (shareSpan) {
+                                    shareSpan.textContent = 'Скопировано';
+                                    setTimeout(() => { shareSpan.textContent = 'Поделиться'; }, 2000);
+                                }
+                            });
+                        }
+                    });
+                }
 
                 document.addEventListener('keydown', function(e) {
                     if (lightbox.classList.contains('hidden')) return;

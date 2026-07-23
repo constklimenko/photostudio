@@ -27,6 +27,10 @@
 
         <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $service->title }}</h1>
 
+        <div class="mt-6">
+            <x-site.share-button :title="$service->title" />
+        </div>
+
         @if ($service->price_from)
             <p class="mt-4 text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
             @if ($service->price_note)

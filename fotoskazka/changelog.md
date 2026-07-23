@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-23 — Соцсети, FAQ, кнопка «Поделиться»
+
+### Новые сущности (БД + Filament)
+- **Таблица `social_links`** — хранение ссылок на соцсети (name, icon, url, sort_order, is_active)
+- **Таблица `faq_items`** — вопросы и ответы для секции FAQ (question, answer, sort_order, is_active)
+- **Filament Resource `SocialLinks`** — управление соцсетями в админке (раздел «Контент»)
+- **Filament Resource `FaqItems`** — управление FAQ в админке (раздел «Контент»)
+
+### Blade-компонент «Поделиться»
+- `resources/views/components/site/share-button.blade.php` — использует Web Share API, fallback на копирование ссылки в буфер обмена, второй fallback на VK Share
+- Добавлен на:
+  - `portfolio/show.blade.php` — под заголовком альбома и в лайтбоксе (для каждого фото)
+  - `services/show.blade.php` — под заголовком услуги
+
+### Footer
+- Вывод социальных сетей из БД (`socialLinks`) с SVG-иконками
+- Иконки: Instagram, Telegram, WhatsApp, VK, YouTube, Viber, Odnoklassniki, Dzen, Rutube
+- 4 колонки вместо 3
+
+### Главная страница
+- Добавлена секция FAQ (accordion) между отзывами и формой заявки
+- Чистый JS для аккордеона (без зависимостей)
+
+### ViewComposerServiceProvider
+- `$socialLinks` доступен глобально во всех шаблонах (с try/catch для миграций)
+
+### HomeController
+- Добавлена загрузка `$faqItems` и `$socialLinks` для home-страницы
+
+### Документация
+- Обновлены `database.md` (faq_items, social_links), `changelog.md`
+
+## 2026-07-23 — Исправление: lightbox на странице портфолио
+
+### Изменения
+- Удалён `data-aos` с отдельных элементов `<a>` (фото-ссылок) в portfolio/show.blade.php
+- Причина: AOS устанавливал `opacity: 0` + `transform` на фото-ссылках, делая их невидимыми и некликабельными во время задержки анимации
+- Секция портфолио и контейнер сетки сохранены с `data-aos` — плавное появление всей секции, а не отдельных фото
+
 ## 2026-07-23 — Секции и карточки: тёмная тема + AOS анимации
 
 ### Изменения

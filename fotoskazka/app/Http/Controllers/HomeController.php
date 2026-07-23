@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
+use App\Models\FaqItem;
 use App\Models\Inquiry;
 use App\Models\Post;
 use App\Models\Service;
+use App\Models\SocialLink;
 use App\Models\Testimonial;
 use App\Services\PageContentService;
 use Illuminate\Http\Request;
@@ -49,6 +51,16 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->get(['id', 'title']);
 
+        $faqItems = FaqItem::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'question', 'answer']);
+
+        $socialLinks = SocialLink::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
         $heroAlbum = Album::query()
             ->where('type', 'homepage')
             ->where('is_published', true)
@@ -66,6 +78,8 @@ class HomeController extends Controller
             'latestPosts',
             'serviceList',
             'heroImages',
+            'faqItems',
+            'socialLinks',
         ));
     }
 
