@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Models\Service;
 use App\Models\SocialLink;
 use App\Models\Testimonial;
+use App\Models\Video;
 use App\Services\PageContentService;
 use Illuminate\Http\Request;
 
@@ -61,6 +62,12 @@ class HomeController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        $videos = Video::query()
+            ->where('is_active', true)
+            ->where('show_on_home', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'title', 'url', 'file_path', 'type']);
+
         $heroAlbum = Album::query()
             ->where('type', 'homepage')
             ->where('is_published', true)
@@ -80,6 +87,7 @@ class HomeController extends Controller
             'heroImages',
             'faqItems',
             'socialLinks',
+            'videos',
         ));
     }
 

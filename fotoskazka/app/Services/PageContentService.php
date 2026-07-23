@@ -44,7 +44,7 @@ class PageContentService
     {
         return Cache::rememberForever('pages_menu', function () {
             return Page::where('is_published', true)
-                ->whereIn('slug', ['home', 'services', 'portfolio', 'blog'])
+                ->whereIn('slug', ['home', 'services', 'portfolio', 'blog', 'video'])
                 ->orderBy('sort_order')
                 ->get(['slug', 'title', 'menu_title'])
                 ->map(fn (Page $page) => [

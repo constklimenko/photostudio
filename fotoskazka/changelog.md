@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-07-23 — Исправление: лимит загрузки Livewire
+
+### Исправлено
+- **Livewire** `temporary_file_upload.rules` был `null` → `['required', 'file', 'max:102400']` (100 МБ)
+- По умолчанию Livewire ограничивал загрузку 12 МБ, что приводило к 302 редиректу и ошибке JSON
+- Опубликован конфиг `config/livewire.php`
+
+## 2026-07-23 — Полноценный раздел видео
+
+### Изменения БД
+- **Новая миграция**: `add_show_on_home_to_videos_table`
+- `videos.show_on_home` (boolean, default false) + индекс — флаг показа на главной
+
+### Модель
+- **Video**: добавлен accessor `source_url` (общий метод получения URL: файл или ссылка)
+- **Video**: `show_on_home` в fillable и casts
+
+### Filament: VideosResource
+- **VideoForm**: добавлен Toggle `show_on_home`
+- **VideosTable**: колонки `is_upload`, `show_on_home`; фильтр по `show_on_home`
+
+### Новый раздел /video
+- **VideoController** — загрузка всех активных видео + контент страницы из Pages (slug: video)
+- **Маршрут** `GET /video` → `VideoController@index` (route name: `video.index`)
+- **Blade-шаблон** `resources/views/video/index.blade.php`:
+  - Hero-секция с заголовком и подзаголовком из Page
+  - Горизонтальные видео — список с заголовком + aspect-video плеер
+  - Вертикальные видео — горизонтальный snap-scroll
+  - Поддержка загруженных файлов (`<video>`) и embed-ссылок (`<iframe>`)
+
+### Меню
+- **PageContentService::getMenuItems()** — в список включён slug `video`
+- Страница с slug `video`, созданная в админке (Pages), автоматически появляется в меню
+
+### Главная страница
+- **HomeController** — загружаются только видео с `show_on_home = true`
+- **home.blade** — используется `$video->source_url` вместо прямого Storage::url
+
+### Документация
+- Обновлены `database.md`, `changelog.md`
+
 ## 2026-07-23 — Соцсети, FAQ, кнопка «Поделиться»
 
 ### Новые сущности (БД + Filament)

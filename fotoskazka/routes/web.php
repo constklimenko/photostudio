@@ -5,6 +5,7 @@ use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\VideoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
@@ -23,6 +24,8 @@ Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(f
     Route::get('/', 'index')->name('index');
     Route::get('/{slug}', 'show')->name('show');
 });
+
+Route::get('/video', [VideoController::class, 'index'])->name('video.index');
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 

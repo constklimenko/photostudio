@@ -914,6 +914,55 @@ INDEX(sort_order)
 
 ---
 
+## videos
+
+Полноценный раздел видео на сайте. Поддерживаются горизонтальные и вертикальные (Reels/Shorts) форматы.
+
+```sql
+id BIGINT PRIMARY KEY
+
+title VARCHAR(255)
+
+url VARCHAR(1000) NULL
+
+file_path VARCHAR(1000) NULL
+
+type VARCHAR(10) DEFAULT 'horizontal'
+
+sort_order INT DEFAULT 0
+
+is_active BOOLEAN DEFAULT TRUE
+
+show_on_home BOOLEAN DEFAULT FALSE
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Возможные значения type:
+
+| type       | Назначение                          |
+| ---------- | ----------------------------------- |
+| horizontal | Горизонтальное видео                |
+| vertical   | Вертикальное видео (9:16, Reels)    |
+
+Видео может быть как ссылкой (YouTube, Vimeo, Rutube), так и загруженным файлом (MP4, WebM, OGG, MOV, AVI).
+При наличии `file_path` приоритет отдаётся загруженному файлу. URL автоматически конвертируется в embed-ссылку.
+
+Флаг `show_on_home` управляет показом видео на главной странице.
+Раздел `/video` — отдельная страница со всеми активными видео, контент управляется через Pages (slug: video).
+
+Indexes:
+
+```sql
+INDEX(is_active)
+INDEX(show_on_home)
+INDEX(sort_order)
+INDEX(type)
+```
+
+---
+
 # Storage Strategy
 
 Текущий этап:
