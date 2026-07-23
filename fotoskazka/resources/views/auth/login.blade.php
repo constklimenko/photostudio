@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-16">
-    <h1 class="text-2xl font-bold text-gray-900 text-center">Вход</h1>
+    <h1 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center">Вход</h1>
 
     @if ($errors->any())
         <div class="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">

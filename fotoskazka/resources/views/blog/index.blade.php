@@ -7,7 +7,7 @@
 
 <section class="bg-gray-50 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-900">{{ $page?->title ?: 'Блог' }}</h1>
+        <h1 class="font-heading text-4xl font-normal tracking-wide text-gray-900">{{ $page?->title ?: 'Блог' }}</h1>
         <p class="mt-3 text-gray-500 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Полезные статьи, советы и новости из мира фотографии' }}
         </p>
@@ -35,7 +35,7 @@
                                 @endif
                                 <div class="p-5">
                                     <p class="text-xs text-gray-400 mb-2">{{ $post->published_at->format('d.m.Y') }}</p>
-                                    <h2 class="font-semibold text-gray-900">
+                                    <h2 class="font-heading font-semibold tracking-wide text-gray-900">
                                         <a href="{{ route('blog.show', $post->slug) }}" class="hover:text-amber-600 transition">{{ $post->title }}</a>
                                     </h2>
                                     @if ($post->excerpt)
@@ -80,7 +80,7 @@
 
                     @if ($categories->isNotEmpty())
                         <div>
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Категории</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Категории</h3>
                             <ul class="space-y-1">
                                 @foreach ($categories as $category)
                                     <li>
@@ -97,7 +97,7 @@
 
                     @if ($recentPosts->isNotEmpty())
                         <div>
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Последние записи</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Последние записи</h3>
                             <ul class="space-y-3">
                                 @foreach ($recentPosts as $recent)
                                     <li class="flex gap-3">

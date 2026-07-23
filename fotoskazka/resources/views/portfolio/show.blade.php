@@ -16,7 +16,7 @@
         </nav>
 
         <div class="max-w-3xl mx-auto text-center mb-12">
-            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">{{ $album->title }}</h1>
+            <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-gray-900">{{ $album->title }}</h1>
             @if ($album->description)
                 <p class="mt-4 text-lg text-gray-600">{{ $album->description }}</p>
             @endif
@@ -126,7 +126,7 @@
 @if ($album->services->isNotEmpty())
     <section class="py-16 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-2xl font-bold text-gray-900 text-center mb-8">Эта съёмка доступна в&nbsp;услугах</h2>
+            <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center mb-8">Эта съёмка доступна в&nbsp;услугах</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
                 @foreach ($album->services as $service)
                     <a href="{{ route('services.show', $service->slug) }}"
@@ -140,7 +140,7 @@
                             </div>
                         @endif
                         <div class="p-4 text-center">
-                            <h3 class="font-semibold text-gray-900 hover:text-amber-600 transition">{{ $service->title }}</h3>
+                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 hover:text-amber-600 transition">{{ $service->title }}</h3>
                         </div>
                     </a>
                 @endforeach
@@ -151,7 +151,7 @@
 
 <section id="inquiry-form" class="py-20 {{ $album->services->isNotEmpty() ? 'bg-white' : 'bg-gray-50' }}">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-3xl font-bold text-gray-900 text-center">Записаться на съёмку</h2>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">Записаться на съёмку</h2>
         <p class="mt-3 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
 
         @if (session('success'))

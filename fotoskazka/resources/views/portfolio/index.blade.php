@@ -7,7 +7,7 @@
 
 <section class="relative bg-gray-900 text-white py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl sm:text-5xl font-bold">{{ $page?->title ?: 'Портфолио' }}</h1>
+        <h1 class="font-heading text-4xl sm:text-5xl font-normal tracking-wide">{{ $page?->title ?: 'Портфолио' }}</h1>
         <p class="mt-4 text-lg text-gray-300 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Избранные проекты, которые рассказывают истории' }}
         </p>
@@ -21,7 +21,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($albums as $i => $album)
                     <a href="{{ route('portfolio.show', $album->slug) }}"
-                       class="group block relative overflow-hidden rounded-xl bg-gray-100 {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
+                       class="group block relative overflow-hidden rounded-xl bg-black {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
                        style="opacity: 0; animation: fadeInUp 0.5s ease {{ $i * 0.05 }}s forwards;">
                         @if ($album->cover)
                             <img src="{{ Storage::url( $album->cover->file_path ) }}"
@@ -37,7 +37,7 @@
                         @endif
                         <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition duration-300">
                             <div class="absolute bottom-0 left-0 right-0 p-5">
-                                <h3 class="text-white font-semibold text-lg">{{ $album->title }}</h3>
+                                <h3 class="font-heading text-white font-semibold tracking-wide text-lg">{{ $album->title }}</h3>
                                 @if ($album->description)
                                     <p class="text-gray-300 text-sm mt-1 line-clamp-2">{{ $album->description }}</p>
                                 @endif

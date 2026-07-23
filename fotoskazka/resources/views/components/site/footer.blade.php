@@ -2,12 +2,12 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-                <h3 class="text-white font-semibold mb-3">{{ config('app.name') }}</h3>
+                <h3 class="font-heading text-white font-semibold tracking-wide mb-3">{{ config('app.name') }}</h3>
                 <p class="text-sm text-gray-400">Профессиональная фотосъёмка для ваших важных событий.</p>
             </div>
 
             <div>
-                <h3 class="text-white font-semibold mb-3">Контакты</h3>
+                <h3 class="font-heading text-white font-semibold tracking-wide mb-3">Контакты</h3>
                 <ul class="space-y-2 text-sm">
                     @if (config('contacts.phone'))
                         <li>
@@ -27,7 +27,7 @@
             </div>
 
             <div>
-                <h3 class="text-white font-semibold mb-3">Информация</h3>
+                <h3 class="font-heading text-white font-semibold tracking-wide mb-3">Информация</h3>
                 <ul class="space-y-2 text-sm">
                     <li><a href="#" class="hover:text-white transition">Политика конфиденциальности</a></li>
                 </ul>

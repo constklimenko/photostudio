@@ -35,7 +35,7 @@
     <div class="hero-content">
         <div class="hero-text">
             <span class="banner-content">
-                <h3>{{ $page?->title ?: 'ФОТОСКАЗКА УФА' }}</h3>
+                <h3 class="font-heading tracking-wide">{{ $page?->title ?: 'ФОТОСКАЗКА УФА' }}</h3>
                 <p>{{ $page?->subtitle ?: 'Выпускные альбомы под ключ в Уфе — красиво, вовремя, без стресса' }}</p>
                 <a class="btn btn-style mt-sm-5 mt-4" href="#inquiry-form">Узнать больше</a>
             </span>
@@ -46,7 +46,7 @@
 @if ($services->isNotEmpty())
     <section class="py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['services']->home_title ?? 'Наши услуги' }}</h2>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">{{ $homeSections['services']->home_title ?? 'Наши услуги' }}</h2>
             <p class="mt-3 text-gray-500 text-center">{{ $homeSections['services']->home_subtitle ?? 'Выберите подходящий формат съёмки' }}</p>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -66,7 +66,7 @@
                             </div>
                         @endif
                         <div class="p-5">
-                            <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $service->title }}</h3>
+                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 group-hover:text-amber-600 transition">{{ $service->title }}</h3>
                             @if ($service->short_description)
                                 <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $service->short_description }}</p>
                             @endif
@@ -84,12 +84,12 @@
 @if ($featuredWorks->isNotEmpty())
     <section class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
             <p class="mt-3 text-gray-500 text-center">{{ $homeSections['portfolio']->home_subtitle ?? 'Наши лучшие проекты' }}</p>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($featuredWorks as $album)
-                    <a href="{{ route('portfolio.show', $album->slug) }}" class="group block relative overflow-hidden rounded-xl aspect-[4/3] bg-gray-100">
+                    <a href="{{ route('portfolio.show', $album->slug) }}" class="group block relative overflow-hidden rounded-xl aspect-[4/3] bg-black">
                         @if ($album->cover)
                             <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
                                  alt="{{ $album->title }}"
@@ -97,7 +97,7 @@
                         @endif
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                         <div class="absolute bottom-0 left-0 right-0 p-4">
-                            <h3 class="text-white font-semibold">{{ $album->title }}</h3>
+                            <h3 class="font-heading text-white font-semibold tracking-wide">{{ $album->title }}</h3>
                         </div>
                     </a>
                 @endforeach
@@ -109,7 +109,7 @@
 @if ($testimonials->isNotEmpty())
     <section class="py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['testimonials']->home_title ?? 'Отзывы' }}</h2>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">{{ $homeSections['testimonials']->home_title ?? 'Отзывы' }}</h2>
             <p class="mt-3 text-gray-500 text-center">{{ $homeSections['testimonials']->home_subtitle ?? 'Что говорят наши клиенты' }}</p>
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -142,7 +142,7 @@
 @if ($latestPosts->isNotEmpty())
     <section class="py-20 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-3xl font-bold text-gray-900 text-center">{{ $homeSections['blog']->home_title ?? 'Последние статьи' }}</h2>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">{{ $homeSections['blog']->home_title ?? 'Последние статьи' }}</h2>
             <p class="mt-3 text-gray-500 text-center">{{ $homeSections['blog']->home_subtitle ?? 'Полезная информация из мира фотографии' }}</p>
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -159,7 +159,7 @@
                         @endif
                         <div class="p-5">
                             <p class="text-xs text-gray-400 mb-2">{{ $post->published_at->format('d.m.Y') }}</p>
-                            <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition line-clamp-2">{{ $post->title }}</h3>
+                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 group-hover:text-amber-600 transition line-clamp-2">{{ $post->title }}</h3>
                             @if ($post->excerpt)
                                 <p class="mt-2 text-sm text-gray-500 line-clamp-2">{{ $post->excerpt }}</p>
                             @endif
@@ -173,7 +173,7 @@
 
 <section id="inquiry-form" class="py-20">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-3xl font-bold text-gray-900 text-center">Оставить заявку</h2>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">Оставить заявку</h2>
         <p class="mt-3 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
 
         @if (session('success'))

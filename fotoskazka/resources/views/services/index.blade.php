@@ -7,7 +7,7 @@
 
 <section class="bg-gray-50 py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl font-bold text-gray-900">{{ $page?->title ?: 'Наши услуги' }}</h1>
+        <h1 class="font-heading text-4xl font-normal tracking-wide text-gray-900">{{ $page?->title ?: 'Наши услуги' }}</h1>
         <p class="mt-3 text-gray-500 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Профессиональная фотосъёмка для любых событий. Выберите подходящий формат.' }}
         </p>
@@ -18,7 +18,7 @@
     @if ($category->services->isNotEmpty())
         <section class="py-16 {{ $loop->even ? 'bg-gray-50' : '' }}">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="text-3xl font-bold text-gray-900 mb-12">{{ $category->name }}</h2>
+                <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 mb-12">{{ $category->name }}</h2>
 
                 @foreach ($category->services as $service)
                     <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0">
@@ -32,7 +32,7 @@
                         @endif
 
                         <div class="flex-1 flex flex-col justify-center">
-                            <h3 class="text-2xl font-bold text-gray-900">{{ $service->title }}</h3>
+                            <h3 class="font-heading text-2xl font-normal tracking-wide text-gray-900">{{ $service->title }}</h3>
                             @if ($service->short_description)
                                 <p class="mt-3 text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
                             @endif
@@ -92,7 +92,7 @@
                     @endif
 
                     <div class="flex-1 flex flex-col justify-center">
-                        <h3 class="text-2xl font-bold text-gray-900">{{ $service->title }}</h3>
+                        <h3 class="font-heading text-2xl font-normal tracking-wide text-gray-900">{{ $service->title }}</h3>
                         @if ($service->short_description)
                             <p class="mt-3 text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
                         @endif
@@ -137,7 +137,7 @@
 
 <section id="inquiry-form" class="py-20 bg-gray-50">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-3xl font-bold text-gray-900 text-center">Не нашли подходящую услугу?</h2>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">Не нашли подходящую услугу?</h2>
         <p class="mt-3 text-gray-500 text-center">Оставьте заявку, и мы подберём формат специально для вас</p>
 
         @if (session('success'))

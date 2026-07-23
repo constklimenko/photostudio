@@ -29,7 +29,7 @@
                 @endif
 
                 <p class="text-sm text-gray-400 mb-3">{{ $post->published_at->format('d.m.Y') }}</p>
-                <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">{{ $post->title }}</h1>
+                <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-gray-900">{{ $post->title }}</h1>
 
                 @if ($post->content)
                     <div class="mt-8 prose prose-gray max-w-none">
@@ -39,7 +39,7 @@
 
                 @if ($post->albums->isNotEmpty())
                     <section class="mt-16">
-                        <h2 class="text-2xl font-bold text-gray-900 mb-6">Фотоальбомы</h2>
+                        <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 mb-6">Фотоальбомы</h2>
                         <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
                             @foreach ($post->albums as $album)
                                 <div class="snap-start shrink-0 w-72">
@@ -64,7 +64,7 @@
                                             <div class="aspect-[4/3] bg-gray-100"></div>
                                         @endif
                                         <div class="p-4">
-                                            <h3 class="font-semibold text-gray-900 text-sm">{{ $album->title }}</h3>
+                                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 text-sm">{{ $album->title }}</h3>
                                             @if ($album->description)
                                                 <p class="mt-1 text-xs text-gray-500 line-clamp-2">{{ $album->description }}</p>
                                             @endif
@@ -77,7 +77,7 @@
                 @endif
 
                 <section id="inquiry-form" class="mt-16 pt-12 border-t border-gray-200">
-                    <h2 class="text-2xl font-bold text-gray-900 text-center">Записаться на съёмку</h2>
+                    <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center">Записаться на съёмку</h2>
                     <p class="mt-2 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
 
                     @if (session('success'))
@@ -107,7 +107,7 @@
 
                     @if ($categories->isNotEmpty())
                         <div>
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Категории</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Категории</h3>
                             <ul class="space-y-1">
                                 @foreach ($categories as $category)
                                     <li>
@@ -124,7 +124,7 @@
 
                     @if ($recentPosts->isNotEmpty())
                         <div>
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Последние записи</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Последние записи</h3>
                             <ul class="space-y-3">
                                 @foreach ($recentPosts as $recent)
                                     <li class="flex gap-3">

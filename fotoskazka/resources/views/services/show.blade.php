@@ -25,7 +25,7 @@
             </div>
         @endif
 
-        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">{{ $service->title }}</h1>
+        <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-gray-900">{{ $service->title }}</h1>
 
         @if ($service->price_from)
             <p class="mt-4 text-2xl font-bold text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
@@ -40,7 +40,7 @@
 
         @if ($service->items->isNotEmpty())
             <div class="mt-8 p-6 bg-gray-50 rounded-xl">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Что входит</h3>
+                <h3 class="font-heading text-lg font-semibold tracking-wide text-gray-900 mb-4">Что входит</h3>
                 <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                     @foreach ($service->items as $item)
                         @php $included = $item->pivot->is_included ?? true; @endphp
@@ -63,7 +63,7 @@
 
         @if ($service->albums->isNotEmpty())
             <section class="mt-16">
-                <h2 class="text-2xl font-bold text-gray-900 mb-8">Примеры работ</h2>
+                <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 mb-8">Примеры работ</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach ($service->albums as $album)
                         <a href="{{ route('portfolio.show', $album->slug) }}"
@@ -81,7 +81,7 @@
                                 </div>
                             @endif
                             <div class="p-3">
-                                <h3 class="text-sm font-medium text-gray-900 group-hover:text-amber-600 transition truncate">{{ $album->title }}</h3>
+                                <h3 class="font-heading text-sm font-medium tracking-wide text-gray-900 group-hover:text-amber-600 transition truncate">{{ $album->title }}</h3>
                             </div>
                         </a>
                     @endforeach
@@ -99,7 +99,7 @@
 
 <section id="inquiry-form" class="py-20 bg-gray-50">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-3xl font-bold text-gray-900 text-center">Записаться на {{ \Illuminate\Support\Str::lower($service->title) }}</h2>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">Записаться на {{ \Illuminate\Support\Str::lower($service->title) }}</h2>
         <p class="mt-3 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
 
         @if (session('success'))
@@ -115,7 +115,7 @@
 @if ($serviceList->isNotEmpty())
     <section class="py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="text-2xl font-bold text-gray-900 text-center">Другие услуги</h2>
+            <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center">Другие услуги</h2>
 
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($serviceList as $other)
@@ -128,7 +128,7 @@
                             @endif
                         </div>
                         <div class="p-5">
-                            <h3 class="font-semibold text-gray-900 group-hover:text-amber-600 transition">{{ $other->title }}</h3>
+                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 group-hover:text-amber-600 transition">{{ $other->title }}</h3>
                         </div>
                     </a>
                 @endforeach
