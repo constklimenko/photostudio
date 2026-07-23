@@ -1,5 +1,47 @@
 # Changelog
 
+## 2026-07-23 — Секции и карточки: тёмная тема + AOS анимации
+
+### Изменения
+- **app.js**: установлен и подключен AOS (Animate On Scroll) — `npm install aos`
+- **app.css**: `bg-gray-50` переопределён на `#111111` для чередующихся секций
+- **Все шаблоны**:
+  - Вертикальные отступы секций: `py-16`/`py-20` → `py-24`
+  - Карточки: убран `border`, заменён на `shadow-lg shadow-black/30`
+  - Фон карточек: явный `bg-[#1a1a1a]` вместо `bg-white`
+  - Hover карточек: `hover:bg-[#242424]`
+  - Заголовки карточек: `text-white`, описания: `text-gray-400`
+  - Акцент: `text-[#d4af37]` вместо `text-amber-600`
+- **hero-секции** страниц: `bg-[#111111]` вместо `bg-gray-50`
+- **AOS**: all sections and cards получили `data-aos="fade-up"` с задержками
+- **header**: тёмный фон `bg-[#0a0a0a]/95`, текст `text-gray-300 hover:text-white`
+- **footer**: `bg-[#050505]`, контакты `hover:text-[#d4af37]`
+- **inquiry-form**: underlined-поля на тёмном фоне (border-b, transparent bg)
+- **blog/show**: `prose-gray` → `prose-invert` для контента
+- **success-сообщения**: `bg-green-50` → `bg-green-900/30` для тёмной темы
+- **portfolio/index**: удалена старая CSS-анимация `fadeInUp`, заменена на AOS
+- **services/index + services/show**: текст цен `text-[#d4af37]`, включенные пункты `text-gray-300`
+
+## 2026-07-23 — Стилизация кнопок
+
+### Изменения
+- Все кнопки приведены к единому стилю: `px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90`
+- Hero CTA: `px-10 py-4` + `shadow-xl`
+- Поиск в блоге: компактный вариант `px-6 py-2 text-xs`
+- Затронуты: services/index, header, inquiry-form, auth/login, blog/index, blog/show, home (hero)
+
+---
+
+## 2026-07-23 — Hero: полноэкранное фото + overlay
+
+### Изменения
+- **home.blade.php**: hero переделан — одно фото из homepage album на весь экран, градиент black→transparent, заголовок и CTA по центру
+- **home.blade.php**: удалён старый JS параллакса (3 колонки + mousemove)
+- **app.css**: старые hero-стили заменены на minimal (zoom-анимация фона), старый код сохранён как закомментированная опция
+- **app.css**: hero-кнопка теперь `bg-gold text-black`
+
+---
+
 ## 2026-07-23 — Тёмная тема + типографика
 
 ### Цветовая схема (тёмная тема)

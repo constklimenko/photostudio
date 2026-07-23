@@ -5,24 +5,23 @@
 
 @section('content')
 
-<section class="relative bg-gray-900 text-white py-24">
+<section class="relative bg-[#111111] text-white py-24" data-aos="fade-up">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h1 class="font-heading text-4xl sm:text-5xl font-normal tracking-wide">{{ $page?->title ?: 'Портфолио' }}</h1>
-        <p class="mt-4 text-lg text-gray-300 max-w-2xl mx-auto">
+        <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Избранные проекты, которые рассказывают истории' }}
         </p>
     </div>
-    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none"></div>
 </section>
 
-<section class="py-16">
+<section class="py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         @if ($albums->isNotEmpty())
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($albums as $i => $album)
                     <a href="{{ route('portfolio.show', $album->slug) }}"
-                       class="group block relative overflow-hidden rounded-xl bg-black {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
-                       style="opacity: 0; animation: fadeInUp 0.5s ease {{ $i * 0.05 }}s forwards;">
+                       class="group block relative overflow-hidden rounded-xl bg-black shadow-lg shadow-black/30 {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
+                       data-aos="fade-up" data-aos-delay="{{ ($i % 9) * 100 }}">
                         @if ($album->cover)
                             <img src="{{ Storage::url( $album->cover->file_path ) }}"
                                  alt="{{ $album->title }}"
@@ -53,15 +52,4 @@
         @endif
     </div>
 </section>
-
-<style>
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.rounded-xl img {
-    aspect-ratio: auto;
-}
-</style>
 @endsection

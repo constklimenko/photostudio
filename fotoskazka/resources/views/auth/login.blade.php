@@ -35,7 +35,7 @@
         </div>
 
         <button type="submit"
-                class="w-full px-6 py-3 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition">
+                class="w-full px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
             Войти
         </button>
     </form>

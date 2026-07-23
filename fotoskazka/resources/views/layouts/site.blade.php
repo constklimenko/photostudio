@@ -13,7 +13,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
 </head>
-<body class="font-sans antialiased text-gray-900 bg-white">
+<body class="font-sans antialiased text-gray-300 bg-[#0a0a0a]">
     <x-site.header />
 
     <main>

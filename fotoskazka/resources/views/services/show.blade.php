@@ -5,46 +5,46 @@
 
 @section('content')
 
-<section class="py-16">
+<section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav class="text-sm text-gray-500 mb-8">
-            <a href="{{ route('home') }}" class="hover:text-amber-600 transition">Главная</a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('services.index') }}" class="hover:text-amber-600 transition">Услуги</a>
+            <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
+            <span class="mx-2 text-gray-600">/</span>
+            <a href="{{ route('services.index') }}" class="hover:text-[#d4af37] transition">Услуги</a>
             @if ($service->category)
-                <span class="mx-2">/</span>
-                <span class="text-gray-900">{{ $service->category->name }}</span>
+                <span class="mx-2 text-gray-600">/</span>
+                <span class="text-gray-300">{{ $service->category->name }}</span>
             @endif
         </nav>
 
         @if ($service->cover)
-            <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10">
+            <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10 shadow-lg shadow-black/30">
                 <img src="{{ Storage::url($service->cover->file_path) }}"
                      alt="{{ $service->title }}"
                      class="w-full h-full object-cover">
             </div>
         @endif
 
-        <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-gray-900">{{ $service->title }}</h1>
+        <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $service->title }}</h1>
 
         @if ($service->price_from)
-            <p class="mt-4 text-2xl font-bold text-amber-600">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
+            <p class="mt-4 text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
             @if ($service->price_note)
-                <p class="mt-1 text-xs text-gray-400">{{ $service->price_note }}</p>
+                <p class="mt-1 text-xs text-gray-500">{{ $service->price_note }}</p>
             @endif
         @endif
 
         @if ($service->short_description)
-            <p class="mt-4 text-lg text-gray-600 leading-relaxed">{{ $service->short_description }}</p>
+            <p class="mt-4 text-lg text-gray-400 leading-relaxed">{{ $service->short_description }}</p>
         @endif
 
         @if ($service->items->isNotEmpty())
-            <div class="mt-8 p-6 bg-gray-50 rounded-xl">
-                <h3 class="font-heading text-lg font-semibold tracking-wide text-gray-900 mb-4">Что входит</h3>
+            <div class="mt-8 p-6 bg-[#1a1a1a] rounded-xl shadow-lg shadow-black/30">
+                <h3 class="font-heading text-lg font-semibold tracking-wide text-white mb-4">Что входит</h3>
                 <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
                     @foreach ($service->items as $item)
                         @php $included = $item->pivot->is_included ?? true; @endphp
-                        <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-700' : 'text-gray-400' }}">
+                        <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
                             @if ($included)
                                 <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -62,12 +62,12 @@
         @endif
 
         @if ($service->albums->isNotEmpty())
-            <section class="mt-16">
-                <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 mb-8">Примеры работ</h2>
+            <section class="mt-16" data-aos="fade-up">
+                <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">Примеры работ</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach ($service->albums as $album)
                         <a href="{{ route('portfolio.show', $album->slug) }}"
-                           class="group block rounded-xl overflow-hidden bg-gray-100">
+                           class="group block rounded-xl overflow-hidden bg-[#1a1a1a] shadow-lg shadow-black/30 hover:bg-[#242424] transition">
                             @if ($album->cover)
                                 <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
                                      alt="{{ $album->title }}"
@@ -81,7 +81,7 @@
                                 </div>
                             @endif
                             <div class="p-3">
-                                <h3 class="font-heading text-sm font-medium tracking-wide text-gray-900 group-hover:text-amber-600 transition truncate">{{ $album->title }}</h3>
+                                <h3 class="font-heading text-sm font-medium tracking-wide text-white group-hover:text-[#d4af37] transition truncate">{{ $album->title }}</h3>
                             </div>
                         </a>
                     @endforeach
@@ -90,20 +90,20 @@
         @endif
 
         @if ($service->description)
-            <div class="mt-8 prose prose-gray max-w-none">
+            <div class="mt-8 prose prose-invert max-w-none">
                 {!! $service->description !!}
             </div>
         @endif
     </div>
 </section>
 
-<section id="inquiry-form" class="py-20 bg-gray-50">
+<section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="font-heading text-3xl font-normal tracking-wide text-gray-900 text-center">Записаться на {{ \Illuminate\Support\Str::lower($service->title) }}</h2>
-        <p class="mt-3 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Записаться на {{ \Illuminate\Support\Str::lower($service->title) }}</h2>
+        <p class="mt-3 text-gray-400 text-center">Заполните форму, и мы свяжемся с вами</p>
 
         @if (session('success'))
-            <div class="mt-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+            <div class="mt-6 p-4 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
                 {{ session('success') }}
             </div>
         @endif
@@ -113,13 +113,15 @@
 </section>
 
 @if ($serviceList->isNotEmpty())
-    <section class="py-16">
+    <section class="py-24" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center">Другие услуги</h2>
+            <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center">Другие услуги</h2>
 
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($serviceList as $other)
-                    <a href="{{ route('services.show', $other->slug) }}" class="group block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
+                    <a href="{{ route('services.show', $other->slug) }}"
+                       class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
+                       data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                         <div class="aspect-[16/9] bg-gray-100">
                             @if ($other->cover)
                                 <img src="{{ Storage::url($other->cover->thumbnail_path) }}"
@@ -128,7 +130,7 @@
                             @endif
                         </div>
                         <div class="p-5">
-                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 group-hover:text-amber-600 transition">{{ $other->title }}</h3>
+                            <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $other->title }}</h3>
                         </div>
                     </a>
                 @endforeach

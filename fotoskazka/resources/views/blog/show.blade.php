@@ -5,46 +5,46 @@
 
 @section('content')
 
-<section class="py-16">
+<section class="py-24" data-aos="fade-up">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col lg:flex-row gap-12">
 
             <article class="flex-1 min-w-0">
                 <nav class="text-sm text-gray-500 mb-8">
-                    <a href="{{ route('home') }}" class="hover:text-amber-600 transition">Главная</a>
-                    <span class="mx-2">/</span>
-                    <a href="{{ route('blog.index') }}" class="hover:text-amber-600 transition">Блог</a>
+                    <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
+                    <span class="mx-2 text-gray-600">/</span>
+                    <a href="{{ route('blog.index') }}" class="hover:text-[#d4af37] transition">Блог</a>
                     @if ($post->category)
-                        <span class="mx-2">/</span>
-                        <span class="text-gray-900">{{ $post->category->name }}</span>
+                        <span class="mx-2 text-gray-600">/</span>
+                        <span class="text-gray-300">{{ $post->category->name }}</span>
                     @endif
                 </nav>
 
                 @if ($post->cover)
-                    <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-8">
+                    <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-8 shadow-lg shadow-black/30">
                         <img src="{{ Storage::url($post->cover->file_path) }}"
                              alt="{{ $post->title }}"
                              class="w-full h-full object-cover">
                     </div>
                 @endif
 
-                <p class="text-sm text-gray-400 mb-3">{{ $post->published_at->format('d.m.Y') }}</p>
-                <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-gray-900">{{ $post->title }}</h1>
+                <p class="text-sm text-gray-500 mb-3">{{ $post->published_at->format('d.m.Y') }}</p>
+                <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $post->title }}</h1>
 
                 @if ($post->content)
-                    <div class="mt-8 prose prose-gray max-w-none">
+                    <div class="mt-8 prose prose-invert max-w-none">
                         {!! $post->content !!}
                     </div>
                 @endif
 
                 @if ($post->albums->isNotEmpty())
-                    <section class="mt-16">
-                        <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 mb-6">Фотоальбомы</h2>
+                    <section class="mt-16" data-aos="fade-up">
+                        <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-6">Фотоальбомы</h2>
                         <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
                             @foreach ($post->albums as $album)
                                 <div class="snap-start shrink-0 w-72">
                                     <a href="{{ route('portfolio.show', $album->slug) }}"
-                                       class="block bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition">
+                                       class="block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition">
                                         @if ($album->cover)
                                             <div class="aspect-[4/3] bg-gray-100">
                                                 <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
@@ -64,9 +64,9 @@
                                             <div class="aspect-[4/3] bg-gray-100"></div>
                                         @endif
                                         <div class="p-4">
-                                            <h3 class="font-heading font-semibold tracking-wide text-gray-900 text-sm">{{ $album->title }}</h3>
+                                            <h3 class="font-heading font-semibold tracking-wide text-white text-sm">{{ $album->title }}</h3>
                                             @if ($album->description)
-                                                <p class="mt-1 text-xs text-gray-500 line-clamp-2">{{ $album->description }}</p>
+                                                <p class="mt-1 text-xs text-gray-400 line-clamp-2">{{ $album->description }}</p>
                                             @endif
                                         </div>
                                     </a>
@@ -76,12 +76,12 @@
                     </section>
                 @endif
 
-                <section id="inquiry-form" class="mt-16 pt-12 border-t border-gray-200">
-                    <h2 class="font-heading text-2xl font-normal tracking-wide text-gray-900 text-center">Записаться на съёмку</h2>
-                    <p class="mt-2 text-gray-500 text-center">Заполните форму, и мы свяжемся с вами</p>
+                <section id="inquiry-form" class="mt-16 pt-12 border-t border-[#2a2a2a]">
+                    <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center">Записаться на съёмку</h2>
+                    <p class="mt-2 text-gray-400 text-center">Заполните форму, и мы свяжемся с вами</p>
 
                     @if (session('success'))
-                        <div class="mt-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
+                        <div class="mt-6 p-4 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">
                             {{ session('success') }}
                         </div>
                     @endif
@@ -93,13 +93,13 @@
             <aside class="lg:w-80 shrink-0">
                 <div class="space-y-8">
                     <form action="{{ route('blog.index') }}" method="GET">
-                        <label class="block text-sm font-semibold text-gray-900 mb-2">Поиск</label>
+                        <label class="block text-sm font-semibold text-white mb-2">Поиск</label>
                         <div class="flex">
                             <input type="search" name="q" value="{{ request('q') }}"
                                    placeholder="Поиск..."
-                                   class="flex-1 rounded-l-lg border-gray-300 px-4 py-2 text-sm focus:border-amber-500 focus:ring-amber-500">
+                                   class="flex-1 rounded-l-lg bg-transparent border border-[#2a2a2a] px-4 py-2 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-[#d4af37]">
                             <button type="submit"
-                                    class="px-4 py-2 bg-amber-600 text-white rounded-r-lg hover:bg-amber-700 transition text-sm">
+                                    class="px-6 py-2 bg-gold text-black font-semibold uppercase tracking-wider text-xs rounded-r-lg hover:opacity-90 transition">
                                 Найти
                             </button>
                         </div>
@@ -107,14 +107,14 @@
 
                     @if ($categories->isNotEmpty())
                         <div>
-                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Категории</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-white mb-3">Категории</h3>
                             <ul class="space-y-1">
                                 @foreach ($categories as $category)
                                     <li>
                                         <a href="{{ route('blog.index', ['category' => $category->slug]) }}"
-                                           class="flex justify-between text-sm text-gray-600 hover:text-amber-600 transition">
+                                           class="flex justify-between text-sm text-gray-400 hover:text-[#d4af37] transition">
                                             <span>{{ $category->name }}</span>
-                                            <span class="text-gray-400">{{ $category->posts_count }}</span>
+                                            <span class="text-gray-500">{{ $category->posts_count }}</span>
                                         </a>
                                     </li>
                                 @endforeach
@@ -124,7 +124,7 @@
 
                     @if ($recentPosts->isNotEmpty())
                         <div>
-                            <h3 class="font-heading text-sm font-semibold tracking-wide text-gray-900 mb-3">Последние записи</h3>
+                            <h3 class="font-heading text-sm font-semibold tracking-wide text-white mb-3">Последние записи</h3>
                             <ul class="space-y-3">
                                 @foreach ($recentPosts as $recent)
                                     <li class="flex gap-3">
@@ -134,12 +134,12 @@
                                                  class="w-14 h-14 rounded-lg object-cover shrink-0"
                                                  loading="lazy">
                                         @else
-                                            <div class="w-14 h-14 rounded-lg bg-gray-100 shrink-0"></div>
+                                            <div class="w-14 h-14 rounded-lg bg-[#1a1a1a] shrink-0"></div>
                                         @endif
                                         <div class="min-w-0">
                                             <a href="{{ route('blog.show', $recent->slug) }}"
-                                               class="text-sm font-medium text-gray-900 hover:text-amber-600 transition line-clamp-2">{{ $recent->title }}</a>
-                                            <p class="text-xs text-gray-400 mt-0.5">{{ $recent->published_at?->format('d.m.Y') }}</p>
+                                               class="text-sm font-medium text-gray-300 hover:text-[#d4af37] transition line-clamp-2">{{ $recent->title }}</a>
+                                            <p class="text-xs text-gray-500 mt-0.5">{{ $recent->published_at?->format('d.m.Y') }}</p>
                                         </div>
                                     </li>
                                 @endforeach
