@@ -93,6 +93,8 @@
                     </section>
                 @endif
 
+                <x-site.videos :videos="$post->videos" title="Видео" />
+
                 <section id="inquiry-form" class="mt-16 pt-12 border-t border-[#2a2a2a]">
                     <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center">Записаться на съёмку</h2>
                     <p class="mt-2 text-gray-400 text-center">Заполните форму, и мы свяжемся с вами</p>

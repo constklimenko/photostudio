@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-08-18 — Видео-слайдер (slick)
+
+### Фронтенд
+- Добавлены зависимости `jquery@3.7.1` и `slick-carousel@1.8.1`
+- `resources/js/app.js`: импорт slick CSS/JS, инициализация слайдера на `[data-video-slider]`
+  (slidesToShow: 3 / 2 / 1, infinite: false)
+- `resources/css/app.css`: стили стрелок и слайдов `.video-slider` под тёмную тему
+- Вертикальные видео переведены с `overflow-x-auto` на slick-слайдер в:
+  `components/site/videos.blade.php`, `home.blade.php`, `video/index.blade.php`
+  — полоса прокрутки убрана, добавлены стрелки навигации
+
+---
+
+## 2026-08-18 — Видео напрямую в услугах и блоге
+
+### Изменения БД
+- **Новая миграция**: `create_service_video_table` — pivot услуг ↔ видео (service_id, video_id)
+- **Новая миграция**: `create_post_video_table` — pivot статей ↔ видео (post_id, video_id)
+
+### Модели
+- **Service**: добавлено отношение `videos()` (BelongsToMany, сортировка по `videos.sort_order`)
+- **Post**: добавлено отношение `videos()` (BelongsToMany, сортировка по `videos.sort_order`)
+- **Video**: добавлены отношения `services()` и `posts()` (BelongsToMany)
+
+### Blade-компонент
+- Создан `resources/views/components/site/videos.blade.php` (`x-site.videos`) — универсальный рендер видео:
+  горизонтальные (aspect-video, заголовок) + вертикальные (snap-scroll 9:16), поддержка файлов и embed
+- Используется на страницах: альбома (portfolio/show), услуги (services/show), статьи (blog/show)
+  — дублирующийся HTML видео-секции удалён
+
+### Filament
+- **ServiceForm**: добавлена секция «Видео» — Select(multiple) привязки видео к услуге
+- **PostForm**: добавлена секция «Видео» — Select(multiple) привязки видео к статье
+- **VideoForm**: секция «Альбомы» переименована в «Привязка» — добавлены Select(multiple): Услуги, Статьи блога
+
+### Контроллеры
+- **ServiceController::show** / **BlogController::show** — eager load `videos`
+
+### Тесты
+- `tests/Unit/Models/ModelRelationshipsTest.php` — 5 тестов: service↔video, post↔video, video↔services, video↔posts, сортировка по videos.sort_order
+- `tests/Feature/Http/Controllers/ServiceControllerTest.php` — 2 теста: показ горизонтальных/вертикальных видео на странице услуги
+- `tests/Feature/BlogTest.php` — 2 теста: показ горизонтальных/вертикальных видео в статье
+- Итого 189 тестов / 328 assertions — все пройдены
+
+### Документация
+- Обновлены `database.md` (service_video, post_video), `architecture.md` (pivot-таблицы), `changelog.md`
+
+---
+
 ## 2026-08-18 — Видео в альбомах (аналогично фото)
 
 ### Изменения БД

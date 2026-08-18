@@ -285,4 +285,54 @@ class ModelRelationshipsTest extends TestCase
         $this->assertEquals(['Первый ролик', 'Второй ролик'], $album->videos->pluck('title')->all());
         $this->assertEquals(1, $album->videos->first()->pivot->sort_order);
     }
+
+    public function test_service_belongs_to_many_videos(): void
+    {
+        $service = Service::factory()->create();
+        $videos = Video::factory()->count(2)->create();
+        $service->videos()->attach($videos->pluck('id'));
+
+        $this->assertCount(2, $service->videos);
+        $this->assertInstanceOf(Video::class, $service->videos->first());
+    }
+
+    public function test_post_belongs_to_many_videos(): void
+    {
+        $post = Post::factory()->create();
+        $videos = Video::factory()->count(2)->create();
+        $post->videos()->attach($videos->pluck('id'));
+
+        $this->assertCount(2, $post->videos);
+        $this->assertInstanceOf(Video::class, $post->videos->first());
+    }
+
+    public function test_video_belongs_to_many_services(): void
+    {
+        $service = Service::factory()->create();
+        $video = Video::factory()->create();
+        $service->videos()->attach($video);
+
+        $this->assertTrue($video->services->contains($service));
+    }
+
+    public function test_video_belongs_to_many_posts(): void
+    {
+        $post = Post::factory()->create();
+        $video = Video::factory()->create();
+        $post->videos()->attach($video);
+
+        $this->assertTrue($video->posts->contains($post));
+    }
+
+    public function test_service_videos_ordered_by_video_sort_order(): void
+    {
+        $service = Service::factory()->create();
+        $first = Video::factory()->create(['title' => 'Первый ролик', 'sort_order' => 1]);
+        $second = Video::factory()->create(['title' => 'Второй ролик', 'sort_order' => 5]);
+
+        $service->videos()->attach($second);
+        $service->videos()->attach($first);
+
+        $this->assertEquals(['Первый ролик', 'Второй ролик'], $service->videos->pluck('title')->all());
+    }
 }

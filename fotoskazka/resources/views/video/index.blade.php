@@ -56,10 +56,9 @@
         <section class="py-24 bg-[#111111]" data-aos="fade-up">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center mb-12">Вертикальные видео</h2>
-                <div class="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-thin justify-start"
-                     data-aos="fade-up">
+                <div class="video-slider" data-video-slider data-aos="fade-up">
                     @foreach ($verticalVideos as $video)
-                        <div class="snap-start shrink-0 w-96" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
+                        <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                             <h3 class="font-heading text-base font-normal tracking-wide text-white mb-3 text-center truncate">{{ $video->title }}</h3>
                             <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
                                 @if ($video->is_upload)

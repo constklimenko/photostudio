@@ -60,15 +60,26 @@ class VideoForm
                             ->default(0)
                             ->label('Порядок'),
                     ]),
-                Section::make('Альбомы')
+                Section::make('Привязка')
                     ->schema([
                         Select::make('albums')
                             ->relationship('albums', 'title')
                             ->multiple()
                             ->preload()
                             ->searchable()
-                            ->label('Привязанные альбомы')
-                            ->helperText('Видео будет показано на страницах выбранных альбомов'),
+                            ->label('Альбомы'),
+                        Select::make('services')
+                            ->relationship('services', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->label('Услуги'),
+                        Select::make('posts')
+                            ->relationship('posts', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->label('Статьи блога'),
                     ]),
             ]);
     }

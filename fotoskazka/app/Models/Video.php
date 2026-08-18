@@ -61,6 +61,16 @@ class Video extends Model
             ->orderByPivot('sort_order');
     }
 
+    public function services(): BelongsToMany
+    {
+        return $this->belongsToMany(Service::class);
+    }
+
+    public function posts(): BelongsToMany
+    {
+        return $this->belongsToMany(Post::class, 'post_video');
+    }
+
     public function getThumbnailUrlAttribute(): ?string
     {
         if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $this->url, $m)) {

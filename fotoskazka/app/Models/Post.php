@@ -38,4 +38,10 @@ class Post extends Model
     {
         return $this->belongsToMany(Album::class, 'post_album');
     }
+
+    public function videos(): BelongsToMany
+    {
+        return $this->belongsToMany(Video::class, 'post_video')
+            ->orderBy('videos.sort_order');
+    }
 }

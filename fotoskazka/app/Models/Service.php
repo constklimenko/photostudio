@@ -44,4 +44,10 @@ class Service extends Model
     {
         return $this->belongsToMany(Album::class);
     }
+
+    public function videos(): BelongsToMany
+    {
+        return $this->belongsToMany(Video::class)
+            ->orderBy('videos.sort_order');
+    }
 }

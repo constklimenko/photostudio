@@ -74,6 +74,15 @@ class PostForm
                             ->searchable()
                             ->label('Привязанные альбомы'),
                     ]),
+                Section::make('Видео')
+                    ->schema([
+                        Select::make('videos')
+                            ->relationship('videos', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->label('Привязанные видео'),
+                    ]),
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')

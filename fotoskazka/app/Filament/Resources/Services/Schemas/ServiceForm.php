@@ -106,6 +106,15 @@ class ServiceForm
                             ->searchable()
                             ->columnSpanFull(),
                     ]),
+                Section::make('Видео')
+                    ->schema([
+                        Select::make('videos')
+                            ->multiple()
+                            ->relationship('videos', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 }

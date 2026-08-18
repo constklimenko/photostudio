@@ -5,6 +5,7 @@ namespace Tests\Feature\Http\Controllers;
 use App\Models\Category;
 use App\Models\Page;
 use App\Models\Service;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -155,5 +156,40 @@ class ServiceControllerTest extends TestCase
         $response = $this->get(route('services.show', $service->slug));
 
         $response->assertSee('Оставить заявку');
+    }
+
+    public function test_show_displays_attached_videos(): void
+    {
+        $service = Service::factory()->create([
+            'is_published' => true,
+            'title' => 'Свадебная съёмка',
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'horizontal',
+            'title' => 'Свадебный фильм',
+        ]);
+        $service->videos()->attach($video);
+
+        $response = $this->get(route('services.show', $service->slug));
+
+        $response->assertSee('Свадебный фильм');
+        $response->assertSee($video->embed_url);
+    }
+
+    public function test_show_displays_vertical_attached_videos(): void
+    {
+        $service = Service::factory()->create([
+            'is_published' => true,
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'vertical',
+            'title' => 'Reels ролик',
+        ]);
+        $service->videos()->attach($video);
+
+        $response = $this->get(route('services.show', $service->slug));
+
+        $response->assertSee('Reels ролик');
+        $response->assertSee($video->embed_url);
     }
 }

@@ -110,6 +110,8 @@
             </section>
         @endif
 
+        <x-site.videos :videos="$service->videos" title="Видео" />
+
         @if ($service->description)
             <div class="mt-8 prose prose-invert max-w-none">
                 {!! $service->description !!}

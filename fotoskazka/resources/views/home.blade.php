@@ -132,24 +132,24 @@
             @endif
 
             @if ($verticalVideos->isNotEmpty())
-                <div class="mt-12 flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 scrollbar-thin"
-                     data-aos="fade-up">
+                <div class="mt-12 video-slider" data-video-slider data-aos="fade-up">
                     @foreach ($verticalVideos as $video)
-                        <div class="snap-start shrink-0 w-96 aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
-                             data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            @if ($video->is_upload)
-                                <video class="w-full h-full object-cover" controls playsinline preload="metadata">
-                                    <source src="{{ $video->source_url }}" type="video/mp4">
-                                </video>
-                            @else
-                                <iframe src="{{ $video->embed_url }}"
-                                        title="{{ $video->title }}"
-                                        class="w-full h-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen
-                                        loading="lazy">
-                                </iframe>
-                            @endif
+                        <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
+                            <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
+                                @if ($video->is_upload)
+                                    <video class="w-full h-full object-cover" controls playsinline preload="metadata">
+                                        <source src="{{ $video->source_url }}" type="video/mp4">
+                                    </video>
+                                @else
+                                    <iframe src="{{ $video->embed_url }}"
+                                            title="{{ $video->title }}"
+                                            class="w-full h-full"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen
+                                            loading="lazy">
+                                    </iframe>
+                                @endif
+                            </div>
                         </div>
                     @endforeach
                 </div>

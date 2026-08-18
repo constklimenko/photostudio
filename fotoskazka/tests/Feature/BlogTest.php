@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -132,5 +133,42 @@ class BlogTest extends TestCase
         $response->assertSee('Записаться на съёмку');
         $response->assertSee('name="name"', false);
         $response->assertSee('name="phone"', false);
+    }
+
+    public function test_blog_show_displays_attached_videos(): void
+    {
+        $post = Post::factory()->create([
+            'published_at' => now()->subDay(),
+            'is_published' => true,
+            'title' => 'Итоги сезона',
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'horizontal',
+            'title' => 'Закулисье съёмки',
+        ]);
+        $post->videos()->attach($video);
+
+        $response = $this->get(route('blog.show', $post->slug));
+
+        $response->assertSee('Закулисье съёмки');
+        $response->assertSee($video->embed_url);
+    }
+
+    public function test_blog_show_displays_vertical_attached_videos(): void
+    {
+        $post = Post::factory()->create([
+            'published_at' => now()->subDay(),
+            'is_published' => true,
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'vertical',
+            'title' => 'Reels из блога',
+        ]);
+        $post->videos()->attach($video);
+
+        $response = $this->get(route('blog.show', $post->slug));
+
+        $response->assertSee('Reels из блога');
+        $response->assertSee($video->embed_url);
     }
 }

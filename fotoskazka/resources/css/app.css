@@ -134,6 +134,51 @@ section.bg-gray-900 {
     background-color: #2a2a2a;
 }
 
+/* Видео-слайдер (slick) */
+.video-slider {
+    padding-bottom: 1rem;
+}
+
+.video-slider .slick-list {
+    margin: 0 -12px;
+}
+
+.video-slider .slick-slide {
+    padding: 0 12px;
+}
+
+.video-slider .slick-prev,
+.video-slider .slick-next {
+    width: 40px;
+    height: 40px;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.video-slider .slick-prev:hover,
+.video-slider .slick-next:hover {
+    background: #2a2a2a;
+}
+
+.video-slider .slick-prev {
+    left: -20px;
+}
+
+.video-slider .slick-next {
+    right: -20px;
+}
+
+.video-slider .slick-prev::before,
+.video-slider .slick-next::before {
+    color: #d4af37;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 1;
+}
+
 /* Hero — полноэкранное фото + overlay */
 #hero-block img {
     animation: heroZoom 12s ease-in-out infinite alternate;

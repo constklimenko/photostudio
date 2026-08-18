@@ -226,7 +226,6 @@ INDEX(service_id)
 ## album_video
 
 Pivot для many-to-many связи альбомов и видео (аналогично фото: видео можно добавлять в альбом).
-
 ```sql
 album_id BIGINT UNSIGNED
 video_id BIGINT UNSIGNED
@@ -251,6 +250,46 @@ INDEX(sort_order)
 
 Сортировка внутри альбома — `album_video.sort_order`. Видео остаются самостоятельной сущностью
 (раздел `/video`, главная страница) и могут одновременно принадлежать нескольким альбомам.
+
+---
+
+## service_video
+
+Pivot для many-to-many связи услуг и видео (видео, прикреплённые напрямую к услуге, без альбома).
+
+```sql
+service_id BIGINT UNSIGNED
+video_id BIGINT UNSIGNED
+
+PRIMARY KEY(service_id, video_id)
+```
+
+Foreign keys:
+
+```sql
+service_id -> services.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+---
+
+## post_video
+
+Pivot для many-to-many связи статей блога и видео.
+
+```sql
+post_id BIGINT UNSIGNED
+video_id BIGINT UNSIGNED
+
+PRIMARY KEY(post_id, video_id)
+```
+
+Foreign keys:
+
+```sql
+post_id -> posts.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
 
 ---
 
@@ -984,8 +1023,10 @@ updated_at TIMESTAMP
 Флаг `show_on_home` управляет показом видео на главной странице.
 Раздел `/video` — отдельная страница со всеми активными видео, контент управляется через Pages (slug: video).
 
-Видео могут прикрепляться к альбомам через pivot `album_video` (с подписью и порядком в альбоме).
+Видео могут прикрепляться к альбомам через pivot `album_video` (с подписью и порядком в альбоме),
+а также напрямую к услугам (`service_video`) и статьям (`post_video`).
 Альбомы с видео привязываются к услугам (`album_service`) и статьям (`post_album`) — как обычные фотоальбомы.
+Порядок видео внутри услуги/статьи определяется полем `videos.sort_order`.
 
 Indexes:
 
