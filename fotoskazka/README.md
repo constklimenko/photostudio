@@ -21,6 +21,51 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Тесты
+
+Проект использует **PHPUnit 12** (Laravel 13). Тесты запускаются на отдельной in-memory SQLite базе (`:memory:`) — реальная БД не затрагивается.
+
+### Команды
+
+```bash
+# Все тесты
+php artisan test            # или composer test
+
+# Конкретный файл
+php artisan test tests/Feature/Http/Controllers/VideoControllerTest.php
+
+# Конкретный метод
+php artisan test --filter=test_embed_url_converts_youtube_watch_url
+
+# Отчёт о покрытии (нужен pcov/xdebug)
+php artisan test --coverage-text
+```
+
+### Структура
+
+Тесты делятся на **Unit** (изолированная логика) и **Feature** (HTTP-слой, маршруты, взаимодействие с БД).
+
+| Директория | Описание | Примеры |
+|---|---|---|
+| `tests/Unit/Models/` | Логика моделей и связей | `VideoModelTest` — accessors `embed_url`, `is_upload`, `source_url`, casts; `ModelRelationshipsTest` — все связи |
+| `tests/Unit/Observers/` | Элоquent-обсерверы | `PageObserverTest` — инвалидация кэша; `MediaObserverTest` — метаданные и WebP-превью |
+| `tests/Unit/Mail/` | Mailable-классы | `NewInquiryMailTest` — subject, шаблон, содержимое письма |
+| `tests/Feature/Http/Controllers/` | Публичные контроллеры | `HomeControllerTest`, `ServiceControllerTest`, `PortfolioControllerTest`, `VideoControllerTest` |
+| `tests/Feature/Auth/` | Доступ и роли | `AccessTest`, `RoleMethodsTest`, `SystemRolesTest` |
+| `tests/Feature/Console/` | Artisan-команды | `MakeFilamentUserCommandTest` |
+| `tests/Feature/` | Бизнес-сценарии | `InquiryTest` (заявки, уведомления), `UploadPhotosTest` (массовая загрузка) |
+
+### Соглашения
+
+- Базовый класс — `Tests\TestCase`; тесты с БД используют `RefreshDatabase`.
+- Тесты контроллеров — под `tests/Feature/Http/Controllers/`, названия методов `test_*_*`.
+- Фабрики моделей лежат в `database/factories/` (`Video::factory()->create()`).
+- После изменений: `composer test` + `./vendor/bin/pint`.
+
+### Покрытие
+
+Публичная часть (контроллеры, модели, сервисы, actions, jobs, команды, mail, observers) покрыта тестами полностью или почти полностью. Админ-панель Filament (Resources/Forms/Tables) тестами не покрыта.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.

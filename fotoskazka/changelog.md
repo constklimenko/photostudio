@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-08-18 — Тесты бизнес-логики и VideoController
+
+### Изменения кода
+- **Video**: добавлен трейт `HasFactory` (для фабрики и тестов)
+
+### Фабрика
+- **VideoFactory** — новая фабрика для модели Video (title, url, type, sort_order, is_active, show_on_home)
+
+### Тесты (42 новых, всего 170 тестов / 298 assertions)
+- `tests/Feature/Http/Controllers/VideoControllerTest.php` — 9 тестов:
+  - успешный ответ `/video`, заголовок страницы из Page (slug: video)
+  - показ горизонтальных/вертикальных видео и их embed-URL
+  - скрытие неактивных, сортировка по sort_order
+  - загруженные видео (`<video>`), пустое состояние
+- `tests/Unit/Models/VideoModelTest.php` — 21 тест бизнес-логики модели:
+  - casts (is_active, show_on_home, sort_order)
+  - `embed_url` для всех провайдеров: YouTube (watch/embed/youtu.be), Vimeo, Rutube, VK, VK Video ext, загруженный файл, пустой URL
+  - `is_upload`, `source_url`
+- `tests/Unit/Observers/PageObserverTest.php` — 4 теста инвалидации кэша (saved/deleted/created)
+- `tests/Unit/Mail/NewInquiryMailTest.php` — 4 теста mailable (subject, шаблон, рендер данных, отсутствие услуги/даты)
+- `tests/Feature/Console/MakeFilamentUserCommandTest.php` — 4 теста команды `make:filament-user` (создание админа, роль, создание роли, переиспользование роли)
+
+### Покрытие
+- Общее: строки 27.9% → 30.1%, методы 45.5% → 48.8%
+- 100% покрытия: VideoController, Video, PageObserver, NewInquiryMail, MakeFilamentUserCommand
+- Остаётся непокрытой админ-панель Filament (~110 файлов)
+
 ## 2026-07-23 — Исправление: лимит загрузки Livewire
 
 ### Исправлено

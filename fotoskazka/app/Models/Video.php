@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class Video extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['title', 'url', 'file_path', 'type', 'sort_order', 'is_active', 'show_on_home'];
 
     protected function casts(): array
