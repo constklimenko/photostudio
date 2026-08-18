@@ -150,6 +150,34 @@ class VideoModelTest extends TestCase
         $this->assertSame('', $video->source_url);
     }
 
+    public function test_thumbnail_url_returns_youtube_thumbnail_for_watch_url(): void
+    {
+        $video = new Video(['url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+
+        $this->assertEquals('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg', $video->thumbnail_url);
+    }
+
+    public function test_thumbnail_url_returns_youtube_thumbnail_for_short_url(): void
+    {
+        $video = new Video(['url' => 'https://youtu.be/dQw4w9WgXcQ']);
+
+        $this->assertEquals('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg', $video->thumbnail_url);
+    }
+
+    public function test_thumbnail_url_returns_null_for_vk_url(): void
+    {
+        $video = new Video(['url' => 'https://vkvideo.ru/clip-208625881_456239018']);
+
+        $this->assertNull($video->thumbnail_url);
+    }
+
+    public function test_thumbnail_url_returns_null_for_uploaded_file(): void
+    {
+        $video = new Video(['file_path' => 'videos/clip.mp4', 'url' => '']);
+
+        $this->assertNull($video->thumbnail_url);
+    }
+
     public function test_source_url_returns_null_when_url_is_null(): void
     {
         $video = new Video(['url' => null, 'file_path' => null]);

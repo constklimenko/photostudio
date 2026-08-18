@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 
 class Video extends Model
@@ -51,6 +52,22 @@ class Video extends Model
         }
 
         return $this->url;
+    }
+
+    public function albums(): BelongsToMany
+    {
+        return $this->belongsToMany(Album::class, 'album_video')
+            ->withPivot('caption', 'sort_order')
+            ->orderByPivot('sort_order');
+    }
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $this->url, $m)) {
+            return 'https://img.youtube.com/vi/'.$m[1].'/hqdefault.jpg';
+        }
+
+        return null;
     }
 
     public function getIsUploadAttribute(): bool

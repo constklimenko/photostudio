@@ -77,6 +77,23 @@
                                      alt="{{ $album->title }}"
                                      class="w-full aspect-[4/3] object-cover group-hover:scale-105 transition duration-500"
                                      loading="lazy">
+                            @elseif ($album->videos->isNotEmpty())
+                                @php $firstVideo = $album->videos->first(); @endphp
+                                <div class="w-full aspect-[4/3] relative bg-[#0a0a0a]">
+                                    @if ($firstVideo->thumbnail_url)
+                                        <img src="{{ $firstVideo->thumbnail_url }}"
+                                             alt="{{ $album->title }}"
+                                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                                             loading="lazy">
+                                    @endif
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-14 h-14 rounded-full bg-black/50 backdrop-blur flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
                             @else
                                 <div class="w-full aspect-[4/3] flex items-center justify-center text-gray-400">
                                     <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">

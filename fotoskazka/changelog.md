@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-08-18 — Видео в альбомах (аналогично фото)
+
+### Изменения БД
+- **Новая миграция**: `create_album_video_table` — pivot для many-to-many связи альбомов и видео
+  - `album_id`, `video_id` (FK, CASCADE), `caption` (подпись в альбоме), `sort_order` (порядок)
+  - PRIMARY KEY(album_id, video_id)
+
+### Модели
+- **Album**: добавлено отношение `videos()` (BelongsToMany через `album_video`, withPivot `caption`/`sort_order`, orderByPivot)
+- **Video**: добавлено отношение `albums()` (BelongsToMany через `album_video`)
+- **Video**: добавлен accessor `thumbnail_url` — превью для YouTube-видео (`img.youtube.com`), иначе null
+
+### Filament
+- **AlbumResource**: добавлен `VideosRelationManager` («Видео») рядом с «Фотографии»:
+  - Таблица: название, формат (badge), подпись, порядок; reorderable по pivot `sort_order`
+  - «Прикрепить видео» — модалка: выбор видео из активных + порядок (порядок подставляется из видео)
+  - Действия строки: редактирование подписи/порядка (pivot), открепление
+- **VideoForm**: добавлена секция «Альбомы» — Select(multiple) привязки видео к альбомам
+
+### Публичный сайт
+- **PortfolioController::show** — eager load `videos`
+- **portfolio/show.blade.php**: секция видео в альбоме:
+  - горизонтальные — список с заголовком (подпись альбома ?? название видео) + aspect-video плеер
+  - вертикальные — snap-scroll 9:16 (`w-96`)
+  - заголовок берётся из pivot-подписи, если она задана
+  - пустое состояние — только когда нет ни фото, ни видео
+- **BlogController::show / ServiceController::show** — eager load `albums.videos`
+- **blog/show.blade.php, services/show.blade.php**: карточки альбомов показывают плейсхолдер с иконкой видео (и превью YouTube, если доступно), когда у альбома нет обложки и фото, но есть видео
+
+### Тесты
+- `tests/Unit/Models/ModelRelationshipsTest.php` — 3 теста: album↔video, video↔album, сортировка по pivot sort_order
+- `tests/Unit/Models/VideoModelTest.php` — 4 теста `thumbnail_url` (YouTube watch/short, VK, загруженный файл)
+- `tests/Feature/Http/Controllers/PortfolioControllerTest.php` — 3 теста: показ горизонтальных/вертикальных видео в альбоме, pivot-подпись как заголовок
+- Итого 180 тестов / 313 assertions — все пройдены
+
+### Документация
+- Обновлены `database.md` (album_video, ER-диаграмма, описание видео), `architecture.md` (pivot-таблицы), `changelog.md`
+
+---
+
 ## 2026-08-18 — Тесты бизнес-логики и VideoController
 
 ### Изменения кода

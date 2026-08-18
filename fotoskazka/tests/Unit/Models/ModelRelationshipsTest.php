@@ -15,6 +15,7 @@ use App\Models\Service;
 use App\Models\ServiceItem;
 use App\Models\Testimonial;
 use App\Models\User;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -251,5 +252,37 @@ class ModelRelationshipsTest extends TestCase
 
         $this->assertInstanceOf(Inquiry::class, $project->inquiry);
         $this->assertEquals($inquiry->id, $project->inquiry->id);
+    }
+
+    public function test_album_belongs_to_many_videos(): void
+    {
+        $album = Album::factory()->create();
+        $videos = Video::factory()->count(2)->create();
+        $album->videos()->attach($videos->pluck('id'));
+
+        $this->assertCount(2, $album->videos);
+        $this->assertInstanceOf(Video::class, $album->videos->first());
+    }
+
+    public function test_video_belongs_to_many_albums(): void
+    {
+        $album = Album::factory()->create();
+        $video = Video::factory()->create();
+        $album->videos()->attach($video);
+
+        $this->assertTrue($video->albums->contains($album));
+    }
+
+    public function test_album_videos_ordered_by_pivot_sort_order(): void
+    {
+        $album = Album::factory()->create();
+        $first = Video::factory()->create(['title' => 'Первый ролик']);
+        $second = Video::factory()->create(['title' => 'Второй ролик']);
+
+        $album->videos()->attach($second, ['sort_order' => 2]);
+        $album->videos()->attach($first, ['sort_order' => 1]);
+
+        $this->assertEquals(['Первый ролик', 'Второй ролик'], $album->videos->pluck('title')->all());
+        $this->assertEquals(1, $album->videos->first()->pivot->sort_order);
     }
 }

@@ -7,6 +7,7 @@ use App\Filament\Resources\Albums\Pages\EditAlbum;
 use App\Filament\Resources\Albums\Pages\ListAlbums;
 use App\Filament\Resources\Albums\Pages\UploadPhotos;
 use App\Filament\Resources\Albums\RelationManagers\PhotosRelationManager;
+use App\Filament\Resources\Albums\RelationManagers\VideosRelationManager;
 use App\Filament\Resources\Albums\Schemas\AlbumForm;
 use App\Filament\Resources\Albums\Tables\AlbumsTable;
 use App\Models\Album;
@@ -46,6 +47,7 @@ class AlbumResource extends Resource
     {
         return [
             PhotosRelationManager::class,
+            VideosRelationManager::class,
         ];
     }
 

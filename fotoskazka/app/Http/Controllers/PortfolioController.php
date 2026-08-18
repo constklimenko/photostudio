@@ -29,7 +29,7 @@ class PortfolioController extends Controller
         $album = Album::query()
             ->where('is_published', true)
             ->where('slug', $slug)
-            ->with(['cover', 'photos' => fn ($q) => $q->orderBy('sort_order')->with('media'), 'services' => fn ($q) => $q->with('cover')])
+            ->with(['cover', 'photos' => fn ($q) => $q->orderBy('sort_order')->with('media'), 'videos', 'services' => fn ($q) => $q->with('cover')])
             ->firstOrFail();
 
         $services = Service::query()

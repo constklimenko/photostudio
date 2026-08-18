@@ -58,6 +58,7 @@ erDiagram
     PROJECTS ||--o{ ALBUMS : contains
     PROJECTS ||--o| INQUIRIES : source
     ALBUMS ||--o{ PHOTOS : contains
+    ALBUMS }o--o{ VIDEOS : contains
 
     MEDIA ||--o{ PHOTOS : source
 
@@ -219,6 +220,37 @@ Indexes:
 ```sql
 INDEX(service_id)
 ```
+
+---
+
+## album_video
+
+Pivot для many-to-many связи альбомов и видео (аналогично фото: видео можно добавлять в альбом).
+
+```sql
+album_id BIGINT UNSIGNED
+video_id BIGINT UNSIGNED
+caption VARCHAR(255) NULL
+sort_order INT DEFAULT 0
+
+PRIMARY KEY(album_id, video_id)
+```
+
+Foreign keys:
+
+```sql
+album_id -> albums.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(sort_order)
+```
+
+Сортировка внутри альбома — `album_video.sort_order`. Видео остаются самостоятельной сущностью
+(раздел `/video`, главная страница) и могут одновременно принадлежать нескольким альбомам.
 
 ---
 
@@ -946,11 +978,14 @@ updated_at TIMESTAMP
 | horizontal | Горизонтальное видео                |
 | vertical   | Вертикальное видео (9:16, Reels)    |
 
-Видео может быть как ссылкой (YouTube, Vimeo, Rutube), так и загруженным файлом (MP4, WebM, OGG, MOV, AVI).
+Видео может быть как ссылкой (YouTube, Vimeo, Rutube, VK Video), так и загруженным файлом (MP4, WebM, OGG, MOV, AVI).
 При наличии `file_path` приоритет отдаётся загруженному файлу. URL автоматически конвертируется в embed-ссылку.
 
 Флаг `show_on_home` управляет показом видео на главной странице.
 Раздел `/video` — отдельная страница со всеми активными видео, контент управляется через Pages (slug: video).
+
+Видео могут прикрепляться к альбомам через pivot `album_video` (с подписью и порядком в альбоме).
+Альбомы с видео привязываются к услугам (`album_service`) и статьям (`post_album`) — как обычные фотоальбомы.
 
 Indexes:
 

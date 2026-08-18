@@ -7,6 +7,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class VideoForm
@@ -58,6 +59,16 @@ class VideoForm
                             ->integer()
                             ->default(0)
                             ->label('Порядок'),
+                    ]),
+                Section::make('Альбомы')
+                    ->schema([
+                        Select::make('albums')
+                            ->relationship('albums', 'title')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->label('Привязанные альбомы')
+                            ->helperText('Видео будет показано на страницах выбранных альбомов'),
                     ]),
             ]);
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Album;
 use App\Models\Page;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -122,5 +123,59 @@ class PortfolioControllerTest extends TestCase
         $response = $this->get(route('portfolio.show', $album->slug));
 
         $response->assertStatus(200);
+    }
+
+    public function test_show_displays_album_videos(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'portfolio',
+            'is_published' => true,
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'horizontal',
+            'title' => 'Свадебный фильм',
+        ]);
+        $album->videos()->attach($video, ['sort_order' => 1]);
+
+        $response = $this->get(route('portfolio.show', $album->slug));
+
+        $response->assertStatus(200);
+        $response->assertSee('Свадебный фильм');
+        $response->assertSee($video->embed_url);
+    }
+
+    public function test_show_displays_vertical_album_videos(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'portfolio',
+            'is_published' => true,
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'vertical',
+            'title' => 'Reels ролик',
+        ]);
+        $album->videos()->attach($video, ['sort_order' => 1]);
+
+        $response = $this->get(route('portfolio.show', $album->slug));
+
+        $response->assertSee('Reels ролик');
+        $response->assertSee($video->embed_url);
+    }
+
+    public function test_show_uses_pivot_caption_as_video_heading(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'portfolio',
+            'is_published' => true,
+        ]);
+        $video = Video::factory()->create([
+            'type' => 'horizontal',
+            'title' => 'Оригинальное название',
+        ]);
+        $album->videos()->attach($video, ['sort_order' => 1, 'caption' => 'Подпись в альбоме']);
+
+        $response = $this->get(route('portfolio.show', $album->slug));
+
+        $response->assertSee('Подпись в альбоме');
     }
 }

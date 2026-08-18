@@ -280,6 +280,7 @@ storage/app/public/
 ### Пivot-таблицы
 - `service_service_item` — услуги ↔ пункты (с полями `is_included`, `sort_order`)
 - `album_service` — услуги ↔ альбомы-примеры работ
+- `album_video` — альбомы ↔ видео (с полями `caption`, `sort_order`)
 - `page_album` — страницы ↔ альбомы
 - `post_album` — статьи ↔ альбомы
 

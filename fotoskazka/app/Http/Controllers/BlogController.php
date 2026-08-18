@@ -52,7 +52,7 @@ class BlogController extends Controller
             ->whereNotNull('published_at')
             ->where('published_at', '<=', now())
             ->where('slug', $slug)
-            ->with('cover', 'category', 'albums.cover', 'albums.photos.media')
+            ->with('cover', 'category', 'albums.cover', 'albums.photos.media', 'albums.videos')
             ->firstOrFail();
 
         $categories = Category::query()
