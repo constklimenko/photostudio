@@ -20,7 +20,7 @@
                         <button type="submit" class="hover:text-white transition cursor-pointer">Выйти</button>
                     </form>
                 @else
-                    <a href="#inquiry-form" class="inline-block px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                    <a href="#" data-open-modal="inquiry" class="inline-block px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
                         Оставить заявку
                     </a>
                     <a href="{{ route('login') }}" class="hover:text-white transition">Войти</a>
@@ -50,7 +50,7 @@
                         <button type="submit" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1a1a1a] cursor-pointer hover:text-white">Выйти</button>
                     </form>
                 @else
-                    <a href="#inquiry-form" class="inline-block px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition text-center mt-2">
+                    <a href="#" data-open-modal="inquiry" class="inline-block px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition text-center mt-2">
                         Оставить заявку
                     </a>
                     <a href="{{ route('login') }}" class="hover:text-white transition px-2 py-1.5 rounded hover:bg-[#1a1a1a]">Войти</a>

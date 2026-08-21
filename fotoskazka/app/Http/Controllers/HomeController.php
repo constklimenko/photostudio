@@ -108,7 +108,7 @@ class HomeController extends Controller
 
         Inquiry::create($validated);
 
-        return redirect('/#inquiry-form')
+        return redirect(request()->headers->get('referer', '/'))
             ->with('success', 'Заявка отправлена! Мы свяжемся с вами в ближайшее время.');
     }
 }
