@@ -4,7 +4,7 @@
 
 | Компонент     | Версия        |
 |---------------|---------------|
-| PHP           | 8.4.22        |
+| PHP           | 8.4.24        |
 | Laravel       | 13.16.1       |
 | MySQL         | 8.x           |
 | Filament      | 4.11.7        |
@@ -28,19 +28,26 @@ app/
 │   │   ├── Albums/
 │   │   │   ├── AlbumResource.php
 │   │   │   ├── Pages/
+│   │   │   │   ├── CreateAlbum.php
 │   │   │   │   ├── EditAlbum.php       # Дозагрузка фото
+│   │   │   │   ├── ListAlbums.php
 │   │   │   │   └── UploadPhotos.php    # Drag&drop загрузка
 │   │   │   ├── RelationManagers/
-│   │   │   │   └── PhotosRelationManager.php
-│   │   │   └── Schemas/
-│   │   │       └── AlbumForm.php
+│   │   │   │   ├── PhotosRelationManager.php
+│   │   │   │   └── VideosRelationManager.php
+│   │   │   ├── Schemas/
+│   │   │   │   └── AlbumForm.php
+│   │   │   └── Tables/
+│   │   │       └── AlbumsTable.php
 │   │   ├── Categories/
+│   │   ├── FaqItems/
 │   │   ├── Inquiries/
 │   │   │   └── Schemas/
 │   │   │       └── InquiryForm.php
 │   │   ├── Media/
 │   │   │   └── Schemas/
 │   │   │       └── MediaForm.php
+│   │   ├── NotificationSettings/
 │   │   ├── Pages/
 │   │   │   └── Schemas/
 │   │   │       └── PageForm.php
@@ -50,17 +57,18 @@ app/
 │   │   │       └── PostForm.php
 │   │   ├── Projects/
 │   │   ├── Roles/
-│   │   ├── ServiceItems/       # Мастер-справочник пунктов услуг
-│   │   │   └── ServiceItemResource.php
+│   │   ├── ServiceItems/
 │   │   ├── Services/
 │   │   │   └── Schemas/
 │   │   │       └── ServiceForm.php
+│   │   ├── SocialLinks/
 │   │   ├── Testimonials/
-│   │   └── Users/
-│   │       ├── Schemas/
-│   │       │   └── UserForm.php
-│   │       └── Tables/
-│   │           └── UsersTable.php
+│   │   ├── Users/
+│   │   │   ├── Schemas/
+│   │   │   │   └── UserForm.php
+│   │   │   └── Tables/
+│   │   │       └── UsersTable.php
+│   │   └── Videos/
 │   └── Resources/Users/UserResource.php
 ├── Http/
 │   ├── Controllers/
@@ -70,13 +78,16 @@ app/
 │   │   ├── CabinetController.php
 │   │   ├── HomeController.php
 │   │   ├── PortfolioController.php
-│   │   └── ServiceController.php
+│   │   ├── ServiceController.php
+│   │   └── VideoController.php
 │   └── Middleware/
-├── Models/                     # Eloquent модели (13 шт.)
+├── Models/                     # Eloquent модели (17 шт.)
 │   ├── Album.php
 │   ├── Category.php
+│   ├── FaqItem.php
 │   ├── Inquiry.php
 │   ├── Media.php
+│   ├── NotificationSetting.php
 │   ├── Page.php
 │   ├── Photo.php
 │   ├── Post.php
@@ -84,8 +95,10 @@ app/
 │   ├── Role.php
 │   ├── Service.php
 │   ├── ServiceItem.php
+│   ├── SocialLink.php
 │   ├── Testimonial.php
-│   └── User.php
+│   ├── User.php
+│   └── Video.php
 ├── Observers/
 │   ├── InquiryObserver.php       # Диспатч SendInquiryNotifications в очередь
 │   ├── MediaObserver.php         # Авто-метаданные + WebP превью
@@ -106,7 +119,14 @@ resources/views/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
 │   ├── header.blade.php        # Шапка (меню, auth-условные ссылки, бургер)
-│   └── footer.blade.php        # Подвал (контакты, политика)
+│   ├── footer.blade.php        # Подвал (контакты, политика)
+│   ├── inquiry-form.blade.php  # Форма заявки
+│   ├── inquiry-modal.blade.php # Модальное окно заявки
+│   ├── share-button.blade.php  # Кнопка шаринга
+│   ├── social-links.blade.php  # Иконки соцсетей
+│   └── videos.blade.php        # Блок видео
+├── emails/
+│   └── new-inquiry.blade.php   # Шаблон письма о новой заявке
 ├── home.blade.php              # Главная (hero, услуги, портфолио, отзывы, блог, форма)
 ├── blog/
 │   ├── index.blade.php         # Список статей (сетка 2 колонки, сайдбар, пагинация)
@@ -117,6 +137,8 @@ resources/views/
 ├── services/
 │   ├── index.blade.php         # Услуги по категориям (блоки с items, CTA)
 │   └── show.blade.php          # Детальная (items, альбомы-примеры, форма)
+├── video/
+│   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
 ├── cabinet/
 │   └── index.blade.php         # Личный кабинет (заглушка)
 └── auth/
@@ -134,6 +156,7 @@ resources/views/
 | GET | `/portfolio/{slug}` | `PortfolioController@show` | — |
 | GET | `/blog` | `BlogController@index` | — |
 | GET | `/blog/{slug}` | `BlogController@show` | — |
+| GET | `/video` | `VideoController@index` | — |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
@@ -156,6 +179,9 @@ resources/views/
 - Для администратора: + Админка (/admin)
 - Бургер-меню на мобильных (vanilla JS)
 - Передача данных: `ViewComposerServiceProvider` (View::share) для всех views, использующих layout `layouts.site`
+  - `menuItems` — пункты меню из страниц
+  - `socialLinks` — активные ссылки на соцсети
+  - `serviceList` — опубликованные услуги (для формы заявки)
 
 ## Action-классы (`app/Actions/`)
 
@@ -197,6 +223,7 @@ resources/views/
 
 Дополнительные RelationManagers:
 - `PhotosRelationManager` — сетка фото, перетаскивание, «Сделать обложкой»
+- `VideosRelationManager` — управление видео в альбоме
 
 ### Auto-slug на формах
 
@@ -275,7 +302,7 @@ storage/app/public/
 
 ## База данных
 
-См. `database.md` — 16 бизнес-таблиц + 3 pivot-таблицы + служебные.
+См. `database.md` — 18 бизнес-таблиц + 7 pivot-таблиц + служебные.
 
 ### Пivot-таблицы
 - `service_service_item` — услуги ↔ пункты (с полями `is_included`, `sort_order`)
@@ -303,7 +330,7 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - `PageContentService` с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 81 тест, 144 утверждения
+- 189 тестов, 328 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ## Ключевые решения

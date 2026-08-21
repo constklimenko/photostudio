@@ -794,15 +794,13 @@ email VARCHAR(255) NULL
 
 message TEXT NULL
 
+notification_error TEXT NULL
+
 agreed_to_terms BOOLEAN DEFAULT FALSE
 
 shooting_date DATE NULL
 
 project_id BIGINT NULL
-
-agreed_to_terms BOOLEAN DEFAULT FALSE
-
-notification_error TEXT NULL
 
 status ENUM(
     'new',
@@ -909,6 +907,8 @@ INDEX(sort_order)
 ```sql
 id BIGINT PRIMARY KEY
 
+title VARCHAR(255) NULL
+
 email_enabled BOOLEAN DEFAULT TRUE
 
 email_recipients TEXT NULL
@@ -964,7 +964,7 @@ name VARCHAR(255)
 
 icon VARCHAR(100)
 
-url VARCHAR(1000)
+url VARCHAR(255)
 
 sort_order INT DEFAULT 0
 
@@ -974,7 +974,7 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
-Поддерживаемые иконки: `instagram`, `telegram`, `whatsapp`, `vkontakte`, `youtube`, `viber`, `odnoklassniki`, `dzen`, `rutube`.
+Поддерживаемые иконки: `instagram`, `telegram`, `whatsapp`, `vk`, `youtube`, `viber`.
 
 Indexes:
 

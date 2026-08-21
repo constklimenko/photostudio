@@ -155,7 +155,7 @@ class HomeControllerTest extends TestCase
             'agreed_to_terms' => true,
         ]);
 
-        $response->assertRedirect('/#inquiry-form');
+        $response->assertRedirect('/');
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('inquiries', [

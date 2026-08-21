@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-21 — Аудит и исправление architecture.md
+
+### Исправления
+- Стек: PHP 8.4.22 → 8.4.24
+- Структура `app/`: добавлены `VideoController`, `Controller`, директории Filament (FaqItems, NotificationSettings, SocialLinks, Videos)
+- Модели: 13 → 17 (добавлены FaqItem, NotificationSetting, SocialLink, Video)
+- Blade-шаблоны: добавлены `video/`, `emails/`, компоненты (inquiry-form, inquiry-modal, share-button, social-links, videos)
+- Маршруты: добавлен `GET /video`
+- Pivot-таблицы: добавлены album_video, service_video, post_video
+- Тесты: 81/144 → 189/328
+- Filament Resources: добавлен `VideosRelationManager`
+- ViewComposerServiceProvider: добавлено описание `socialLinks` и `serviceList`
+- БД: 16 бизнес-таблиц + 3 pivot → 18 бизнес-таблиц + 7 pivot
+
+## 2026-08-21 — Аудит и исправление database.md
+
+### Исправления
+- `inquiries`: убран дубль `agreed_to_terms`, исправлен порядок колонок согласно миграциям
+- `social_links`: `url` исправлен с VARCHAR(1000) на VARCHAR(255) (соответствует миграции); список иконок исправлен на 6 актуальных (instagram, telegram, whatsapp, vk, youtube, viber)
+- `notification_settings`: добавлено отсутствующее поле `title VARCHAR(255) NULL`
+
 ## 2026-08-18 — Перевод элементов интерфейса админки на русский язык
 
 ### Заявки (Inquiries)
