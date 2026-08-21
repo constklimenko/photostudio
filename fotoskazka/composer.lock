@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a6ff4bab7189932578985d021702df26",
+    "content-hash": "41d66148b23d0d57ff32d5dd0fdfc5ee",
     "packages": [
         {
             "name": "blade-ui-kit/blade-heroicons",
@@ -1959,6 +1959,122 @@
                 }
             ],
             "time": "2026-06-12T21:33:43+00:00"
+        },
+        {
+            "name": "impressiveweb/yandex-disk",
+            "version": "1.0.6",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pavel-macovschi/yandex-disk.git",
+                "reference": "0ad7310df490857c53bafc55742df9c44e351e9f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pavel-macovschi/yandex-disk/zipball/0ad7310df490857c53bafc55742df9c44e351e9f",
+                "reference": "0ad7310df490857c53bafc55742df9c44e351e9f",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "2.0.x-dev",
+                "phpunit/phpunit": "*",
+                "squizlabs/php_codesniffer": "4.0.x-dev",
+                "symfony/var-dumper": "7.1.x-dev"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ImpressiveWeb\\YandexDisk\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Pavel Macovschi",
+                    "email": "pavel.macovschi@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Simple implementation of Yandex Disk API",
+            "homepage": "https://github.com/pavel-macovschi/yandex-disk-api",
+            "keywords": [
+                "api",
+                "impressiveweb",
+                "yandex",
+                "yandex cloud",
+                "yandex disk",
+                "yandex disk api"
+            ],
+            "support": {
+                "issues": "https://github.com/pavel-macovschi/yandex-disk/issues",
+                "source": "https://github.com/pavel-macovschi/yandex-disk/tree/1.0.6"
+            },
+            "time": "2024-04-16T10:55:13+00:00"
+        },
+        {
+            "name": "impressiveweb/yandex-disk-flysystem",
+            "version": "1.0.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pavel-macovschi/yandex-disk-flysystem.git",
+                "reference": "e0c3ea4df41e9017b3cd9139b1def30c3b72393c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pavel-macovschi/yandex-disk-flysystem/zipball/e0c3ea4df41e9017b3cd9139b1def30c3b72393c",
+                "reference": "e0c3ea4df41e9017b3cd9139b1def30c3b72393c",
+                "shasum": ""
+            },
+            "require": {
+                "impressiveweb/yandex-disk": "^1.0",
+                "league/flysystem": "^3.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "2.0.x-dev",
+                "phpunit/phpunit": "*",
+                "squizlabs/php_codesniffer": "4.0.x-dev",
+                "symfony/var-dumper": "7.1.x-dev"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ImpressiveWeb\\Flysystem\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Pavel Macovschi",
+                    "email": "pavel.macovschi@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Flysystem adapter for Yandex Disk API",
+            "homepage": "https://github.com/pavel-macovschi/yandex-disk-flysystem",
+            "keywords": [
+                "Flysystem",
+                "cloud filesystem",
+                "filesystem",
+                "flysystem adapter",
+                "impressiveweb",
+                "yandex disk flysystem adapter"
+            ],
+            "support": {
+                "issues": "https://github.com/pavel-macovschi/yandex-disk-flysystem/issues",
+                "source": "https://github.com/pavel-macovschi/yandex-disk-flysystem/tree/1.0.4"
+            },
+            "time": "2024-04-16T10:07:32+00:00"
         },
         {
             "name": "kirschbaum-development/eloquent-power-joins",
@@ -10616,12 +10732,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.3"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.2.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }
