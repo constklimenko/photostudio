@@ -330,7 +330,7 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - `PageContentService` с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 189 тестов, 328 утверждений
+- 306 тестов, 478 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ## Ключевые решения

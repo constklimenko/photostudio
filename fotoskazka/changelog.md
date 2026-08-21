@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-08-21 — Тесты Filament ресурсов
+
+### Добавлено
+- 117 тестов для Filament админ-панели (14 ресурсов)
+- `tests/Feature/Filament/` — тесты доступности страниц (list/create/edit), CRUD-операций через модели, отображения данных в таблицах
+- `database/factories/FaqItemFactory.php`, `database/factories/SocialLinkFactory.php` — фабрики для FaqItem и SocialLink
+- Трейт `HasFactory` добавлен в модели `FaqItem` и `SocialLink`
+
+### Исправления
+- `HomeControllerTest::test_store_inquiry_creates_inquiry` — исправлен `assertRedirect` для соответствия поведению контроллера
+- Тесты уникальности slug/email переписаны для совместимости с SQLite in-memory
+
+### Статистика
+- Тесты: 189 → 306 ( increase +117)
+- Assertion: 328 → 478 ( increase +150)
+
 ## 2026-08-21 — Аудит и исправление architecture.md
 
 ### Исправления
