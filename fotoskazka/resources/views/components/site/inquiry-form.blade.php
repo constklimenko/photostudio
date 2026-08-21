@@ -32,7 +32,7 @@
 
     <div>
         <input type="date" name="shooting_date" id="shooting_date" min="{{ date('Y-m-d') }}"
-               class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition">
+               class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition" style="color-scheme: dark">
         @error('shooting_date') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
     </div>
 
@@ -57,7 +57,7 @@
         <input type="checkbox" name="agreed_to_terms" id="agreed_to_terms" required
                class="mt-1 rounded border-[#2a2a2a] bg-transparent text-[#d4af37] focus:ring-[#d4af37]">
         <label for="agreed_to_terms" class="text-sm text-gray-500">
-            Согласен на обработку персональных данных
+            Соглашаюсь на обработку персональных данных
             @error('agreed_to_terms') <span class="text-red-400">{{ $message }}</span> @enderror
         </label>
     </div>
