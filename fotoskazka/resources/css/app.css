@@ -1,0 +1,224 @@
+@import 'tailwindcss';
+
+@source '../../app';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views';
+
+@theme {
+    --font-sans: 'Ubuntu', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading: 'Forum', serif;
+    --color-gold: #d4af37;
+    --color-gold-hover: #c5a028;
+}
+
+/* Dark theme base */
+body {
+    background-color: #0a0a0a;
+    color: #a8a8a0;
+}
+
+/* Card / surface backgrounds */
+.bg-white {
+    background-color: #1a1a1a;
+}
+
+header.sticky {
+    background-color: color-mix(in srgb, #1a1a1a 95%, transparent);
+    border-bottom-color: #2a2a2a !important;
+}
+
+.mobile-menu {
+    border-top-color: #2a2a2a;
+}
+
+header .border-b {
+    border-bottom-color: #2a2a2a;
+}
+
+/* Section backgrounds */
+.bg-gray-50 {
+    background-color: #111111;
+}
+
+/* Card borders */
+.border-gray-100 {
+    border-color: #2a2a2a !important;
+}
+
+/* Text colors */
+.text-gray-900 {
+    color: #f5f5f0;
+}
+
+.text-gray-600 {
+    color: #a8a8a0;
+}
+
+.text-gray-500 {
+    color: #888880;
+}
+
+.text-gray-400 {
+    color: #666660;
+}
+
+.text-amber-600,
+.hover\:text-amber-600:hover {
+    color: #d4af37;
+}
+
+.hover\:text-amber-700:hover {
+    color: #c5a028;
+}
+
+.group-hover\:text-amber-600 {
+    color: #d4af37;
+}
+
+/* Accent backgrounds */
+.bg-amber-600,
+.hover\:bg-amber-700:hover {
+    background-color: #d4af37;
+}
+
+/* Gold hover buttons */
+button:hover .hover\:bg-amber-700,
+a:hover .hover\:bg-amber-700 {
+    background-color: #c5a028;
+}
+
+/* Focus / ring overrides */
+.ring-amber-500,
+.focus\:ring-amber-500:focus {
+    --tw-ring-color: #d4af37;
+}
+
+.focus\:border-amber-500:focus {
+    border-color: #d4af37;
+}
+
+.border-amber-500 {
+    border-color: #d4af37;
+}
+
+/* Footer dark fix */
+footer.bg-gray-900 {
+    background-color: #111111;
+}
+
+footer .text-gray-300 {
+    color: #c8c8c0;
+}
+
+footer .text-gray-400 {
+    color: #888880;
+}
+
+footer .text-gray-500 {
+    color: #666660;
+}
+
+footer .border-gray-800 {
+    border-color: #2a2a2a;
+}
+
+/* Portfolio index hero section */
+section.bg-gray-900 {
+    background-color: #1a1a1a;
+}
+
+/* Mobile menu hover fix */
+.hover\:bg-gray-50:hover {
+    background-color: #2a2a2a;
+}
+
+/* Видео-слайдер (slick) */
+.video-slider {
+    padding-bottom: 1rem;
+}
+
+.video-slider .slick-list {
+    margin: 0 -12px;
+}
+
+.video-slider .slick-slide {
+    padding: 0 12px;
+}
+
+.video-slider .slick-prev,
+.video-slider .slick-next {
+    width: 40px;
+    height: 40px;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.video-slider .slick-prev:hover,
+.video-slider .slick-next:hover {
+    background: #2a2a2a;
+}
+
+.video-slider .slick-prev {
+    left: -20px;
+}
+
+.video-slider .slick-next {
+    right: -20px;
+}
+
+.video-slider .slick-prev::before,
+.video-slider .slick-next::before {
+    color: #d4af37;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 1;
+}
+
+/* Hero — полноэкранное фото + overlay */
+#hero-block img {
+    animation: heroZoom 12s ease-in-out infinite alternate;
+}
+
+@keyframes heroZoom {
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
+}
+
+/* Параллакс-сетка (альтернативный hero, закомментирован)
+ * Включить: раскомментировать CSS + вернуть старый шаблон hero в home.blade.php
+ *
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0.5;
+}
+
+.hero-col {
+    flex: 0 0 auto;
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.hero-col-center {
+    margin-top: -4rem;
+}
+
+.hero-col img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    object-fit: cover;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+*/
