@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Filament;
 
-use App\Models\Service;
 use App\Models\Role;
+use App\Models\Service;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;

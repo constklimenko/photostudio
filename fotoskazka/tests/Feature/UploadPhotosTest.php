@@ -25,6 +25,7 @@ class UploadPhotosTest extends TestCase
         $this->seed(RoleSeeder::class);
 
         Storage::fake('public');
+        Storage::fake('thumbnails');
 
         $this->admin = User::factory()->create();
         $this->admin->roles()->attach(Role::where('slug', 'admin')->first());

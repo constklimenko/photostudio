@@ -11,6 +11,8 @@ class MediaForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $defaultDisk = config('filesystems.default_media_disk', 'public');
+
         return $schema
             ->components([
                 Grid::make(2)
@@ -21,7 +23,7 @@ class MediaForm
                             ->maxLength(255),
                         FileUpload::make('file_path')
                             ->required()
-                            ->disk('public')
+                            ->disk($defaultDisk)
                             ->visibility('public')
                             ->image()
                             ->maxSize(51200),

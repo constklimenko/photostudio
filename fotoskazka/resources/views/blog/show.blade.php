@@ -22,7 +22,7 @@
 
                 @if ($post->cover)
                     <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-8 shadow-lg shadow-black/30">
-                        <img src="{{ Storage::url($post->cover->file_path) }}"
+                        <img src="{{ $post->cover->getUrl() }}"
                              alt="{{ $post->title }}"
                              class="w-full h-full object-cover">
                     </div>
@@ -45,21 +45,21 @@
                                 <div class="snap-start shrink-0 w-72">
                                     <a href="{{ route('portfolio.show', $album->slug) }}"
                                        class="block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition">
-                                        @if ($album->cover)
-                                            <div class="aspect-[4/3] bg-gray-100">
-                                                <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
-                                                     alt="{{ $album->title }}"
-                                                     class="w-full h-full object-cover"
-                                                     loading="lazy">
-                                            </div>
-                                        @elseif ($album->photos->isNotEmpty())
-                                            @php $firstPhoto = $album->photos->sortBy('sort_order')->first(); @endphp
-                                            <div class="aspect-[4/3] bg-gray-100">
-                                                <img src="{{ Storage::url($firstPhoto->media->thumbnail_path ?? $firstPhoto->media->file_path) }}"
-                                                     alt="{{ $album->title }}"
-                                                     class="w-full h-full object-cover"
-                                                     loading="lazy">
-                                            </div>
+@if ($album->cover)
+                                             <div class="aspect-[4/3] bg-gray-100">
+                                                 <img src="{{ $album->cover->getThumbnailUrl() }}"
+                                                      alt="{{ $album->title }}"
+                                                      class="w-full h-full object-cover"
+                                                      loading="lazy">
+                                             </div>
+@elseif ($album->photos->isNotEmpty())
+                                             @php $firstPhoto = $album->photos->sortBy('sort_order')->first(); @endphp
+                                             <div class="aspect-[4/3] bg-gray-100">
+                                                 <img src="{{ $firstPhoto->media->getThumbnailUrl() }}"
+                                                      alt="{{ $album->title }}"
+                                                      class="w-full h-full object-cover"
+                                                      loading="lazy">
+                                             </div>
                                         @elseif ($album->videos->isNotEmpty())
                                             @php $firstVideo = $album->videos->first(); @endphp
                                             <div class="aspect-[4/3] bg-gray-100 relative">
@@ -147,11 +147,11 @@
                             <ul class="space-y-3">
                                 @foreach ($recentPosts as $recent)
                                     <li class="flex gap-3">
-                                        @if ($recent->cover)
-                                            <img src="{{ Storage::url($recent->cover->thumbnail_path ?? $recent->cover->file_path) }}"
-                                                 alt=""
-                                                 class="w-14 h-14 rounded-lg object-cover shrink-0"
-                                                 loading="lazy">
+@if ($recent->cover)
+                                             <img src="{{ $recent->cover->getThumbnailUrl() }}"
+                                                  alt=""
+                                                  class="w-14 h-14 rounded-lg object-cover shrink-0"
+                                                  loading="lazy">
                                         @else
                                             <div class="w-14 h-14 rounded-lg bg-[#1a1a1a] shrink-0"></div>
                                         @endif

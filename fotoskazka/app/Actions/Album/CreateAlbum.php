@@ -5,13 +5,16 @@ namespace App\Actions\Album;
 use App\Models\Album;
 use App\Models\Media;
 use App\Models\Photo;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
 class CreateAlbum
 {
     public function execute(array $data): Album
     {
-        return DB::transaction(function () use ($data) {
+        $defaultDisk = Config::get('filesystems.default_media_disk', 'public');
+
+        return DB::transaction(function () use ($data, $defaultDisk) {
             $album = Album::create([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
@@ -23,7 +26,7 @@ class CreateAlbum
             if (! empty($data['cover'])) {
                 $coverMedia = Media::create([
                     'file_path' => $data['cover'],
-                    'disk' => 'public',
+                    'disk' => $defaultDisk,
                     'collection' => 'covers',
                     'title' => $album->title,
                 ]);
@@ -33,7 +36,7 @@ class CreateAlbum
             foreach ($data['photos'] as $index => $photoPath) {
                 $media = Media::create([
                     'file_path' => $photoPath,
-                    'disk' => 'public',
+                    'disk' => $defaultDisk,
                     'collection' => 'gallery',
                     'title' => $album->title.' — '.($index + 1),
                 ]);

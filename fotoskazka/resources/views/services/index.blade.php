@@ -22,13 +22,13 @@
 
                 @foreach ($category->services as $service)
                     <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        @if ($service->cover)
-                            <div class="lg:w-5/12 shrink-0">
-                                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                     alt="{{ $service->title }}"
-                                     class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
-                                     loading="lazy">
-                            </div>
+@if ($service->cover)
+                             <div class="lg:w-5/12 shrink-0">
+                                 <img src="{{ $service->cover->getThumbnailUrl() }}"
+                                      alt="{{ $service->title }}"
+                                      class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
+                                      loading="lazy">
+                             </div>
                         @endif
 
                         <div class="flex-1 flex flex-col justify-center">
@@ -82,13 +82,13 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @foreach ($servicesWithoutCategory as $service)
                 <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                    @if ($service->cover)
-                        <div class="lg:w-5/12 shrink-0">
-                            <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                 alt="{{ $service->title }}"
-                                 class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
-                                 loading="lazy">
-                        </div>
+@if ($service->cover)
+                         <div class="lg:w-5/12 shrink-0">
+                             <img src="{{ $service->cover->getThumbnailUrl() }}"
+                                  alt="{{ $service->title }}"
+                                  class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
+                                  loading="lazy">
+                         </div>
                     @endif
 
                     <div class="flex-1 flex flex-col justify-center">

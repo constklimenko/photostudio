@@ -19,7 +19,7 @@
 
         @if ($service->cover)
             <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10 shadow-lg shadow-black/30">
-                <img src="{{ Storage::url($service->cover->file_path) }}"
+                <img src="{{ $service->cover->getUrl() }}"
                      alt="{{ $service->title }}"
                      class="w-full h-full object-cover">
             </div>
@@ -72,11 +72,11 @@
                     @foreach ($service->albums as $album)
                         <a href="{{ route('portfolio.show', $album->slug) }}"
                            class="group block rounded-xl overflow-hidden bg-[#1a1a1a] shadow-lg shadow-black/30 hover:bg-[#242424] transition">
-                            @if ($album->cover)
-                                <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
-                                     alt="{{ $album->title }}"
-                                     class="w-full aspect-[4/3] object-cover group-hover:scale-105 transition duration-500"
-                                     loading="lazy">
+@if ($album->cover)
+                                 <img src="{{ $album->cover->getThumbnailUrl() }}"
+                                      alt="{{ $album->title }}"
+                                      class="w-full aspect-[4/3] object-cover group-hover:scale-105 transition duration-500"
+                                      loading="lazy">
                             @elseif ($album->videos->isNotEmpty())
                                 @php $firstVideo = $album->videos->first(); @endphp
                                 <div class="w-full aspect-[4/3] relative bg-[#0a0a0a]">
@@ -146,10 +146,10 @@
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                         <div class="aspect-[16/9] bg-gray-100">
-                            @if ($other->cover)
-                                <img src="{{ Storage::url($other->cover->thumbnail_path) }}"
-                                     alt="{{ $other->title }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+@if ($other->cover)
+                                 <img src="{{ $other->cover->getThumbnailUrl() }}"
+                                      alt="{{ $other->title }}"
+                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                             @endif
                         </div>
                         <div class="p-5">

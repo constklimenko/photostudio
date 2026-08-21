@@ -3,7 +3,6 @@
 namespace Tests\Unit\Models;
 
 use App\Models\Video;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VideoModelTest extends TestCase
@@ -33,7 +32,7 @@ class VideoModelTest extends TestCase
     {
         $video = new Video(['file_path' => 'videos/clip.mp4', 'url' => 'https://example.com/video']);
 
-        $this->assertEquals(Storage::url('videos/clip.mp4'), $video->embed_url);
+        $this->assertStringContainsString('/storage/videos/clip.mp4', $video->embed_url);
     }
 
     public function test_embed_url_returns_null_when_no_url_and_no_file(): void
@@ -133,7 +132,7 @@ class VideoModelTest extends TestCase
     {
         $video = new Video(['file_path' => 'videos/clip.mp4', 'url' => 'https://example.com/video']);
 
-        $this->assertEquals(Storage::url('videos/clip.mp4'), $video->source_url);
+        $this->assertStringContainsString('/storage/videos/clip.mp4', $video->source_url);
     }
 
     public function test_source_url_returns_embed_url_for_external_url(): void

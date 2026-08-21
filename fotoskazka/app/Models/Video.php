@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 
 class Video extends Model
@@ -22,10 +23,15 @@ class Video extends Model
         ];
     }
 
+    protected function getDefaultDisk(): string
+    {
+        return Config::get('filesystems.default_media_disk', 'public');
+    }
+
     public function getEmbedUrlAttribute(): ?string
     {
         if ($this->file_path) {
-            return Storage::url($this->file_path);
+            return Storage::disk($this->getDefaultDisk())->url($this->file_path);
         }
 
         if (! $this->url) {
@@ -88,7 +94,7 @@ class Video extends Model
     public function getSourceUrlAttribute(): ?string
     {
         if ($this->file_path) {
-            return Storage::url($this->file_path);
+            return Storage::disk($this->getDefaultDisk())->url($this->file_path);
         }
 
         return $this->url;

@@ -1041,29 +1041,35 @@ INDEX(type)
 
 # Storage Strategy
 
-Текущий этап:
+Текущий этап (B1 — аудит и абстракция):
 
 ```text
 Laravel Filesystem
-↓
-Local/Public Storage
+    │
+    ├── public disk (Local)          → оригиналы (Media::disk)
+    │
+    └── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
 ```
 
-MediaObserver генерирует WebP-превью (400px) в директории `thumbnails/`.
+- MediaObserver генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
+- Превью всегда пишутся на диск `thumbnails` (локальный кэш), независимо от диска оригинала.
+- `Media::getUrl()` — возвращает URL оригинала через диск из `Media::disk`.
+- `Media::getThumbnailUrl()` — возвращает URL превью через диск `thumbnails`.
+- `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
+- Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.
+- Все обращения к файлам в Blade — через аксессоры моделей (`getUrl()`, `getThumbnailUrl()`, `source_url`).
 
-Будущий этап:
+Будущий этап (B2 — Яндекс.Диск):
 
 ```text
 Laravel Filesystem
-↓
-Yandex Disk API (оригиналы)
-↓
-Local Thumbnail Cache (превью)
+    │
+    ├── Yandex Disk (оригиналы)      → Media::disk = 'yandex'
+    │
+    └── Local Thumbnail Cache        → thumbnails disk (превью)
 ```
 
-Все обращения к файлам должны происходить через Laravel Storage API.
-
----
+Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 
 # Planned Future Extensions
 

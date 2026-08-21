@@ -23,13 +23,25 @@ class MediaObserver
             return;
         }
 
-        $fullPath = Storage::disk($disk)->path($path);
+        $media->file_size = Storage::disk($disk)->size($path);
 
-        $media->mime_type = mime_content_type($fullPath) ?: null;
-        $media->file_size = filesize($fullPath) ?: null;
+        $stream = Storage::disk($disk)->readStream($path);
+        if (! $stream) {
+            return;
+        }
+
+        $meta = stream_get_meta_data($stream);
+        $tempPath = $meta['uri'] ?? null;
+        fclose($stream);
+
+        if (! $tempPath) {
+            return;
+        }
+
+        $media->mime_type = mime_content_type($tempPath) ?: null;
 
         if (str_starts_with($media->mime_type ?? '', 'image/')) {
-            $imageInfo = getimagesize($fullPath);
+            $imageInfo = getimagesize($tempPath);
             if ($imageInfo) {
                 $media->width = $imageInfo[0];
                 $media->height = $imageInfo[1];
@@ -46,23 +58,27 @@ class MediaObserver
             return;
         }
 
-        $fullPath = Storage::disk($disk)->path($path);
-
         if (! str_starts_with($media->mime_type ?? '', 'image/')) {
             return;
         }
 
-        $info = pathinfo($path);
-        $thumbDir = 'thumbnails/'.($info['dirname'] ?? '');
-        $thumbPath = $thumbDir.'/'.$info['filename'].'_thumb.webp';
-
-        if (! Storage::disk($disk)->exists($thumbDir)) {
-            Storage::disk($disk)->makeDirectory($thumbDir);
+        $stream = Storage::disk($disk)->readStream($path);
+        if (! $stream) {
+            return;
         }
 
-        $thumbFullPath = Storage::disk($disk)->path($thumbPath);
+        $meta = stream_get_meta_data($stream);
+        $tempPath = $meta['uri'] ?? null;
 
-        $imageInfo = getimagesize($fullPath);
+        if (! $tempPath) {
+            fclose($stream);
+
+            return;
+        }
+
+        $imageInfo = getimagesize($tempPath);
+        fclose($stream);
+
         if (! $imageInfo) {
             return;
         }
@@ -79,10 +95,10 @@ class MediaObserver
         }
 
         $srcImage = match ($media->mime_type) {
-            'image/jpeg', 'image/jpg' => imagecreatefromjpeg($fullPath),
-            'image/png' => imagecreatefrompng($fullPath),
-            'image/webp' => imagecreatefromwebp($fullPath),
-            'image/gif' => imagecreatefromgif($fullPath),
+            'image/jpeg', 'image/jpg' => imagecreatefromjpeg($tempPath),
+            'image/png' => imagecreatefrompng($tempPath),
+            'image/webp' => imagecreatefromwebp($tempPath),
+            'image/gif' => imagecreatefromgif($tempPath),
             default => null,
         };
 
@@ -93,9 +109,22 @@ class MediaObserver
         $thumbImage = imagecreatetruecolor($newWidth, $newHeight);
         imagecopyresampled($thumbImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
-        imagewebp($thumbImage, $thumbFullPath, 80);
+        $info = pathinfo($path);
+        $thumbDir = ($info['dirname'] ?? '') !== '.' ? ($info['dirname'] ?? '') : '';
+        // Avoid duplicating 'thumbnails' directory since we're already on the thumbnails disk
+        $thumbDir = ltrim($thumbDir, 'thumbnails/');
+        $thumbDir = ltrim($thumbDir, '/');
+        $thumbFileName = $info['filename'].'_thumb.webp';
+        $thumbPath = $thumbDir ? $thumbDir.'/'.$thumbFileName : $thumbFileName;
+
+        $thumbStream = fopen('php://temp', 'w+');
+        imagewebp($thumbImage, $thumbStream, 80);
         imagedestroy($srcImage);
         imagedestroy($thumbImage);
+
+        rewind($thumbStream);
+        Storage::disk('thumbnails')->put($thumbPath, $thumbStream);
+        fclose($thumbStream);
 
         $media->thumbnail_path = $thumbPath;
     }

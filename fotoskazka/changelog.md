@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-08-21 — Команда перегенерации превью
+
+### Добавлено
+- **app/Console/Commands/MediaRegenerateThumbnails.php**: artisan-команда `media:regenerate-thumbnails` для массовой регенерации WebP-превью
+  - Опции: `--dry-run`, `--force`, `--limit=`, `--id=`
+  - Обрабатывает записи без превью, с битыми путями (`thumbnails/thumbnails/`, `/./`) и с отсутствующим файлом на диске (путь в БД корректный, файл пересоздаётся из оригинала)
+  - `--dry-run` показывает причину обработки (`no thumbnail`, `broken path`, `file missing`)
+  - Читает оригиналы через стримы с диска `Media::disk`, пишет превью на диск `thumbnails`
+- **README.md**: документация команды `media:regenerate-thumbnails`
+
+### Исправлено
+- Регенерированы превью для 181 существующей записи Media (исправлены пути вида `thumbnails/thumbnails/./...`)
+- Досозданы отсутствующие файлы превью для записей, добавленных после последней генерации
+
+### Статистика
+- Тесты: 306 проходят
+- Assertions: 478
+- Pint: clean
+
+## 2026-08-21 — Этап B1: аудит и абстракция файлового хранения
+
+### Изменено
+- **config/filesystems.php**: добавлен диск `thumbnails` для локального кэша превью; добавлен конфиг `default_media_disk` (env `MEDIA_DISK`, по умолчанию `public`)
+- **app/Models/Media.php**: добавлены аксессоры `getUrl()` (оригинал через Media::disk) и `getThumbnailUrl()` (превью через диск thumbnails)
+- **app/Observers/MediaObserver.php**: переписан на стримы (`readStream`/`put`) без `path()`; превью всегда пишутся на диск `thumbnails`
+- **app/Filament/Resources/Media/Schemas/MediaForm.php**: FileUpload использует `config('filesystems.default_media_disk')`
+- **app/Actions/Album/CreateAlbum.php**: создание Media использует конфигурируемый диск
+- **app/Filament/Resources/Albums/Pages/UploadPhotos.php**: FileUpload для обложки и фото использует конфигурируемый диск
+- **app/Filament/Resources/Albums/Pages/EditAlbum.php**: экшен дозагрузки фото использует конфигурируемый диск
+- **app/Filament/Resources/Albums/RelationManagers/PhotosRelationManager.php**: ImageColumn для превью использует диск `thumbnails`
+- **app/Models/Video.php**: `source_url` и `embed_url` используют конфигурируемый диск через `getDefaultDisk()`
+- **Все Blade-шаблоны** (home, services, portfolio, blog, video): заменены прямые `Storage::url()` на вызовы аксессоров моделей (`$media->getUrl()`, `$media->getThumbnailUrl()`, `$video->source_url`)
+
+### Исправлено
+- **tests/Unit/Observers/MediaObserverTest.php**: тесты превью теперь проверяют диск `thumbnails`
+- **tests/Feature/UploadPhotosTest.php**: добавлен fake для диска `thumbnails`
+- **tests/Unit/Models/VideoModelTest.php**: проверки URL обновлены на проверку наличия пути в URL
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: проверка загруженного видео через `$video->source_url`
+
+### Статистика
+- Тесты: 306 проходят
+- Assertions: 478
+- Pint: clean
+
 ## 2026-08-21 — Тесты Filament ресурсов
 
 ### Добавлено

@@ -285,20 +285,24 @@ Tailwind v4: `@source`-директивы вместо `safelist` для ска�
 
 ```
 storage/app/public/
-├── images/          # Оригиналы изображений
-├── thumbnails/      # WebP превью (400px)
+├── images/          # Оригиналы изображений (disk: public)
+├── thumbnails/      # WebP превью (400px) (disk: thumbnails)
 └── ...              # Прочие файлы
 ```
 
 - Laravel Filesystem
-- Диск `public` (локальный)
-- MediaObserver генерирует превью в `thumbnails/`
+- Диск `public` (локальный) — для оригиналов
+- Диск `thumbnails` (локальный) — для превью (WebP, 400px)
+- MediaObserver генерирует превью на диске `thumbnails` через стримы (без path())
+- Media::getUrl() — URL оригинала через диск из Media::disk
+- Media::getThumbnailUrl() — URL превью через диск `thumbnails`
+- Video::source_url / embed_url — через конфиг `filesystems.default_media_disk`
 - Storage symlink: `public/storage -> storage/app/public`
 
 ### Будущее
-- Перенос оригиналов на Яндекс.Диск
-- Локальный кэш превью
-- Абстракция через драйверы Laravel Filesystem
+- Перенос оригиналов на Яндекс.Диск (новый диск)
+- Локальный кэш превью остаётся на диске `thumbnails`
+- Абстракция через драйверы Laravel Filesystem — бизнес-логика не привязана к конкретному диску
 
 ## База данных
 

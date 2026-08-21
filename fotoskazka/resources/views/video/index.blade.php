@@ -31,10 +31,10 @@
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                             <h3 class="font-heading text-xl font-normal tracking-wide text-white mb-4">{{ $video->title }}</h3>
                             <div class="aspect-video rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-                                @if ($video->is_upload)
-                                    <video class="w-full h-full" controls playsinline preload="metadata">
-                                        <source src="{{ Storage::url($video->file_path) }}" type="video/mp4">
-                                    </video>
+@if ($video->is_upload)
+                                     <video class="w-full h-full" controls playsinline preload="metadata">
+                                         <source src="{{ $video->source_url }}" type="video/mp4">
+                                     </video>
                                 @else
                                     <iframe src="{{ $video->embed_url }}"
                                             title="{{ $video->title }}"
@@ -61,10 +61,10 @@
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                             <h3 class="font-heading text-base font-normal tracking-wide text-white mb-3 text-center truncate">{{ $video->title }}</h3>
                             <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-                                @if ($video->is_upload)
-                                    <video class="w-full h-full object-cover" controls playsinline preload="metadata">
-                                        <source src="{{ Storage::url($video->file_path) }}" type="video/mp4">
-                                    </video>
+@if ($video->is_upload)
+                                     <video class="w-full h-full object-cover" controls playsinline preload="metadata">
+                                         <source src="{{ $video->source_url }}" type="video/mp4">
+                                     </video>
                                 @else
                                     <iframe src="{{ $video->embed_url }}"
                                             title="{{ $video->title }}"

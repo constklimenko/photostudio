@@ -19,6 +19,7 @@ class MediaObserverTest extends TestCase
         parent::setUp();
 
         Storage::fake('public');
+        Storage::fake('thumbnails');
     }
 
     public function test_fills_metadata_for_image(): void
@@ -59,7 +60,7 @@ class MediaObserverTest extends TestCase
 
         $this->assertNotNull($media->thumbnail_path);
         $this->assertStringEndsWith('.webp', $media->thumbnail_path);
-        Storage::disk('public')->assertExists($media->thumbnail_path);
+        Storage::disk('thumbnails')->assertExists($media->thumbnail_path);
     }
 
     public function test_thumbnail_is_max_400px_for_landscape(): void
@@ -74,7 +75,7 @@ class MediaObserverTest extends TestCase
 
         $media->refresh();
 
-        $thumbPath = Storage::disk('public')->path($media->thumbnail_path);
+        $thumbPath = Storage::disk('thumbnails')->path($media->thumbnail_path);
         [$width, $height] = getimagesize($thumbPath);
 
         $this->assertLessThanOrEqual(400, $width);
@@ -93,7 +94,7 @@ class MediaObserverTest extends TestCase
 
         $media->refresh();
 
-        $thumbPath = Storage::disk('public')->path($media->thumbnail_path);
+        $thumbPath = Storage::disk('thumbnails')->path($media->thumbnail_path);
         [$width, $height] = getimagesize($thumbPath);
 
         $this->assertLessThanOrEqual(400, $width);

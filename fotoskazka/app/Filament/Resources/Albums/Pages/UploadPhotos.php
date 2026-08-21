@@ -11,6 +11,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Pages\Page;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Config;
 
 class UploadPhotos extends Page
 {
@@ -27,6 +28,8 @@ class UploadPhotos extends Page
 
     public function form(Schema $schema): Schema
     {
+        $defaultDisk = Config::get('filesystems.default_media_disk', 'public');
+
         return $schema
             ->components([
                 Grid::make(2)
@@ -59,7 +62,7 @@ class UploadPhotos extends Page
                         FileUpload::make('cover')
                             ->label('Обложка')
                             ->image()
-                            ->disk('public')
+                            ->disk($defaultDisk)
                             ->visibility('public')
                             ->nullable(),
                     ]),
@@ -70,7 +73,7 @@ class UploadPhotos extends Page
                     ->image()
                     ->minFiles(1)
                     ->maxFiles(500)
-                    ->disk('public')
+                    ->disk($defaultDisk)
                     ->visibility('public')
                     ->panelLayout('grid')
                     ->previewable(true)

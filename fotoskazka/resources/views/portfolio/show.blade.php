@@ -25,17 +25,17 @@
             </div>
         </div>
 
-        @if ($album->photos->isNotEmpty())
+@if ($album->photos->isNotEmpty())
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="portfolioGrid">
                 @foreach ($album->photos as $photo)
-                    <a href="{{ Storage::url($photo->media->file_path) }}"
+                    <a href="{{ $photo->media->getUrl() }}"
                        class="rounded-xl overflow-hidden bg-[#1a1a1a] block cursor-pointer group lightbox-trigger shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-index="{{ $loop->index }}"
                        data-aos="{{ $loop->even ? 'flip-left' : 'flip-right' }}">
-                        <img src="{{ Storage::url($photo->media->file_path) }}"
-                             alt="{{ $photo->caption ?? $album->title }}"
-                             class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                             loading="lazy">
+                         <img src="{{ $photo->media->getUrl() }}"
+                              alt="{{ $photo->caption ?? $album->title }}"
+                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                              loading="lazy">
                     </a>
                 @endforeach
             </div>
@@ -170,13 +170,13 @@
                     <a href="{{ route('services.show', $service->slug) }}"
                        class="block bg-[#1a1a1a] rounded-xl shadow-lg shadow-black/30 hover:bg-[#242424] transition overflow-hidden"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        @if ($service->cover)
-                            <div class="aspect-[4/3] bg-gray-100">
-                                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                     alt="{{ $service->title }}"
-                                     class="w-full h-full object-cover"
-                                     loading="lazy">
-                            </div>
+@if ($service->cover)
+                             <div class="aspect-[4/3] bg-gray-100">
+                                 <img src="{{ $service->cover->getThumbnailUrl() }}"
+                                      alt="{{ $service->title }}"
+                                      class="w-full h-full object-cover"
+                                      loading="lazy">
+                             </div>
                         @endif
                         <div class="p-4 text-center">
                             <h3 class="font-heading font-semibold tracking-wide text-white hover:text-[#d4af37] transition">{{ $service->title }}</h3>
