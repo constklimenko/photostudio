@@ -29,35 +29,35 @@ class ProjectForm
                             ->preload()
                             ->searchable()
                             ->nullable()
-                            ->label('Client'),
+                            ->label('Клиент'),
                         Select::make('manager_id')
                             ->relationship('manager', 'name')
                             ->preload()
                             ->searchable()
                             ->nullable()
-                            ->label('Manager'),
+                            ->label('Менеджер'),
                         Select::make('type')
                             ->required()
                             ->options([
-                                'individual' => 'Individual',
-                                'family' => 'Family',
-                                'event' => 'Event',
-                                'wedding' => 'Wedding',
-                                'school' => 'School',
-                                'kindergarten' => 'Kindergarten',
+                                'individual' => 'Индивидуальная',
+                                'family' => 'Семейная',
+                                'event' => 'Мероприятие',
+                                'wedding' => 'Свадьба',
+                                'school' => 'Школьная',
+                                'kindergarten' => 'Детский сад',
                             ]),
                         Select::make('status')
                             ->required()
                             ->default('draft')
                             ->options([
-                                'draft' => 'Draft',
-                                'active' => 'Active',
-                                'completed' => 'Completed',
-                                'archived' => 'Archived',
+                                'draft' => 'Черновик',
+                                'active' => 'Активен',
+                                'completed' => 'Завершён',
+                                'archived' => 'В архиве',
                             ]),
                         DatePicker::make('shooting_date'),
                     ]),
-                Section::make('Description')
+                Section::make('Описание')
                     ->schema([
                         Textarea::make('description'),
                     ]),

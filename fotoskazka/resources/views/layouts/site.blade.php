@@ -21,5 +21,7 @@
     </main>
 
     <x-site.footer />
+
+    <x-site.inquiry-modal :services="$serviceList" />
 </body>
 </html>

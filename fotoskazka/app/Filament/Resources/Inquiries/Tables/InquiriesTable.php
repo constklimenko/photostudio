@@ -50,10 +50,10 @@ class InquiriesTable
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'new' => 'New',
-                        'in_progress' => 'In Progress',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
+                        'new' => 'Новая',
+                        'in_progress' => 'В обработке',
+                        'completed' => 'Завершена',
+                        'cancelled' => 'Отменена',
                     ]),
                 SelectFilter::make('service')
                     ->relationship('service', 'title')

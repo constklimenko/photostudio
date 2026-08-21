@@ -60,7 +60,7 @@ class PostForm
                             ->relationship('cover', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Cover'),
+                            ->label('Обложка'),
                         Toggle::make('is_published')
                             ->default(true),
                         DateTimePicker::make('published_at'),
@@ -89,7 +89,7 @@ class PostForm
                             ->maxLength(255),
                         Textarea::make('seo_description'),
                     ]),
-                Section::make('Content')
+                Section::make('Содержание')
                     ->schema([
                         Textarea::make('excerpt'),
                         RichEditor::make('content')

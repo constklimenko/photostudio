@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Service;
 use App\Models\SocialLink;
 use App\Services\PageContentService;
 use Illuminate\Support\Facades\View;
@@ -32,5 +33,16 @@ class ViewComposerServiceProvider extends ServiceProvider
         }
 
         View::share('socialLinks', $socialLinks);
+
+        try {
+            $serviceList = Service::query()
+                ->where('is_published', true)
+                ->orderBy('sort_order')
+                ->get();
+        } catch (\Throwable) {
+            $serviceList = collect();
+        }
+
+        View::share('serviceList', $serviceList);
     }
 }

@@ -43,19 +43,19 @@ class ProjectsTable
             ->filters([
                 SelectFilter::make('type')
                     ->options([
-                        'individual' => 'Individual',
-                        'family' => 'Family',
-                        'event' => 'Event',
-                        'wedding' => 'Wedding',
-                        'school' => 'School',
-                        'kindergarten' => 'Kindergarten',
+                        'individual' => 'Индивидуальная',
+                        'family' => 'Семейная',
+                        'event' => 'Мероприятие',
+                        'wedding' => 'Свадьба',
+                        'school' => 'Школьная',
+                        'kindergarten' => 'Детский сад',
                     ]),
                 SelectFilter::make('status')
                     ->options([
-                        'draft' => 'Draft',
-                        'active' => 'Active',
-                        'completed' => 'Completed',
-                        'archived' => 'Archived',
+                        'draft' => 'Черновик',
+                        'active' => 'Активен',
+                        'completed' => 'Завершён',
+                        'archived' => 'В архиве',
                     ]),
             ])
             ->recordActions([

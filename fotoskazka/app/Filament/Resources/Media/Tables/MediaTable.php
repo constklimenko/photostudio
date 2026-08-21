@@ -35,9 +35,9 @@ class MediaTable
             ->filters([
                 SelectFilter::make('collection')
                     ->options([
-                        'covers' => 'Covers',
-                        'gallery' => 'Gallery',
-                        'avatars' => 'Avatars',
+                        'covers' => 'Обложки',
+                        'gallery' => 'Галерея',
+                        'avatars' => 'Аватары',
                     ]),
             ])
             ->recordActions([

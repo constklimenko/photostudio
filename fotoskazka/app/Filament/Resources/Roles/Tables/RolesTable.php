@@ -28,7 +28,7 @@ class RolesTable
                     ->color(fn (bool $state): string => $state ? 'gray' : 'success'),
                 TextColumn::make('users_count')
                     ->counts('users')
-                    ->label('Users'),
+                    ->label('Пользователей'),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

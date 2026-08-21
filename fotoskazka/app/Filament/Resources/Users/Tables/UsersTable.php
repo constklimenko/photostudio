@@ -44,8 +44,8 @@ class UsersTable
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'active' => 'Active',
-                        'inactive' => 'Inactive',
+                        'active' => 'Активен',
+                        'inactive' => 'Неактивен',
                     ]),
                 SelectFilter::make('roles')
                     ->relationship('roles', 'name')

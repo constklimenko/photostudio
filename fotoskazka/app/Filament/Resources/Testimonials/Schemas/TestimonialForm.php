@@ -24,7 +24,7 @@ class TestimonialForm
                             ->relationship('photo', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Photo'),
+                            ->label('Фотография'),
                         Toggle::make('is_published')
                             ->default(true),
                         TextInput::make('sort_order')

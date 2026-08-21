@@ -59,7 +59,7 @@ class ServiceForm
                             ->relationship('cover', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Cover'),
+                            ->label('Обложка'),
                         TextInput::make('price_from')
                             ->numeric()
                             ->prefix('₽')
@@ -78,7 +78,7 @@ class ServiceForm
                             ->maxLength(255),
                         Textarea::make('seo_description'),
                     ]),
-                Section::make('Description')
+                Section::make('Описание')
                     ->schema([
                         Textarea::make('short_description'),
                         RichEditor::make('description'),

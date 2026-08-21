@@ -33,21 +33,21 @@ class InquiryForm
                             ->relationship('service', 'title')
                             ->preload()
                             ->nullable()
-                            ->label('Service'),
+                            ->label('Услуга'),
                         Select::make('user_id')
                             ->relationship('user', 'name')
                             ->preload()
                             ->searchable()
                             ->nullable()
-                            ->label('User'),
+                            ->label('Пользователь'),
                         Select::make('status')
                             ->required()
                             ->default('new')
                             ->options([
-                                'new' => 'New',
-                                'in_progress' => 'In Progress',
-                                'completed' => 'Completed',
-                                'cancelled' => 'Cancelled',
+                                'new' => 'Новая',
+                                'in_progress' => 'В обработке',
+                                'completed' => 'Завершена',
+                                'cancelled' => 'Отменена',
                             ]),
                         DatePicker::make('shooting_date'),
                     ]),
@@ -58,7 +58,7 @@ class InquiryForm
                     ->visible(fn ($livewire) => filled($livewire->record?->notification_error))
                     ->columnSpanFull(),
                 Checkbox::make('agreed_to_terms')
-                    ->label('Согласен на обработку персональных данных')
+                    ->label('Соглашаюсь на обработку персональных данных')
                     ->required()
                     ->default(false),
 
