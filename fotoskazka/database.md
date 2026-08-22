@@ -1041,29 +1041,42 @@ INDEX(type)
 
 # Storage Strategy
 
-Текущий этап:
+Актуальная схема (B2 — Яндекс.Диск подключён):
 
 ```text
 Laravel Filesystem
-↓
-Local/Public Storage
+    │
+    ├── public disk (Local)          → оригиналы по умолчанию (Media::disk = 'public')
+    │
+    ├── yandex_disk (Яндекс.Диск)    → оригиналы импорта из папок (Media::disk = 'yandex_disk')
+    │
+    ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
+    │
+    └── image_cache disk (Local)     → ленивый кэш PNG: display ≤800px / lightbox ≤1600px,
+                                       лимит размера IMAGE_CACHE_MAX_MB, вытеснение по возрасту
 ```
 
-MediaObserver генерирует WebP-превью (400px) в директории `thumbnails/`.
+- MediaProcessor генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
+  Работает с любым диском оригинала, включая удалённый Яндекс.Диск. Обработка идемпотентна:
+  повторный вызов заполняет только пустые поля и не пересоздаёт существующий thumbnail.
+- Превью всегда пишутся на диск `thumbnails` (локальный кэш), независимо от диска оригинала.
+- Путь thumbnail детерминирован: `{директория оригинала}/{имя}_thumb.webp`.
+- `Media::getUrl()` — URL оригинала через диск из `Media::disk`.
+  Для remote-дисков (конфиг `remote => true`) возвращается прокси-роут
+  `GET /media/{media}/original` — файл стримится через Laravel, публичных ссылок на Диск нет.
+- `Media::getThumbnailUrl()` — возвращает URL превью 400px через диск `thumbnails`.
+- `Media::getDisplayUrl()` / `Media::getLightboxUrl()` — прокси-роуты ленивого кэша
+  производных PNG (≤800px / ≤1600px, диск `image_cache`); скачивание оригинала —
+  `GET /media/{media}/download`.
+- `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
+- Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.
+- Все обращения к файлам в Blade — через аксессоры моделей (`getUrl()`, `getThumbnailUrl()`, `source_url`).
+- Диск `yandex_disk`: OAuth-токен и корневая директория задаются только через env
+  (`YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`). Секреты не хранятся в БД.
+- Импорт альбома из папки Яндекс.Диска создаёт Media с `disk = 'yandex_disk'`;
+  существующие записи Media не изменяются.
 
-Будущий этап:
-
-```text
-Laravel Filesystem
-↓
-Yandex Disk API (оригиналы)
-↓
-Local Thumbnail Cache (превью)
-```
-
-Все обращения к файлам должны происходить через Laravel Storage API.
-
----
+Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 
 # Planned Future Extensions
 

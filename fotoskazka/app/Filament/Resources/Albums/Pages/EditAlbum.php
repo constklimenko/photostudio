@@ -10,6 +10,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Components\Grid;
+use Illuminate\Support\Facades\Config;
 
 class EditAlbum extends EditRecord
 {
@@ -40,6 +41,8 @@ class EditAlbum extends EditRecord
 
     public function getPhotoUploadAction(): Action
     {
+        $defaultDisk = Config::get('filesystems.default_media_disk', 'public');
+
         return Action::make('uploadPhotos')
             ->label('Добавить фотографии')
             ->form([
@@ -49,7 +52,7 @@ class EditAlbum extends EditRecord
                             ->label('Фотографии')
                             ->multiple()
                             ->image()
-                            ->disk('public')
+                            ->disk($defaultDisk)
                             ->visibility('public')
                             ->panelLayout('grid')
                             ->previewable(true)
@@ -59,14 +62,14 @@ class EditAlbum extends EditRecord
                             ->maxSize(51200),
                     ]),
             ])
-            ->action(function (array $data) {
+            ->action(function (array $data) use ($defaultDisk) {
                 $album = $this->record;
                 $lastSortOrder = $album->photos()->max('sort_order') ?? -1;
 
                 foreach ($data['photos'] as $index => $photoPath) {
                     $media = Media::create([
                         'file_path' => $photoPath,
-                        'disk' => 'public',
+                        'disk' => $defaultDisk,
                         'collection' => 'gallery',
                         'title' => $album->title.' — '.($lastSortOrder + $index + 1),
                     ]);

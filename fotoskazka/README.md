@@ -41,6 +41,36 @@ php artisan test --filter=test_embed_url_converts_youtube_watch_url
 php artisan test --coverage-text
 ```
 
+### Медиа — перегенерация превью
+
+Команда `media:regenerate-thumbnails` регенерирует WebP-превью (400px) для записей в таблице `media`.
+
+```bash
+# Dry-run — показать что будет обработано без изменений
+php artisan media:regenerate-thumbnails --dry-run
+
+# Регенерировать все (в т.ч. корректные превью)
+php artisan media:regenerate-thumbnails --force
+
+# Ограничить количество
+php artisan media:regenerate-thumbnails --limit=50
+
+# Один конкретный Media по ID
+php artisan media:regenerate-thumbnails --id=123
+```
+
+**Что делает:**
+- Находит Media с `file_path` и `mime_type` начинающимся с `image/`
+- По умолчанию обрабатывает записи, у которых:
+  - нет превью (`thumbnail_path` пуст);
+  - путь содержит ошибки (`thumbnails/thumbnails/`, `/./`);
+  - путь корректный, но файла нет на диске `thumbnails` — файл создаётся заново из оригинала.
+- С `--force` — все изображения, даже с существующими превью
+- В `--dry-run` показывает причину обработки (`no thumbnail`, `broken path`, `file missing`)
+- Читает оригинал через стрим с диска `Media::disk` (не использует `path()`)
+- Пишет WebP-превью на диск `thumbnails` (локальный кэш)
+- Обновляет `Media::thumbnail_path` (без лишних папок `thumbnails/`)
+
 ### Структура
 
 Тесты делятся на **Unit** (изолированная логика) и **Feature** (HTTP-слой, маршруты, взаимодействие с БД).

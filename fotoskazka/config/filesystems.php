@@ -15,6 +15,12 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'default_media_disk' => env('MEDIA_DISK', 'public'),
+
+    'yandex_import' => [
+        'max_files' => env('YANDEX_IMPORT_MAX_FILES', 500),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -47,6 +53,67 @@ return [
             'report' => false,
         ],
 
+        'thumbnails' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/thumbnails'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/thumbnails',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Кэш производных изображений (display / lightbox)
+        |----------------------------------------------------------------------
+        |
+        | Локальный кэш PNG-версий для страниц портфолио:
+        |   - "display"  (800px)  — сетка на странице альбома;
+        |   - "lightbox" (1600px) — полноэкранный просмотр.
+        |
+        | Генерируются лениво при первом запросе и отдаются через прокси-роуты,
+        | поэтому диск не обязан быть публичным. При превышении размера
+        | (filesystems.image_cache.max_size_mb) самые старые файлы удаляются.
+        |
+        */
+
+        'image_cache' => [
+            'driver' => 'local',
+            'root' => storage_path('app/image-cache'),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+    |----------------------------------------------------------------------
+    | Yandex Disk (оригиналы изображений)
+    |----------------------------------------------------------------------
+    |
+    | Удалённый диск для хранения оригиналов. OAuth-токен и параметры
+    | задаются только через environment variables.
+    |
+    | "path_prefix" — схема доступа: "disk:/" (весь диск) или "app:/"
+    | (папка приложения на Диске).
+    |
+    | "root" — корневая директория внутри префикса, относительно которой
+    | работают все пути этого диска. Бизнес-логика не должна использовать
+    | абсолютные пути Диска напрямую.
+    |
+    | "remote" => true — маркер того, что диск не отдаёт публичные URL:
+    | файлы отдаются через прокси-роут media.original.
+    |
+    */
+
+        'yandex_disk' => [
+            'driver' => 'yandex-disk',
+            'token' => env('YANDEX_DISK_TOKEN'),
+            'path_prefix' => env('YANDEX_DISK_PATH_PREFIX', 'disk:/'),
+            'root' => env('YANDEX_DISK_ROOT', 'fotoskazka/originals'),
+            'remote' => true,
+            'throw' => true,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -60,6 +127,29 @@ return [
             'report' => false,
         ],
 
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Параметры кэша изображений
+    |--------------------------------------------------------------------------
+    |
+    | tiers      — максимальная сторона (px) для каждого уровня кэша;
+    | disk       — диск хранения кэша;
+    | max_size_mb— лимит суммарного размера кэша; при превышении
+    |              вытесняются самые старые файлы;
+    | png_level  — уровень сжатия PNG (0-9).
+    |
+    */
+
+    'image_cache' => [
+        'disk' => env('IMAGE_CACHE_DISK', 'image_cache'),
+        'tiers' => [
+            'display' => 800,
+            'lightbox' => 1600,
+        ],
+        'max_size_mb' => (int) env('IMAGE_CACHE_MAX_MB', 2048),
+        'png_level' => 6,
     ],
 
     /*

@@ -1,5 +1,329 @@
 # Changelog
 
+## 2026-08-22 — Импорт с Яндекс.Диска: пагинация листинга и асинхронный импорт
+
+### Исправлено
+- **Листинг Яндекс.Диска возвращал только 20 элементов**: API отдаёт содержимое
+  папки страницами (лимит по умолчанию 20), а `listContents()` вендорского адаптера
+  читал только первую страницу. Из-за этого импорт альбома из папки на 153 файла
+  создавал всего 20 Media
+  - **app/Filesystem/YandexDiskPaginatedAdapter.php**: подкласс вендорского адаптера,
+    `iterateFolderContents()` идёт чанками по 100 (`PAGE_SIZE`) с offset-пагинацией
+    до `_embedded.total`; при отсутствии total — до неполной страницы.
+    Deep-листинг оставлен на поведении вендора (в коде не используется)
+  - Драйвер `yandex-disk` в `AppServiceProvider` теперь создаёт этот адаптер;
+    исправление действует для всех вызовов `files()`/`directories()` (импорт,
+    каскад выбора папок, `media:test-storage`)
+
+### Добавлено
+- **Защита от двойной отправки формы**: Job `ImportAlbumFromYandexDisk` реализует
+  `ShouldBeUnique` (uniqueId = md5(disk|type|folder)) — повторная отправка с теми
+  же параметрами, пока первый импорт в очереди или выполняется, молча отбрасывается.
+  Тесты: uniqueId зависит от диска/типа/папки; дубликат dispatch не создаёт второй
+  задачи в таблице jobs (2 одинаковых → 1 строка)
+- **app/Jobs/ImportAlbumFromYandexDisk.php**: импорт альбома выполняется очередью,
+  не в HTTP-запросе. Job переиспользует существующий Action (без дублирования);
+  tries=3, timeout=300, backoff [30,120]. Атомарность транзакции Action исключает
+  дубликаты альбомов при retry
+- **Filament ImportFromYandexDisk**: форма диспатчит Job и сразу сообщает
+  «Импорт запущен» с редиректом на список альбомов; тяжёлая обработка фото —
+  по-прежнему ProcessMedia (этап B4)
+- **config/filesystems.php**: секция `yandex_import.max_files`
+  (env `YANDEX_IMPORT_MAX_FILES`, по умолчанию 500; раньше лимит был жёстко 100
+  и молча обрезал папки больше 100 файлов)
+- Тесты: пагинация адаптера (4) — следование `_embedded.total`, одна страница,
+  остановка на неполной странице без total, продолжение на полной странице без total;
+  Job импорта (3) — создание альбома/фото/Media/dispatch ProcessMedia,
+  ошибка отсутствующей папки, параметры retry; страница (3) — dispatch Job вместо
+  синхронного импорта, альбом в БД не создаётся в запросе
+
+### Проверено на реальном Яндекс.Диске
+- `Storage::disk('yandex_disk')->files('японки')` → 153 файла (2 запроса API:
+  offset 0 → 100 записей, offset 100 → 53)
+- После перезапуска воркера полный импорт папки «японки»: альбом, 153 Media + Photo,
+  превью генерируются ProcessMedia
+
+### Важно при деплое
+- Воркер очереди держит код в памяти: после обновления кода выполнять
+  `php artisan queue:restart`, иначе Job'ы обрабатываются старой версией классов
+
+### Статистика
+- Тесты: 381 проходят (+10)
+- Assertions: 734
+- Pint: clean
+
+## 2026-08-21 — Этап B4: асинхронная обработка Media
+
+### Добавлено
+- **app/Jobs/ProcessMedia.php**: Queue Job обработки Media (metadata + WebP-thumbnail)
+  - Параметры: `$tries = 3`, `$timeout = 180`, `backoff() = [30, 120]` сек,
+    `$afterCommit = true`
+  - Принимает `mediaId` (int): каждая попытка читает свежую запись из БД,
+    удалённая Media не роняет job
+  - Обработка делегирована существующему `MediaProcessor::processOrFail()` —
+    без дублирования GD/mime-логики
+- **MediaProcessor::processOrFail()**: аналогичен `process()`, но Throwable после
+  логирования пробрасывается — временный сбой storage приводит к retry очереди.
+  Общая логика (`handle()`, `reportFailure()`) не дублируется; `process()` сохранён
+  для команды регенерации и CLI
+
+### Изменено
+- **app/Observers/MediaObserver.php**: `created` диспатчит `ProcessMedia::dispatch($media->id)`
+  вместо синхронной `MediaProcessor::process()`; зависимость от процессора убрана.
+  Dispatch — в единственной точке, после вставки записи: покрывает все пути создания
+  Media (UploadPhotos/CreateAlbum, EditAlbum, ImportFromYandexDisk, MediaResource);
+  массовая загрузка даёт по одному job на файл, HTTP-запрос не ждёт обработки
+- Тесты, ассертирующие результат обработки по in-memory экземпляру:
+  добавлен `refresh()` после `create()` — при асинхронной схеме состояние
+  появляется в БД, а не у создающего объекта
+  (MediaObserverTest, MediaProcessorRemoteStreamTest, MediaImageCacheTest)
+- Тесты: `tests/Feature/Jobs/ProcessMediaTest.php` (11) — dispatch при создании и
+  массовой загрузке (Queue::fake), dispatch только после commit / отбрасывание
+  при rollback (реальный database-драйвер), успешное выполнение, идемпотентный
+  повторный запуск, отсутствующая Media, отсутствие оригинала без retry,
+  повреждённое изображение, retry временного сбоя storage (Throwable),
+  параметры tries/backoff/timeout
+- architecture.md: lifecycle с очередью, контракт Job и processOrFail
+
+### Поведение
+- Lifecycle: Upload → создание Media → Observer → ProcessMedia (после commit)
+  → очередь → metadata + thumbnail → Ready. Тяжёлая обработка выведена из HTTP-запроса
+- Транзакции: `afterCommit` исключает ситуацию «job отправлен, transaction rollback» —
+  задание создаётся только для закоммиченной Media
+- Идемпотентность: повторный запуск job не создаёт дубликатов thumbnail/Media и лишних
+  записей БД (детерминированный путь превью, заполнение только пустых полей)
+- Ошибки: отсутствующая Media или оригинал — job завершается без ошибки (без бесконечных
+  retry); недоступность storage — исключение → retry очереди (3 попытки, backoff 30/120 c)
+- Миграция существующих Media и проверка целостности — вне рамок этапа
+
+### Статистика
+- Тесты: 371 проходят (+11)
+- Assertions: 710
+- Pint: clean
+
+## 2026-08-21 — Этап B3: переработка жизненного цикла Media
+
+### Добавлено
+- **app/Services/MediaProcessor.php**: централизованная обработка Media — единая точка lifecycle
+  (создание записи, команда регенерации; в B4 — Queue Job)
+  - Метаданные: MIME (`mime_content_type`), `file_size`, `width`/`height`
+    для изображений (`getimagesize`) — оригинал читается с диска `Media::disk`
+    через Laravel Filesystem (стримы → временный файл, работает с удалённым Яндекс.Диском)
+  - Thumbnail: WebP 400px на локальный диск `thumbnails`; путь детерминирован:
+    `{директория оригинала}/{имя}_thumb.webp` (исправлен баг старого кода:
+    `ltrim($dir, 'thumbnails/')` портил имена директорий, например `images/` → `ges/`)
+  - Идемпотентность: заполняются только пустые поля metadata; существующий thumbnail
+    не пересоздаётся при наличии файла (кроме `force = true`); полностью обработанное
+    Media повторный вызов не изменяет; `file_path`/`disk` процессором никогда не меняются
+  - Ошибки логируются с контекстом (`media_id`, `disk`, `path`) и возвращают `false`,
+    без тихой потери данных: отсутствующий оригинал, нечитаемый файл, повреждённое
+    изображение (mime/size сохраняются, без размеров и превью), сбой записи thumbnail
+    (метаданные сохраняются), недоступный storage (catch Throwable верхнего уровня)
+  - Статусы обработки в БД не введены: «требует обработки» выводится из пустых полей
+    и отсутствия файла thumbnail
+- Тесты: `tests/Unit/Services/MediaProcessorTest.php` (14) — метаданные, размеры,
+  thumbnail (landscape/portrait/root), детерминизм пути, повторная обработка (noop,
+  без оригинала), регенерация при отсутствии файла и по force, ошибки (нет оригинала,
+  нечитаемый стрим, повреждённый JPEG, storage недоступен, сбой записи превью)
+
+### Изменено
+- **app/Observers/MediaObserver.php**: переписан — только Observer-ответственности:
+  `creating` задаёт `disk` по умолчанию из `filesystems.default_media_disk`;
+  `created` однократно запускает `MediaProcessor::process()`. Вся GD/mime-логика удалена
+- **app/Console/Commands/MediaRegenerateThumbnails.php**: обработка делегирована
+  `MediaProcessor::process(force: true)`; выбор записей и `--dry-run` остались в команде.
+  Убран дублирующий GD-код; `--force` теперь пишет thumbnail по детерминированному пути
+  и исправляет путь в БД
+- **tests/Unit/Observers/MediaObserverTest.php**: переписан под контракт Observer —
+  disk по умолчанию из конфига, запуск обработки при создании, отсутствие реобработки при update
+- **tests/Feature/Observers/MediaObserverRemoteStreamTest.php** →
+  **tests/Feature/Services/MediaProcessorRemoteStreamTest.php** (переименован под сервис)
+- **database.md**, **architecture.md**: описание нового lifecycle
+
+### Поведение
+- Lifecycle: Upload → создание Media → сохранение оригинала → `MediaProcessor::process()`:
+  MIME → file_size → width/height → WebP-thumbnail 400px на диске `thumbnails` → Ready
+- Обновление Media (title/collection) больше не проходит через обработку — как и раньше,
+  но теперь это явный контракт Observer, покрытый тестом
+- Удаление Media удаляет только запись БД; файлы остаются (очистка файлов — этап B6)
+- Существующие записи Media не мигрировались (по условию задачи); legacy-пути превью
+  исправляются командой `media:regenerate-thumbnails --force`
+
+### Статистика
+- Тесты: 360 проходят (+22)
+- Assertions: 674
+- Pint: clean
+
+## 2026-08-22 — Кэш производных изображений (display / lightbox)
+
+### Добавлено
+- **app/Services/ImageCacheService.php**: ленивый кэш PNG-версий оригиналов
+  - Уровни (`filesystems.image_cache.tiers`): `display` ≤800px (сетка альбома),
+    `lightbox` ≤1600px (полноэкранный просмотр)
+  - Генерация при первом запросе; источник — оригинал с любого диска (включая Яндекс.Диск)
+    через временный файл; ключ `{tier}/{media_id}-{hash}.png`; повторные запросы — с диска
+  - Вытеснение: при превышении `IMAGE_CACHE_MAX_MB` удаляются самые старые файлы
+    (проверяется после каждой генерации и в команде очистки)
+- **app/Console/Commands/MediaPruneImageCache.php**: `media:prune-image-cache [--stats|--all]`
+- **config/filesystems.php**: диск `image_cache` + секция параметров; env `IMAGE_CACHE_DISK`, `IMAGE_CACHE_MAX_MB`
+- **app/Models/Media.php**: аксессоры `getDisplayUrl()` / `getLightboxUrl()` (прокси-роуты кэша)
+- Роуты: `GET /media/{media}/download` (attachment), `/display`, `/lightbox` — `App\Http\Controllers\MediaController`
+  - Кэшированные ответы с `Cache-Control: public, max-age=31536000, immutable`
+- Страница альбома `portfolio/show.blade.php`:
+  - Сетка использует display-кэш вместо thumbnails 400px
+  - Список альбомов `portfolio/index.blade.php`: обложки используют display-кэш вместо оригиналов
+  - Lightbox получает ссылки на lightbox-кэш; кнопка «Скачать в оригинальном разрешении» (`media.download`)
+  - Мобильные (<800px): lightbox открывает display-версию для быстрой первой загрузки,
+    при смене ориентации подменяется на lightbox-версию; кнопка скачивания поднята над «Поделиться»
+  - Подпись фото из БД (Photo.caption) показывается под изображением в lightbox
+    (data-caption → #lightboxCaption, скрывается если пусто)
+  - Скачивание оригинала только для авторизованных: `auth`-middleware на
+    `media.download`, кнопка в lightbox рендерится через `@auth`
+- Тесты: `tests/Feature/Http/Controllers/MediaImageCacheTest.php` (9) — генерация/переиспользование
+  кэша, 404, скачивание оригинала, вытеснение по лимиту, команда;
+  тест страницы портфолио на ссылки кэша
+
+### Изменено
+- Тесты портфолио: добавлен `test_show_links_lightbox_to_cache_and_marks_display_url`
+
+### Статистика
+- Тесты: 338 проходят
+- Assertions: 585
+- Pint: clean
+
+## 2026-08-22 — Исправление: mime_content_type при импорте с Яндекс.Диска
+
+### Исправлено
+- **app/Observers/MediaObserver.php**: при создании Media на удалённом диске (Яндекс.Диск)
+  падал `mime_content_type(): Failed identify data`
+  - Причина: `readStream()` Яндекс-адаптера открывает сетевой поток через `fopen(download_url)`,
+    его URI — URL загрузчика, а не локальный файл; наблюдатель использовал этот URI как путь к файлу
+    для `mime_content_type()`, `getimagesize()` и GD
+  - Решение: файл один раз скачивается во временный файл (`tempnam` + `stream_copy_to_stream`),
+    метаданные и превью генерируются по нему; временный файл удаляется в `finally`
+  - Бонус: вместо двух скачиваний оригинала (метаданные + превью) теперь одно
+- Тесты: `tests/Feature/Observers/MediaObserverRemoteStreamTest.php` (3) — адаптер, отдающий
+  стримы с URI `php://temp` (имитация удалённого диска): метаданные, WebP-превью, пропуск не-изображений
+
+### Проверено на реальном Яндекс.Диске
+- Загрузка тестового JPEG → readStream → временный файл → mime/dimensions определяются корректно,
+  временный файл и тестовая папка удалены
+
+### Статистика
+- Тесты: 328 проходят
+- Assertions: 541
+- Pint: clean
+
+## 2026-08-22 — Импорт альбома из папки Яндекс.Диска
+
+### Добавлено
+- **app/Filament/Resources/Albums/Pages/ImportFromYandexDisk.php**: страница `/admin/albums/import-yandex`
+  (кнопка «Импорт из Яндекс.Диска» в списке альбомов)
+  - Интерактивный выбор папки: каскад Select (верхний уровень → подпапка), списки кэшируются на 10 минут,
+    кнопка «Обновить список папок» сбрасывает кэш
+  - Toggle «Указать путь вручную» — TextInput с валидацией существования папки (для глубокой вложенности)
+  - Поля альбома: название, тип, проект (для type=project), описание, «первое фото как обложка»
+  - Dot-папки (`.git` и т.п.) скрыты — SDK не поддерживает пути, начинающиеся с точки
+- **app/Actions/Album/ImportAlbumFromYandexDisk.php**: импорт изображений из папки Яндекс.Диска
+  - Фильтрация по расширениям (jpg/jpeg/png/webp/gif), естественная сортировка по имени
+  - Лимит файлов `filesystems.yandex_import.max_files` (по умолчанию 100), превышение пропускается и считается
+  - Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`), обложка = первое фото (опционально),
+    создание альбома/Media/Photo в одной транзакции; метаданные и превью заполняет MediaObserver через стримы
+- **app/Http/Controllers/MediaController.php** + роут `GET /media/{media}/original` (`media.original`):
+  прокси-отдача оригиналов с удалённых дисков (стриминг, Content-Type из Media, кэш-заголовки)
+- **app/Models/Media.php**: `getUrl()` для remote-дисков (конфиг `remote => true`) возвращает прокси-роут;
+  добавлен `isRemoteDisk()`
+- Тесты: `tests/Feature/Actions/ImportAlbumFromYandexDiskTest.php` (6),
+  `tests/Feature/Http/Controllers/MediaControllerTest.php` (3),
+  `tests/Feature/Filament/ImportFromYandexDiskPageTest.php` (2)
+
+### Изменено
+- **resources/views/portfolio/show.blade.php**: сетка фото использует `getThumbnailUrl()` вместо оригинала
+  (lightbox по-прежнему открывает оригинал) — снижает нагрузку на прокси при альбомах на Яндекс.Диске
+
+### Статистика
+- Тесты: 325 проходят
+- Assertions: 534
+- Pint: clean
+
+## 2026-08-22 — Этап B2: подключение Yandex Disk
+
+### Отступление от исходного задания
+Пакет `arhitector/yandex dev-master` несовместим со стеком проекта:
+его зависимость `laminas/laminas-diactoros ^2.17` не поддерживает PHP 8.4,
+а официальный Flysystem-адаптер (`arhitector/yandex-disk-flysystem`) требует `league/flysystem ^1.0`,
+тогда как Laravel 13 использует Flysystem 3.x.
+По согласованию использован современный форк того же REST-адаптера:
+`impressiveweb/yandex-disk-flysystem` + `impressiveweb/yandex-disk` (Flysystem ^3.0, PHP ^8.1, Guzzle 7).
+
+### Добавлено
+- **config/filesystems.php**: диск `yandex_disk` (драйвер `yandex-disk`, флаги `remote`, `throw`)
+- **app/Providers/AppServiceProvider.php**: регистрация драйвера `Storage::extend('yandex-disk')`;
+  корневая директория применяется как path-prefix клиента — все пути диска относительны ей
+- **app/Console/Commands/MediaTestStorage.php**: команда `php artisan media:test-storage [--disk=]`
+  - Проверяет конфигурацию диска и наличие токена, затем полный цикл:
+    mkdir → запись → проверка наличия → чтение → сравнение → удаление → rmdir
+  - Не изменяет реальные записи Media
+- **.env.example**: `YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX` (по умолчанию `disk:/`),
+  `YANDEX_DISK_ROOT` (по умолчанию `fotoskazka/originals`); секреты только в env
+- Тесты: `tests/Unit/Filesystem/YandexDiskDriverTest.php` (5) — конфиг, резолв диска,
+  применение root к префиксу клиента; `tests/Feature/Console/MediaTestStorageCommandTest.php` (4)
+
+### Проверено на реальном Яндекс.Диске
+- `php artisan media:test-storage` — полный цикл проходит (exit 0)
+- Неглубокий листинг `directories()` (~0.9 c) возвращает корневые-относительные пути
+- Ограничения зафиксированы: промежуточные папки нужно создавать до загрузки;
+  рекурсивный листинг делает запрос на каждую подпапку (не использовать синхронно);
+  пути с ведущей точкой не работают
+
+### Статистика
+- Тесты: 325 проходят
+- Pint: clean
+
+## 2026-08-21 — Команда перегенерации превью
+
+### Добавлено
+- **app/Console/Commands/MediaRegenerateThumbnails.php**: artisan-команда `media:regenerate-thumbnails` для массовой регенерации WebP-превью
+  - Опции: `--dry-run`, `--force`, `--limit=`, `--id=`
+  - Обрабатывает записи без превью, с битыми путями (`thumbnails/thumbnails/`, `/./`) и с отсутствующим файлом на диске (путь в БД корректный, файл пересоздаётся из оригинала)
+  - `--dry-run` показывает причину обработки (`no thumbnail`, `broken path`, `file missing`)
+  - Читает оригиналы через стримы с диска `Media::disk`, пишет превью на диск `thumbnails`
+- **README.md**: документация команды `media:regenerate-thumbnails`
+
+### Исправлено
+- Регенерированы превью для 181 существующей записи Media (исправлены пути вида `thumbnails/thumbnails/./...`)
+- Досозданы отсутствующие файлы превью для записей, добавленных после последней генерации
+
+### Статистика
+- Тесты: 306 проходят
+- Assertions: 478
+- Pint: clean
+
+## 2026-08-21 — Этап B1: аудит и абстракция файлового хранения
+
+### Изменено
+- **config/filesystems.php**: добавлен диск `thumbnails` для локального кэша превью; добавлен конфиг `default_media_disk` (env `MEDIA_DISK`, по умолчанию `public`)
+- **app/Models/Media.php**: добавлены аксессоры `getUrl()` (оригинал через Media::disk) и `getThumbnailUrl()` (превью через диск thumbnails)
+- **app/Observers/MediaObserver.php**: переписан на стримы (`readStream`/`put`) без `path()`; превью всегда пишутся на диск `thumbnails`
+- **app/Filament/Resources/Media/Schemas/MediaForm.php**: FileUpload использует `config('filesystems.default_media_disk')`
+- **app/Actions/Album/CreateAlbum.php**: создание Media использует конфигурируемый диск
+- **app/Filament/Resources/Albums/Pages/UploadPhotos.php**: FileUpload для обложки и фото использует конфигурируемый диск
+- **app/Filament/Resources/Albums/Pages/EditAlbum.php**: экшен дозагрузки фото использует конфигурируемый диск
+- **app/Filament/Resources/Albums/RelationManagers/PhotosRelationManager.php**: ImageColumn для превью использует диск `thumbnails`
+- **app/Models/Video.php**: `source_url` и `embed_url` используют конфигурируемый диск через `getDefaultDisk()`
+- **Все Blade-шаблоны** (home, services, portfolio, blog, video): заменены прямые `Storage::url()` на вызовы аксессоров моделей (`$media->getUrl()`, `$media->getThumbnailUrl()`, `$video->source_url`)
+
+### Исправлено
+- **tests/Unit/Observers/MediaObserverTest.php**: тесты превью теперь проверяют диск `thumbnails`
+- **tests/Feature/UploadPhotosTest.php**: добавлен fake для диска `thumbnails`
+- **tests/Unit/Models/VideoModelTest.php**: проверки URL обновлены на проверку наличия пути в URL
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: проверка загруженного видео через `$video->source_url`
+
+### Статистика
+- Тесты: 306 проходят
+- Assertions: 478
+- Pint: clean
+
 ## 2026-08-21 — Тесты Filament ресурсов
 
 ### Добавлено

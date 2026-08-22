@@ -24,13 +24,13 @@
                         @foreach ($posts as $post)
                             <article class="bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                                      data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                                @if ($post->cover)
-                                    <a href="{{ route('blog.show', $post->slug) }}" class="block aspect-[16/9] bg-gray-100 overflow-hidden">
-                                        <img src="{{ Storage::url($post->cover->thumbnail_path ?? $post->cover->file_path) }}"
-                                             alt="{{ $post->title }}"
-                                             class="w-full h-full object-cover hover:scale-105 transition duration-500"
-                                             loading="lazy">
-                                    </a>
+@if ($post->cover)
+                                     <a href="{{ route('blog.show', $post->slug) }}" class="block aspect-[16/9] bg-gray-100 overflow-hidden">
+                                         <img src="{{ $post->cover->getThumbnailUrl() }}"
+                                              alt="{{ $post->title }}"
+                                              class="w-full h-full object-cover hover:scale-105 transition duration-500"
+                                              loading="lazy">
+                                     </a>
                                 @else
                                     <div class="aspect-[16/9] bg-gray-100"></div>
                                 @endif
@@ -102,11 +102,11 @@
                             <ul class="space-y-3">
                                 @foreach ($recentPosts as $recent)
                                     <li class="flex gap-3">
-                                        @if ($recent->cover)
-                                            <img src="{{ Storage::url($recent->cover->thumbnail_path ?? $recent->cover->file_path) }}"
-                                                 alt=""
-                                                 class="w-14 h-14 rounded-lg object-cover shrink-0"
-                                                 loading="lazy">
+@if ($recent->cover)
+                                             <img src="{{ $recent->cover->getThumbnailUrl() }}"
+                                                  alt=""
+                                                  class="w-14 h-14 rounded-lg object-cover shrink-0"
+                                                  loading="lazy">
                                         @else
                                             <div class="w-14 h-14 rounded-lg bg-[#1a1a1a] shrink-0"></div>
                                         @endif

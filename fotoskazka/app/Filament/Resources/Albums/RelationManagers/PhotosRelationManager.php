@@ -34,7 +34,7 @@ class PhotosRelationManager extends RelationManager
             ->columns([
                 ImageColumn::make('media.thumbnail_path')
                     ->label('Превью')
-                    ->disk('public')
+                    ->disk('thumbnails')
                     ->square()
                     ->size(80),
                 TextColumn::make('media.title')

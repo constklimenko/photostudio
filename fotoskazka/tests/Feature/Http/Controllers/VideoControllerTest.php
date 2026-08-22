@@ -95,6 +95,7 @@ class VideoControllerTest extends TestCase
     public function test_index_shows_uploaded_video(): void
     {
         Storage::fake('public');
+        Storage::fake('thumbnails');
 
         $video = Video::factory()->create([
             'file_path' => 'videos/clip.mp4',
@@ -103,7 +104,7 @@ class VideoControllerTest extends TestCase
 
         $response = $this->get(route('video.index'));
 
-        $response->assertSee(Storage::url($video->file_path));
+        $response->assertSee($video->source_url);
         $response->assertSee('video/mp4');
     }
 

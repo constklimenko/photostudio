@@ -9,7 +9,7 @@
     @if ($heroImages && $heroImages->isNotEmpty())
         @php $heroBg = $heroImages->first(); @endphp
         <div class="absolute inset-0">
-            <img src="{{ Storage::url($heroBg->file_path) }}"
+            <img src="{{ $heroBg->getUrl() }}"
                  alt=""
                  class="w-full h-full object-cover">
         </div>
@@ -43,12 +43,12 @@
                     <a href="{{ route('services.show', $service->slug) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        @if ($service->cover)
-                            <div class="aspect-[4/3] bg-gray-100">
-                                <img src="{{ Storage::url($service->cover->thumbnail_path ?? $service->cover->file_path) }}"
-                                     alt="{{ $service->title }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            </div>
+@if ($service->cover)
+                             <div class="aspect-[4/3] bg-gray-100">
+                                 <img src="{{ $service->cover->getThumbnailUrl() }}"
+                                      alt="{{ $service->title }}"
+                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                             </div>
                         @else
                             <div class="aspect-[4/3] bg-gray-100 flex items-center justify-center text-gray-400">
                                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,10 +83,10 @@
                     <a href="{{ route('portfolio.show', $album->slug) }}"
                        class="group block relative overflow-hidden rounded-xl aspect-[4/3] bg-black shadow-lg shadow-black/30"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        @if ($album->cover)
-                            <img src="{{ Storage::url($album->cover->thumbnail_path ?? $album->cover->file_path) }}"
-                                 alt="{{ $album->title }}"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+@if ($album->cover)
+                             <img src="{{ $album->cover->getThumbnailUrl() }}"
+                                  alt="{{ $album->title }}"
+                                  class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                         @endif
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                         <div class="absolute bottom-0 left-0 right-0 p-4">
@@ -171,10 +171,10 @@
                     <div class="bg-[#1a1a1a] rounded-xl p-6 shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                          data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                         <div class="flex items-center gap-4 mb-4">
-                            @if ($testimonial->photo)
-                                <img src="{{ Storage::url($testimonial->photo->thumbnail_path ?? $testimonial->photo->file_path) }}"
-                                     alt="{{ $testimonial->client_name }}"
-                                     class="w-12 h-12 rounded-full object-cover bg-gray-100">
+@if ($testimonial->photo)
+                                 <img src="{{ $testimonial->photo->getThumbnailUrl() }}"
+                                      alt="{{ $testimonial->client_name }}"
+                                      class="w-12 h-12 rounded-full object-cover bg-gray-100">
                             @else
                                 <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,12 +205,12 @@
                     <a href="{{ route('blog.show', $post->slug) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                        @if ($post->cover)
-                            <div class="aspect-[16/9] bg-gray-100">
-                                <img src="{{ Storage::url($post->cover->thumbnail_path ?? $post->cover->file_path) }}"
-                                     alt="{{ $post->title }}"
-                                     class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                            </div>
+@if ($post->cover)
+                             <div class="aspect-[16/9] bg-gray-100">
+                                 <img src="{{ $post->cover->getThumbnailUrl() }}"
+                                      alt="{{ $post->title }}"
+                                      class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                             </div>
                         @else
                             <div class="aspect-[16/9] bg-gray-100"></div>
                         @endif

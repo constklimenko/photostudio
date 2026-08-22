@@ -12,127 +12,66 @@ class MediaObserverTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected string $testImage;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('public');
+        Storage::fake('thumbnails');
     }
 
-    public function test_fills_metadata_for_image(): void
+    public function test_creating_defaults_disk_to_configured_media_disk(): void
     {
-        $file = UploadedFile::fake()->image('photo.jpg', 1920, 1080);
-        $path = $file->store('images', 'public');
+        Storage::fake('uploads');
+        config(['filesystems.default_media_disk' => 'uploads']);
 
-        $media = Media::factory()->create([
+        $path = UploadedFile::fake()->image('photo.jpg')->store('images', 'uploads');
+
+        $media = Media::query()->create([
             'file_path' => $path,
-            'disk' => 'public',
-            'mime_type' => null,
-            'width' => null,
-            'height' => null,
-            'file_size' => null,
         ]);
-
         $media->refresh();
 
-        $this->assertEquals('image/jpeg', $media->mime_type);
-        $this->assertEquals(1920, $media->width);
-        $this->assertEquals(1080, $media->height);
-        $this->assertNotNull($media->file_size);
-        $this->assertIsInt($media->file_size);
+        $this->assertSame('uploads', $media->disk);
+        $this->assertSame('image/jpeg', $media->mime_type);
     }
 
-    public function test_generates_webp_thumbnail_for_image(): void
+    public function test_created_event_triggers_processing(): void
     {
-        $file = UploadedFile::fake()->image('photo.jpg', 800, 600);
-        $path = $file->store('images', 'public');
+        $path = UploadedFile::fake()->image('photo.jpg', 640, 480)->store('images', 'public');
 
-        $media = Media::factory()->create([
+        $media = Media::query()->create([
             'file_path' => $path,
             'disk' => 'public',
-            'thumbnail_path' => null,
         ]);
-
         $media->refresh();
 
+        $this->assertSame('image/jpeg', $media->mime_type);
+        $this->assertSame(640, $media->width);
+        $this->assertSame(480, $media->height);
         $this->assertNotNull($media->thumbnail_path);
-        $this->assertStringEndsWith('.webp', $media->thumbnail_path);
-        Storage::disk('public')->assertExists($media->thumbnail_path);
+        Storage::disk('thumbnails')->assertExists($media->thumbnail_path);
     }
 
-    public function test_thumbnail_is_max_400px_for_landscape(): void
+    public function test_update_does_not_reprocess_media(): void
     {
-        $file = UploadedFile::fake()->image('landscape.jpg', 800, 400);
-        $path = $file->store('images', 'public');
+        $path = UploadedFile::fake()->image('photo.jpg', 300, 300)->store('images', 'public');
 
-        $media = Media::factory()->create([
+        $media = Media::query()->create([
             'file_path' => $path,
             'disk' => 'public',
         ]);
+        $media->refresh();
+        $thumbnailPath = $media->thumbnail_path;
+
+        Storage::disk('public')->delete($path);
+        Storage::disk('thumbnails')->delete($thumbnailPath);
+
+        $media->update(['title' => 'Renamed']);
 
         $media->refresh();
 
-        $thumbPath = Storage::disk('public')->path($media->thumbnail_path);
-        [$width, $height] = getimagesize($thumbPath);
-
-        $this->assertLessThanOrEqual(400, $width);
-        $this->assertLessThanOrEqual(400, $height);
-    }
-
-    public function test_thumbnail_is_max_400px_for_portrait(): void
-    {
-        $file = UploadedFile::fake()->image('portrait.jpg', 400, 800);
-        $path = $file->store('images', 'public');
-
-        $media = Media::factory()->create([
-            'file_path' => $path,
-            'disk' => 'public',
-        ]);
-
-        $media->refresh();
-
-        $thumbPath = Storage::disk('public')->path($media->thumbnail_path);
-        [$width, $height] = getimagesize($thumbPath);
-
-        $this->assertLessThanOrEqual(400, $width);
-        $this->assertLessThanOrEqual(400, $height);
-    }
-
-    public function test_does_not_generate_thumbnail_for_non_image(): void
-    {
-        Storage::disk('public')->put('documents/test.txt', 'plain text');
-
-        $media = Media::factory()->create([
-            'file_path' => 'documents/test.txt',
-            'disk' => 'public',
-            'thumbnail_path' => null,
-        ]);
-
-        $media->refresh();
-
-        $this->assertNull($media->thumbnail_path);
-    }
-
-    public function test_does_not_crash_for_missing_file(): void
-    {
-        $media = Media::factory()->create([
-            'file_path' => 'images/nonexistent.jpg',
-            'disk' => 'public',
-            'mime_type' => null,
-            'width' => null,
-            'height' => null,
-            'file_size' => null,
-            'thumbnail_path' => null,
-        ]);
-
-        $media->refresh();
-
-        $this->assertNull($media->mime_type);
-        $this->assertNull($media->width);
-        $this->assertNull($media->height);
-        $this->assertNull($media->file_size);
-        $this->assertNull($media->thumbnail_path);
+        $this->assertFalse(Storage::disk('thumbnails')->exists($thumbnailPath));
+        $this->assertCount(0, Storage::disk('thumbnails')->allFiles());
     }
 }

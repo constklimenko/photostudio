@@ -22,11 +22,11 @@
                     <a href="{{ route('portfolio.show', $album->slug) }}"
                        class="group block relative overflow-hidden rounded-xl bg-black shadow-lg shadow-black/30 {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
                        data-aos="fade-up" data-aos-delay="{{ ($i % 9) * 100 }}">
-                        @if ($album->cover)
-                            <img src="{{ Storage::url( $album->cover->file_path ) }}"
-                                 alt="{{ $album->title }}"
-                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-700"
-                                 loading="lazy">
+@if ($album->cover)
+                             <img src="{{ $album->cover->getDisplayUrl() ?? $album->cover->getUrl() }}"
+                                  alt="{{ $album->title }}"
+                                  class="w-full h-full object-cover group-hover:scale-105 transition duration-700"
+                                  loading="lazy">
                         @else
                             <div class="w-full h-full flex items-center justify-center text-gray-400">
                                 <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">

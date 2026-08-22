@@ -20,6 +20,11 @@ class ListAlbums extends ListRecords
                 ->url(AlbumResource::getUrl('upload'))
                 ->icon('heroicon-m-cloud-arrow-up')
                 ->color('success'),
+            Action::make('import-yandex')
+                ->label('Импорт из Яндекс.Диска')
+                ->url(AlbumResource::getUrl('import-yandex'))
+                ->icon('heroicon-m-arrow-down-tray')
+                ->color('gray'),
         ];
     }
 }

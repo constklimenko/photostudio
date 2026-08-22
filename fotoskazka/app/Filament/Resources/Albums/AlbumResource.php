@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Albums;
 
 use App\Filament\Resources\Albums\Pages\CreateAlbum;
 use App\Filament\Resources\Albums\Pages\EditAlbum;
+use App\Filament\Resources\Albums\Pages\ImportFromYandexDisk;
 use App\Filament\Resources\Albums\Pages\ListAlbums;
 use App\Filament\Resources\Albums\Pages\UploadPhotos;
 use App\Filament\Resources\Albums\RelationManagers\PhotosRelationManager;
@@ -58,6 +59,7 @@ class AlbumResource extends Resource
             'create' => CreateAlbum::route('/create'),
             'edit' => EditAlbum::route('/{record}/edit'),
             'upload' => UploadPhotos::route('/upload'),
+            'import-yandex' => ImportFromYandexDisk::route('/import-yandex'),
         ];
     }
 }
