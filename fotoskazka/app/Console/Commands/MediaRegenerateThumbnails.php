@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Media;
+use App\Services\MediaProcessor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,7 +17,7 @@ class MediaRegenerateThumbnails extends Command
 
     protected $description = 'Regenerate WebP thumbnails for media records';
 
-    public function handle(): int
+    public function handle(MediaProcessor $processor): int
     {
         $dryRun = $this->option('dry-run');
         $force = $this->option('force');
@@ -72,9 +73,7 @@ class MediaRegenerateThumbnails extends Command
         $failed = 0;
 
         foreach ($media as $m) {
-            $result = $this->regenerateThumbnail($m);
-
-            if ($result) {
+            if ($processor->process($m, force: true)) {
                 $success++;
             } else {
                 $failed++;
@@ -112,96 +111,5 @@ class MediaRegenerateThumbnails extends Command
         }
 
         return null;
-    }
-
-    protected function regenerateThumbnail(Media $media): bool
-    {
-        $disk = $media->disk ?? 'public';
-        $path = $media->file_path;
-
-        if (! Storage::disk($disk)->exists($path)) {
-            $this->warn("File not found: {$disk}/{$path}");
-
-            return false;
-        }
-
-        $stream = Storage::disk($disk)->readStream($path);
-        if (! $stream) {
-            $this->warn("Cannot read stream: {$disk}/{$path}");
-
-            return false;
-        }
-
-        $meta = stream_get_meta_data($stream);
-        $tempPath = $meta['uri'] ?? null;
-        fclose($stream);
-
-        if (! $tempPath) {
-            $this->warn("No temp path for stream: {$disk}/{$path}");
-
-            return false;
-        }
-
-        $mimeType = mime_content_type($tempPath) ?: null;
-        if (! $mimeType || ! str_starts_with($mimeType, 'image/')) {
-            $this->warn("Not an image: {$disk}/{$path} ({$mimeType})");
-
-            return false;
-        }
-
-        $imageInfo = getimagesize($tempPath);
-        if (! $imageInfo) {
-            $this->warn("Cannot get image size: {$disk}/{$path}");
-
-            return false;
-        }
-
-        [$width, $height] = $imageInfo;
-        $maxSize = 400;
-
-        if ($width > $height) {
-            $newWidth = $maxSize;
-            $newHeight = (int) round($height * $maxSize / $width);
-        } else {
-            $newHeight = $maxSize;
-            $newWidth = (int) round($width * $maxSize / $height);
-        }
-
-        $srcImage = match ($mimeType) {
-            'image/jpeg', 'image/jpg' => imagecreatefromjpeg($tempPath),
-            'image/png' => imagecreatefrompng($tempPath),
-            'image/webp' => imagecreatefromwebp($tempPath),
-            'image/gif' => imagecreatefromgif($tempPath),
-            default => null,
-        };
-
-        if (! $srcImage) {
-            $this->warn("Cannot create image resource: {$disk}/{$path}");
-
-            return false;
-        }
-
-        $thumbImage = imagecreatetruecolor($newWidth, $newHeight);
-        imagecopyresampled($thumbImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-
-        $info = pathinfo($path);
-        $thumbDir = ($info['dirname'] ?? '') !== '.' ? ($info['dirname'] ?? '') : '';
-        $thumbDir = ltrim($thumbDir, 'thumbnails/');
-        $thumbDir = ltrim($thumbDir, '/');
-        $thumbFileName = $info['filename'].'_thumb.webp';
-        $thumbPath = $thumbDir ? $thumbDir.'/'.$thumbFileName : $thumbFileName;
-
-        $thumbStream = fopen('php://temp', 'w+');
-        imagewebp($thumbImage, $thumbStream, 80);
-        imagedestroy($srcImage);
-        imagedestroy($thumbImage);
-
-        rewind($thumbStream);
-        Storage::disk('thumbnails')->put($thumbPath, $thumbStream);
-        fclose($thumbStream);
-
-        $media->update(['thumbnail_path' => $thumbPath]);
-
-        return true;
     }
 }

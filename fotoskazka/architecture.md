@@ -110,10 +110,11 @@ app/
 │   └── Video.php
 ├── Observers/
 │   ├── InquiryObserver.php       # Диспатч SendInquiryNotifications в очередь
-│   ├── MediaObserver.php         # Авто-метаданные + WebP превью
+│   ├── MediaObserver.php         # Тонкий: disk по умолчанию + запуск MediaProcessor
 │   └── PageObserver.php          # Сброс кэша PageContentService
 ├── Services/
 │   ├── ImageCacheService.php     # Кэш производных изображений (display/lightbox) + вытеснение по лимиту
+│   ├── MediaProcessor.php        # Централизованная обработка Media: metadata + WebP thumbnail
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
 │   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
@@ -221,8 +222,69 @@ resources/views/
 
 ## Наблюдатели (`app/Observers/`)
 
-`MediaObserver` — автоматически заполняет `mime_type`, `width`, `height`, `file_size`,
-гарантирует `disk = 'public'` и генерирует WebP-превью (400px) при создании Media.
+`MediaObserver` — минимальная привязка жизненного цикла Media к Eloquent:
+
+- `creating` — гарантирует `disk` (по умолчанию `filesystems.default_media_disk`);
+- `created` — однократно запускает `MediaProcessor::process()`.
+
+Вся обработка файлов вынесена в `MediaProcessor`, Observer бизнес-логики не содержит.
+
+## MediaProcessor (`app/Services/MediaProcessor.php`)
+
+Централизованная точка обработки Media. Единый lifecycle для создания записи,
+команды `media:regenerate-thumbnails` и будущих Queue Job (этап B4):
+
+```text
+создание Media (Observer.created)
+    ↓
+сохранение оригинала — выполнено вызывающим кодом (Filament Upload, Action)
+    ↓
+MediaProcessor::process(Media)
+    ├── определение MIME (mime_content_type)
+    ├── file_size
+    ├── width/height для изображений (getimagesize)
+    ├── создание WebP-thumbnail 400px → диск `thumbnails`
+    └── сохранение изменённых полей
+    ↓
+готово
+```
+
+- Оригинал читается с диска `Media::disk` через Laravel Filesystem (стримы,
+  временный файл для GD — работает и с удалённым Яндекс.Диском).
+- Thumbnail всегда пишется на локальный диск `thumbnails`; путь детерминирован:
+  `{директория оригинала}/{имя}_thumb.webp`.
+- Понятия разделены: original (`disk`, `file_path`) / thumbnail (`thumbnail_path`,
+  диск `thumbnails`) / metadata (`mime_type`, `width`, `height`, `file_size`).
+
+### Повторная обработка (идемпотентность)
+
+- Заполнение только пустых полей metadata; непустые значения не перезаписываются.
+- Существующий thumbnail не пересоздаётся, если файл есть на диске `thumbnails`;
+  пересоздаётся при отсутствии файла или `force = true` (команда регенерации).
+- `file_path` и `disk` процессором никогда не изменяются.
+- Полностью обработанное Media повторный вызов не изменяет вовсе.
+
+### Обработка ошибок
+
+Ошибки логируются с контекстом (`media_id`, `disk`, `path`), возвращают `false`,
+не приводят к потере уже известных данных и не меняют запись разрушающе:
+
+| Ситуация                        | Поведение                                              |
+|---------------------------------|--------------------------------------------------------|
+| Отсутствует оригинал            | warning, запись без изменений                          |
+| Файл нельзя прочитать           | warning, запись без изменений                          |
+| Изображение повреждено          | warning; сохраняются mime/size, без width/height/thumb |
+| Невозможно создать thumbnail    | warning; метаданные сохраняются, thumbnail_path не пишется |
+| Storage недоступен (Throwable)  | error на верхнем уровне, запись без изменений          |
+
+Статусы обработки в БД не вводятся: «требует обработки» выводится из пустых
+полей и отсутствия файла thumbnail; повторный вызов `process()` безопасен.
+
+## Команда media:regenerate-thumbnails
+
+Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
+`--force`) остался в команде; сама обработка делегирована `MediaProcessor::process(force: true)` —
+единая реализация генерации превью без дублирования GD-кода.
 
 ## Filament Resources
 
@@ -333,10 +395,10 @@ storage/app/public/
   естественная сортировка по имени, лимит `filesystems.yandex_import.max_files`
   (по умолчанию 100), обложка — первое фото (опционально), всё в одной транзакции
 - Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`),
-  превью генерируются локально `MediaObserver` через стримы
+  превью генерируются локально `MediaProcessor` (через Observer) по стримам
 - Импорт синхронный; вынос в очередь запланирован на этапе асинхронной обработки
 
-- MediaObserver генерирует превью на диске `thumbnails` через стримы (без path())
+- MediaProcessor генерирует превью на диске `thumbnails` через стримы (без path())
 - Media::getUrl() — URL оригинала через диск из Media::disk (для remote-дисков — прокси-роут)
 - Media::getThumbnailUrl() — URL превью 400px (WebP) через диск `thumbnails`
 - Media::getDisplayUrl() / getLightboxUrl() — прокси-роуты кэша производных (см. ниже)
@@ -384,15 +446,20 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 | Уровень  | Расположение                       | Запуск          |
 |----------|------------------------------------|-----------------|
 | Unit     | `tests/Unit/Models/`               | `php artisan test` |
+| Unit     | `tests/Unit/Services/`             | `php artisan test` |
 | Unit     | `tests/Unit/Observers/`            | `php artisan test` |
 | Feature  | `tests/Feature/`                   | `php artisan test` |
 
 - БД: SQLite in-memory
 - RefreshDatabase для тестов, изменяющих БД
-- `PageContentService` с кэшированием (get, getHomeSections, getMenuItems, clearCache)
+- MediaProcessor: metadata, dimensions, thumbnail, идемпотентность, ошибки
+  (`tests/Unit/Services/MediaProcessorTest.php`, remote-stream —
+  `tests/Feature/Services/MediaProcessorRemoteStreamTest.php`)
+- Lifecycle Media (создание/обновление/удаление): `tests/Feature/Models/MediaLifecycleTest.php`
+- PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 306 тестов, 478 утверждений
+- 360 тестов, 674 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ## Ключевые решения
@@ -402,9 +469,11 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 для портфолио, клиентских галерей, слайдеров и т.д.
 Простое и гибкое решение без избыточной нормализации.
 
-### MediaObserver вместо ручного заполнения
-Автоматическое определение mime_type, размеров и генерация превью
-при создании Media — исключает ошибки и дублирование кода.
+### MediaObserver + MediaProcessor вместо логики в Observer
+Обработка Media централизована в `MediaProcessor` (metadata, размеры, WebP-превью).
+Observer только задаёт `disk` по умолчанию и запускает обработку при создании —
+без сложной бизнес-логики в событиях модели. Обработка идемпотентна и доступна
+для повторного вызова (команда регенерации, будущий Queue Job).
 
 ### Action-классы вместо логики в Pages
 Бизнес-логика создания альбома вынесена в `CreateAlbum` Action

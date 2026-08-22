@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Observers;
+namespace Tests\Feature\Services;
 
 use App\Models\Media;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -13,7 +13,7 @@ use League\Flysystem\FilesystemAdapter as FlysystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use Tests\TestCase;
 
-class MediaObserverRemoteStreamTest extends TestCase
+class MediaProcessorRemoteStreamTest extends TestCase
 {
     use RefreshDatabase;
 

@@ -1,5 +1,58 @@
 # Changelog
 
+## 2026-08-21 — Этап B3: переработка жизненного цикла Media
+
+### Добавлено
+- **app/Services/MediaProcessor.php**: централизованная обработка Media — единая точка lifecycle
+  (создание записи, команда регенерации; в B4 — Queue Job)
+  - Метаданные: MIME (`mime_content_type`), `file_size`, `width`/`height`
+    для изображений (`getimagesize`) — оригинал читается с диска `Media::disk`
+    через Laravel Filesystem (стримы → временный файл, работает с удалённым Яндекс.Диском)
+  - Thumbnail: WebP 400px на локальный диск `thumbnails`; путь детерминирован:
+    `{директория оригинала}/{имя}_thumb.webp` (исправлен баг старого кода:
+    `ltrim($dir, 'thumbnails/')` портил имена директорий, например `images/` → `ges/`)
+  - Идемпотентность: заполняются только пустые поля metadata; существующий thumbnail
+    не пересоздаётся при наличии файла (кроме `force = true`); полностью обработанное
+    Media повторный вызов не изменяет; `file_path`/`disk` процессором никогда не меняются
+  - Ошибки логируются с контекстом (`media_id`, `disk`, `path`) и возвращают `false`,
+    без тихой потери данных: отсутствующий оригинал, нечитаемый файл, повреждённое
+    изображение (mime/size сохраняются, без размеров и превью), сбой записи thumbnail
+    (метаданные сохраняются), недоступный storage (catch Throwable верхнего уровня)
+  - Статусы обработки в БД не введены: «требует обработки» выводится из пустых полей
+    и отсутствия файла thumbnail
+- Тесты: `tests/Unit/Services/MediaProcessorTest.php` (14) — метаданные, размеры,
+  thumbnail (landscape/portrait/root), детерминизм пути, повторная обработка (noop,
+  без оригинала), регенерация при отсутствии файла и по force, ошибки (нет оригинала,
+  нечитаемый стрим, повреждённый JPEG, storage недоступен, сбой записи превью)
+
+### Изменено
+- **app/Observers/MediaObserver.php**: переписан — только Observer-ответственности:
+  `creating` задаёт `disk` по умолчанию из `filesystems.default_media_disk`;
+  `created` однократно запускает `MediaProcessor::process()`. Вся GD/mime-логика удалена
+- **app/Console/Commands/MediaRegenerateThumbnails.php**: обработка делегирована
+  `MediaProcessor::process(force: true)`; выбор записей и `--dry-run` остались в команде.
+  Убран дублирующий GD-код; `--force` теперь пишет thumbnail по детерминированному пути
+  и исправляет путь в БД
+- **tests/Unit/Observers/MediaObserverTest.php**: переписан под контракт Observer —
+  disk по умолчанию из конфига, запуск обработки при создании, отсутствие реобработки при update
+- **tests/Feature/Observers/MediaObserverRemoteStreamTest.php** →
+  **tests/Feature/Services/MediaProcessorRemoteStreamTest.php** (переименован под сервис)
+- **database.md**, **architecture.md**: описание нового lifecycle
+
+### Поведение
+- Lifecycle: Upload → создание Media → сохранение оригинала → `MediaProcessor::process()`:
+  MIME → file_size → width/height → WebP-thumbnail 400px на диске `thumbnails` → Ready
+- Обновление Media (title/collection) больше не проходит через обработку — как и раньше,
+  но теперь это явный контракт Observer, покрытый тестом
+- Удаление Media удаляет только запись БД; файлы остаются (очистка файлов — этап B6)
+- Существующие записи Media не мигрировались (по условию задачи); legacy-пути превью
+  исправляются командой `media:regenerate-thumbnails --force`
+
+### Статистика
+- Тесты: 360 проходят (+22)
+- Assertions: 674
+- Pint: clean
+
 ## 2026-08-22 — Кэш производных изображений (display / lightbox)
 
 ### Добавлено
