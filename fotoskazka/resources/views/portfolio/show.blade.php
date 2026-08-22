@@ -32,7 +32,7 @@
                        class="rounded-xl overflow-hidden bg-[#1a1a1a] block cursor-pointer group lightbox-trigger shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-index="{{ $loop->index }}"
                        data-aos="{{ $loop->even ? 'flip-left' : 'flip-right' }}">
-                         <img src="{{ $photo->media->getUrl() }}"
+                         <img src="{{ $photo->media->getThumbnailUrl() }}"
                               alt="{{ $photo->caption ?? $album->title }}"
                               class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                               loading="lazy">

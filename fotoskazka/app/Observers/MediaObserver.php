@@ -3,87 +3,93 @@
 namespace App\Observers;
 
 use App\Models\Media;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 
 class MediaObserver
 {
     public function creating(Media $media): void
     {
-        $this->fillMetadata($media);
-        $this->generateThumbnail($media);
-    }
-
-    protected function fillMetadata(Media $media): void
-    {
         $media->disk = $media->disk ?? 'public';
-        $path = $media->file_path;
-        $disk = $media->disk;
 
-        if (! Storage::disk($disk)->exists($path)) {
+        $path = (string) $media->file_path;
+        $disk = Storage::disk($media->disk);
+
+        if ($path === '' || ! $disk->exists($path)) {
             return;
         }
 
-        $media->file_size = Storage::disk($disk)->size($path);
+        $media->file_size = $disk->size($path);
 
-        $stream = Storage::disk($disk)->readStream($path);
-        if (! $stream) {
+        $tempFile = $this->spoolToTempFile($disk, $path);
+
+        if ($tempFile === null) {
             return;
         }
 
-        $meta = stream_get_meta_data($stream);
-        $tempPath = $meta['uri'] ?? null;
-        fclose($stream);
+        try {
+            $media->mime_type = mime_content_type($tempFile) ?: null;
 
-        if (! $tempPath) {
-            return;
-        }
-
-        $media->mime_type = mime_content_type($tempPath) ?: null;
-
-        if (str_starts_with($media->mime_type ?? '', 'image/')) {
-            $imageInfo = getimagesize($tempPath);
-            if ($imageInfo) {
-                $media->width = $imageInfo[0];
-                $media->height = $imageInfo[1];
+            if (! str_starts_with((string) $media->mime_type, 'image/')) {
+                return;
             }
+
+            $imageInfo = getimagesize($tempFile);
+
+            if ($imageInfo === false) {
+                return;
+            }
+
+            $media->width = $imageInfo[0];
+            $media->height = $imageInfo[1];
+
+            $this->writeThumbnail($media, $tempFile, $imageInfo[0], $imageInfo[1]);
+        } finally {
+            @unlink($tempFile);
         }
     }
 
-    protected function generateThumbnail(Media $media): void
+    /**
+     * Скачивает файл с диска во временный файл на локальной ФС.
+     *
+     * readStream у удалённых дисков (Яндекс.Диск) возвращает сетевой поток,
+     * чей URI не является путём к локальному файлу — поэтому для
+     * mime_content_type / getimagesize / GD нужен настоящий файл.
+     */
+    protected function spoolToTempFile(Filesystem $disk, string $path): ?string
     {
-        $path = $media->file_path;
-        $disk = $media->disk;
+        $stream = $disk->readStream($path);
 
-        if (! Storage::disk($disk)->exists($path)) {
-            return;
+        if (! is_resource($stream)) {
+            return null;
         }
 
-        if (! str_starts_with($media->mime_type ?? '', 'image/')) {
-            return;
-        }
+        $tempFile = tempnam(sys_get_temp_dir(), 'media-');
 
-        $stream = Storage::disk($disk)->readStream($path);
-        if (! $stream) {
-            return;
-        }
-
-        $meta = stream_get_meta_data($stream);
-        $tempPath = $meta['uri'] ?? null;
-
-        if (! $tempPath) {
+        if ($tempFile === false) {
             fclose($stream);
 
-            return;
+            return null;
         }
 
-        $imageInfo = getimagesize($tempPath);
+        $target = fopen($tempFile, 'wb');
+
+        if ($target === false) {
+            fclose($stream);
+            @unlink($tempFile);
+
+            return null;
+        }
+
+        stream_copy_to_stream($stream, $target);
+        fclose($target);
         fclose($stream);
 
-        if (! $imageInfo) {
-            return;
-        }
+        return $tempFile;
+    }
 
-        [$width, $height] = $imageInfo;
+    protected function writeThumbnail(Media $media, string $tempFile, int $width, int $height): void
+    {
         $maxSize = 400;
 
         if ($width > $height) {
@@ -94,22 +100,22 @@ class MediaObserver
             $newWidth = (int) round($width * $maxSize / $height);
         }
 
-        $srcImage = match ($media->mime_type) {
-            'image/jpeg', 'image/jpg' => imagecreatefromjpeg($tempPath),
-            'image/png' => imagecreatefrompng($tempPath),
-            'image/webp' => imagecreatefromwebp($tempPath),
-            'image/gif' => imagecreatefromgif($tempPath),
+        $srcImage = match ((string) $media->mime_type) {
+            'image/jpeg', 'image/jpg' => imagecreatefromjpeg($tempFile),
+            'image/png' => imagecreatefrompng($tempFile),
+            'image/webp' => imagecreatefromwebp($tempFile),
+            'image/gif' => imagecreatefromgif($tempFile),
             default => null,
         };
 
-        if (! $srcImage) {
+        if ($srcImage === false || $srcImage === null) {
             return;
         }
 
         $thumbImage = imagecreatetruecolor($newWidth, $newHeight);
         imagecopyresampled($thumbImage, $srcImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
-        $info = pathinfo($path);
+        $info = pathinfo((string) $media->file_path);
         $thumbDir = ($info['dirname'] ?? '') !== '.' ? ($info['dirname'] ?? '') : '';
         // Avoid duplicating 'thumbnails' directory since we're already on the thumbnails disk
         $thumbDir = ltrim($thumbDir, 'thumbnails/');

@@ -3,6 +3,7 @@
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\VideoController;
@@ -26,6 +27,9 @@ Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(f
 });
 
 Route::get('/video', [VideoController::class, 'index'])->name('video.index');
+
+Route::get('/media/{media}/original', [MediaController::class, 'original'])
+    ->name('media.original');
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 

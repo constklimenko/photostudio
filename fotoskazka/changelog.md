@@ -1,5 +1,94 @@
 # Changelog
 
+## 2026-08-22 — Исправление: mime_content_type при импорте с Яндекс.Диска
+
+### Исправлено
+- **app/Observers/MediaObserver.php**: при создании Media на удалённом диске (Яндекс.Диск)
+  падал `mime_content_type(): Failed identify data`
+  - Причина: `readStream()` Яндекс-адаптера открывает сетевой поток через `fopen(download_url)`,
+    его URI — URL загрузчика, а не локальный файл; наблюдатель использовал этот URI как путь к файлу
+    для `mime_content_type()`, `getimagesize()` и GD
+  - Решение: файл один раз скачивается во временный файл (`tempnam` + `stream_copy_to_stream`),
+    метаданные и превью генерируются по нему; временный файл удаляется в `finally`
+  - Бонус: вместо двух скачиваний оригинала (метаданные + превью) теперь одно
+- Тесты: `tests/Feature/Observers/MediaObserverRemoteStreamTest.php` (3) — адаптер, отдающий
+  стримы с URI `php://temp` (имитация удалённого диска): метаданные, WebP-превью, пропуск не-изображений
+
+### Проверено на реальном Яндекс.Диске
+- Загрузка тестового JPEG → readStream → временный файл → mime/dimensions определяются корректно,
+  временный файл и тестовая папка удалены
+
+### Статистика
+- Тесты: 328 проходят
+- Assertions: 541
+- Pint: clean
+
+## 2026-08-22 — Импорт альбома из папки Яндекс.Диска
+
+### Добавлено
+- **app/Filament/Resources/Albums/Pages/ImportFromYandexDisk.php**: страница `/admin/albums/import-yandex`
+  (кнопка «Импорт из Яндекс.Диска» в списке альбомов)
+  - Интерактивный выбор папки: каскад Select (верхний уровень → подпапка), списки кэшируются на 10 минут,
+    кнопка «Обновить список папок» сбрасывает кэш
+  - Toggle «Указать путь вручную» — TextInput с валидацией существования папки (для глубокой вложенности)
+  - Поля альбома: название, тип, проект (для type=project), описание, «первое фото как обложка»
+  - Dot-папки (`.git` и т.п.) скрыты — SDK не поддерживает пути, начинающиеся с точки
+- **app/Actions/Album/ImportAlbumFromYandexDisk.php**: импорт изображений из папки Яндекс.Диска
+  - Фильтрация по расширениям (jpg/jpeg/png/webp/gif), естественная сортировка по имени
+  - Лимит файлов `filesystems.yandex_import.max_files` (по умолчанию 100), превышение пропускается и считается
+  - Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`), обложка = первое фото (опционально),
+    создание альбома/Media/Photo в одной транзакции; метаданные и превью заполняет MediaObserver через стримы
+- **app/Http/Controllers/MediaController.php** + роут `GET /media/{media}/original` (`media.original`):
+  прокси-отдача оригиналов с удалённых дисков (стриминг, Content-Type из Media, кэш-заголовки)
+- **app/Models/Media.php**: `getUrl()` для remote-дисков (конфиг `remote => true`) возвращает прокси-роут;
+  добавлен `isRemoteDisk()`
+- Тесты: `tests/Feature/Actions/ImportAlbumFromYandexDiskTest.php` (6),
+  `tests/Feature/Http/Controllers/MediaControllerTest.php` (3),
+  `tests/Feature/Filament/ImportFromYandexDiskPageTest.php` (2)
+
+### Изменено
+- **resources/views/portfolio/show.blade.php**: сетка фото использует `getThumbnailUrl()` вместо оригинала
+  (lightbox по-прежнему открывает оригинал) — снижает нагрузку на прокси при альбомах на Яндекс.Диске
+
+### Статистика
+- Тесты: 325 проходят
+- Assertions: 534
+- Pint: clean
+
+## 2026-08-22 — Этап B2: подключение Yandex Disk
+
+### Отступление от исходного задания
+Пакет `arhitector/yandex dev-master` несовместим со стеком проекта:
+его зависимость `laminas/laminas-diactoros ^2.17` не поддерживает PHP 8.4,
+а официальный Flysystem-адаптер (`arhitector/yandex-disk-flysystem`) требует `league/flysystem ^1.0`,
+тогда как Laravel 13 использует Flysystem 3.x.
+По согласованию использован современный форк того же REST-адаптера:
+`impressiveweb/yandex-disk-flysystem` + `impressiveweb/yandex-disk` (Flysystem ^3.0, PHP ^8.1, Guzzle 7).
+
+### Добавлено
+- **config/filesystems.php**: диск `yandex_disk` (драйвер `yandex-disk`, флаги `remote`, `throw`)
+- **app/Providers/AppServiceProvider.php**: регистрация драйвера `Storage::extend('yandex-disk')`;
+  корневая директория применяется как path-prefix клиента — все пути диска относительны ей
+- **app/Console/Commands/MediaTestStorage.php**: команда `php artisan media:test-storage [--disk=]`
+  - Проверяет конфигурацию диска и наличие токена, затем полный цикл:
+    mkdir → запись → проверка наличия → чтение → сравнение → удаление → rmdir
+  - Не изменяет реальные записи Media
+- **.env.example**: `YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX` (по умолчанию `disk:/`),
+  `YANDEX_DISK_ROOT` (по умолчанию `fotoskazka/originals`); секреты только в env
+- Тесты: `tests/Unit/Filesystem/YandexDiskDriverTest.php` (5) — конфиг, резолв диска,
+  применение root к префиксу клиента; `tests/Feature/Console/MediaTestStorageCommandTest.php` (4)
+
+### Проверено на реальном Яндекс.Диске
+- `php artisan media:test-storage` — полный цикл проходит (exit 0)
+- Неглубокий листинг `directories()` (~0.9 c) возвращает корневые-относительные пути
+- Ограничения зафиксированы: промежуточные папки нужно создавать до загрузки;
+  рекурсивный листинг делает запрос на каждую подпапку (не использовать синхронно);
+  пути с ведущей точкой не работают
+
+### Статистика
+- Тесты: 325 проходят
+- Pint: clean
+
 ## 2026-08-21 — Команда перегенерации превью
 
 ### Добавлено

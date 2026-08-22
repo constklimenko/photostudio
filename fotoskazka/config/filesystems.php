@@ -56,7 +56,36 @@ return [
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
-            'root' => storage_path('app/public/thumbnails'),
+        ],
+
+        /*
+        |----------------------------------------------------------------------
+        | Yandex Disk (оригиналы изображений)
+        |----------------------------------------------------------------------
+        |
+        | Удалённый диск для хранения оригиналов. OAuth-токен и параметры
+        | задаются только через environment variables.
+        |
+        | "path_prefix" — схема доступа: "disk:/" (весь диск) или "app:/"
+        | (папка приложения на Диске).
+        |
+        | "root" — корневая директория внутри префикса, относительно которой
+        | работают все пути этого диска. Бизнес-логика не должна использовать
+        | абсолютные пути Диска напрямую.
+        |
+        | "remote" => true — маркер того, что диск не отдаёт публичные URL:
+        | файлы отдаются через прокси-роут media.original.
+        |
+        */
+
+        'yandex_disk' => [
+            'driver' => 'yandex-disk',
+            'token' => env('YANDEX_DISK_TOKEN'),
+            'path_prefix' => env('YANDEX_DISK_PATH_PREFIX', 'disk:/'),
+            'root' => env('YANDEX_DISK_ROOT', 'fotoskazka/originals'),
+            'remote' => true,
+            'throw' => true,
+            'report' => false,
         ],
 
         's3' => [

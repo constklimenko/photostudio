@@ -22,7 +22,18 @@ class Media extends Model
             return null;
         }
 
-        return Storage::disk($this->disk ?? 'public')->url($this->file_path);
+        $disk = $this->disk ?? 'public';
+
+        if ($this->isRemoteDisk($disk)) {
+            return route('media.original', ['media' => $this->getKey()]);
+        }
+
+        return Storage::disk($disk)->url($this->file_path);
+    }
+
+    public function isRemoteDisk(string $disk): bool
+    {
+        return (bool) config("filesystems.disks.{$disk}.remote", false);
     }
 
     public function getThumbnailUrl(): ?string

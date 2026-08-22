@@ -18,9 +18,15 @@
 app/
 ├── Actions/                    # Action-классы (бизнес-логика)
 │   ├── Album/
-│   │   └── CreateAlbum.php     # Создание альбома с медиа и фото
+│   │   ├── CreateAlbum.php     # Создание альбома с медиа и фото
+│   │   └── ImportAlbumFromYandexDisk.php  # Импорт альбома из папки Яндекс.Диска
 │   └── Inquiry/
 │       └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
+├── Console/
+│   └── Commands/
+│       ├── MakeFilamentUser.php
+│       ├── MediaRegenerateThumbnails.php
+│       └── MediaTestStorage.php          # Проверка подключения к диску
 ├── Jobs/
 │   └── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
 ├── Filament/
@@ -30,6 +36,7 @@ app/
 │   │   │   ├── Pages/
 │   │   │   │   ├── CreateAlbum.php
 │   │   │   │   ├── EditAlbum.php       # Дозагрузка фото
+│   │   │   │   ├── ImportFromYandexDisk.php  # Импорт альбома из папки Яндекс.Диска
 │   │   │   │   ├── ListAlbums.php
 │   │   │   │   └── UploadPhotos.php    # Drag&drop загрузка
 │   │   │   ├── RelationManagers/
@@ -77,6 +84,7 @@ app/
 │   │   ├── BlogController.php
 │   │   ├── CabinetController.php
 │   │   ├── HomeController.php
+│   │   ├── MediaController.php        # Прокси-отдача оригиналов с удалённых дисков
 │   │   ├── PortfolioController.php
 │   │   ├── ServiceController.php
 │   │   └── VideoController.php
@@ -157,6 +165,7 @@ resources/views/
 | GET | `/blog` | `BlogController@index` | — |
 | GET | `/blog/{slug}` | `BlogController@show` | — |
 | GET | `/video` | `VideoController@index` | — |
+| GET | `/media/{media}/original` | `MediaController@original` | — |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
@@ -291,16 +300,45 @@ storage/app/public/
 ```
 
 - Laravel Filesystem
-- Диск `public` (локальный) — для оригиналов
+- Диск `public` (локальный) — для оригиналов (по умолчанию, `MEDIA_DISK`)
 - Диск `thumbnails` (локальный) — для превью (WebP, 400px)
+- Диск `yandex_disk` — оригиналы на Яндекс.Диске (этап B2)
+
+### Диск yandex_disk
+
+- Драйвер `yandex-disk` регистрируется в `AppServiceProvider::boot()` через `Storage::extend()`
+- SDK: `impressiveweb/yandex-disk` + Flysystem v3 адаптер `impressiveweb/yandex-disk-flysystem`
+  (форк arhitector/yandex; оригинальный пакет несовместим с PHP 8.4 и Flysystem 3)
+- OAuth-токен и параметры — только из env: `YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`
+- Корневая директория (`YANDEX_DISK_ROOT`) применяется как path-prefix клиента:
+  все пути диска относительны ей, бизнес-логика не знает абсолютных путей Диска
+- Флаг `remote => true` в конфиге диска: Media с таким диском отдаются через
+  прокси-роут `media.original` (стриминг через Laravel), публичные URL отсутствуют
+- Проверка подключения: `php artisan media:test-storage` (mkdir → write → read → delete → rmdir)
+- Ограничение API: промежуточные папки не создаются при загрузке автоматически;
+  листинг «в глубину» делает запрос на каждую подпапку — использовать неглубокий
+  `directories($path)`; пути вида `.folder` не поддерживаются клиентом SDK
+
+### Импорт альбома из Яндекс.Диска
+
+- Страница Filament `/admin/albums/import-yandex` (кнопка в списке альбомов)
+- Выбор папки: каскад из двух Select (верхний уровень → подпапка, списки
+  кэшируются на 10 минут) либо ручной ввод пути; валидация существования папки
+- Action `ImportAlbumFromYandexDisk`: фильтрация изображений по расширению,
+  естественная сортировка по имени, лимит `filesystems.yandex_import.max_files`
+  (по умолчанию 100), обложка — первое фото (опционально), всё в одной транзакции
+- Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`),
+  превью генерируются локально `MediaObserver` через стримы
+- Импорт синхронный; вынос в очередь запланирован на этапе асинхронной обработки
+
 - MediaObserver генерирует превью на диске `thumbnails` через стримы (без path())
-- Media::getUrl() — URL оригинала через диск из Media::disk
+- Media::getUrl() — URL оригинала через диск из Media::disk (для remote-дисков — прокси-роут)
 - Media::getThumbnailUrl() — URL превью через диск `thumbnails`
 - Video::source_url / embed_url — через конфиг `filesystems.default_media_disk`
 - Storage symlink: `public/storage -> storage/app/public`
 
 ### Будущее
-- Перенос оригиналов на Яндекс.Диск (новый диск)
+- Перенос локальных оригиналов на Яндекс.Диск (команда миграции)
 - Локальный кэш превью остаётся на диске `thumbnails`
 - Абстракция через драйверы Laravel Filesystem — бизнес-логика не привязана к конкретному диску
 

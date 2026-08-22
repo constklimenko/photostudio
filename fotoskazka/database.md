@@ -1041,33 +1041,32 @@ INDEX(type)
 
 # Storage Strategy
 
-Текущий этап (B1 — аудит и абстракция):
+Актуальная схема (B2 — Яндекс.Диск подключён):
 
 ```text
 Laravel Filesystem
     │
-    ├── public disk (Local)          → оригиналы (Media::disk)
+    ├── public disk (Local)          → оригиналы по умолчанию (Media::disk = 'public')
+    │
+    ├── yandex_disk (Яндекс.Диск)    → оригиналы импорта из папок (Media::disk = 'yandex_disk')
     │
     └── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
 ```
 
 - MediaObserver генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
+  Работает с любым диском оригинала, включая удалённый Яндекс.Диск.
 - Превью всегда пишутся на диск `thumbnails` (локальный кэш), независимо от диска оригинала.
-- `Media::getUrl()` — возвращает URL оригинала через диск из `Media::disk`.
+- `Media::getUrl()` — URL оригинала через диск из `Media::disk`.
+  Для remote-дисков (конфиг `remote => true`) возвращается прокси-роут
+  `GET /media/{media}/original` — файл стримится через Laravel, публичных ссылок на Диск нет.
 - `Media::getThumbnailUrl()` — возвращает URL превью через диск `thumbnails`.
 - `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
 - Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.
 - Все обращения к файлам в Blade — через аксессоры моделей (`getUrl()`, `getThumbnailUrl()`, `source_url`).
-
-Будущий этап (B2 — Яндекс.Диск):
-
-```text
-Laravel Filesystem
-    │
-    ├── Yandex Disk (оригиналы)      → Media::disk = 'yandex'
-    │
-    └── Local Thumbnail Cache        → thumbnails disk (превью)
-```
+- Диск `yandex_disk`: OAuth-токен и корневая директория задаются только через env
+  (`YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`). Секреты не хранятся в БД.
+- Импорт альбома из папки Яндекс.Диска создаёт Media с `disk = 'yandex_disk'`;
+  существующие записи Media не изменяются.
 
 Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 
