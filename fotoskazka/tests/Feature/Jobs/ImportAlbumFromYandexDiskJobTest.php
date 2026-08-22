@@ -23,7 +23,6 @@ class ImportAlbumFromYandexDiskJobTest extends TestCase
         parent::setUp();
 
         Storage::fake('yandex_disk');
-        Queue::fake();
     }
 
     public function test_imports_album_from_folder(): void
@@ -31,6 +30,8 @@ class ImportAlbumFromYandexDiskJobTest extends TestCase
         foreach ([1, 2, 3] as $i) {
             UploadedFile::fake()->image("photo{$i}.jpg")->storeAs('japanki', "photo{$i}.jpg", 'yandex_disk');
         }
+
+        Queue::fake();
 
         (new ImportJob([
             'title' => 'Японки',
@@ -65,10 +66,40 @@ class ImportAlbumFromYandexDiskJobTest extends TestCase
 
     public function test_retry_configuration_is_sane_for_listing_and_inserts(): void
     {
-        $job = new ImportJob(['folder' => 'x']);
+        $job = new ImportJob(['type' => 'portfolio', 'folder' => 'x']);
 
         $this->assertSame(3, $job->tries);
-        $this->assertSame(300, $job->timeout);
         $this->assertSame([30, 120], $job->backoff());
+        $this->assertSame(300, $job->timeout);
+    }
+
+    public function test_unique_id_depends_on_disk_type_and_folder(): void
+    {
+        $job = new ImportJob(['type' => 'portfolio', 'folder' => 'японки']);
+        $same = new ImportJob(['type' => 'portfolio', 'folder' => 'японки']);
+        $otherFolder = new ImportJob(['type' => 'portfolio', 'folder' => 'другая']);
+        $otherType = new ImportJob(['type' => 'client', 'folder' => 'японки']);
+        $otherDisk = new ImportJob(['type' => 'portfolio', 'folder' => 'японки'], 'other_disk');
+
+        $this->assertSame($job->uniqueId(), $same->uniqueId());
+        $this->assertNotSame($job->uniqueId(), $otherFolder->uniqueId());
+        $this->assertNotSame($job->uniqueId(), $otherType->uniqueId());
+        $this->assertNotSame($job->uniqueId(), $otherDisk->uniqueId());
+    }
+
+    public function test_duplicate_dispatch_for_same_folder_is_dropped(): void
+    {
+        config(['queue.default' => 'database']);
+
+        $data = ['type' => 'portfolio', 'title' => 'Японки', 'folder' => 'японки'];
+
+        ImportJob::dispatch($data);
+        ImportJob::dispatch($data);
+
+        $this->assertDatabaseCount('jobs', 1);
+
+        ImportJob::dispatch(['type' => 'portfolio', 'title' => 'Другая', 'folder' => 'другая']);
+
+        $this->assertDatabaseCount('jobs', 2);
     }
 }

@@ -452,6 +452,9 @@ storage/app/public/
   `App\Jobs\ImportAlbumFromYandexDisk` (tries=3, timeout=300, backoff [30,120]),
   который выполняет тот же Action; ошибка листинга → rollback транзакции и retry,
   дубликаты альбомов исключены атомарностью
+- Job реализует `ShouldBeUnique`: uniqueId = md5(disk|type|folder) — повторная
+  отправка формы (двойной клик) с теми же параметрами схлопывается в один Job;
+  блокировка держится до завершения обработки
 - Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`),
   метаданные и превью генерируются асинхронно Job `ProcessMedia` по стримам
 
@@ -517,14 +520,15 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
   (`tests/Feature/Jobs/ProcessMediaTest.php`)
 - Пагинация листинга Яндекс.Диска (чанки по 100, `_embedded.total`):
   `tests/Unit/Filesystem/YandexDiskPaginationTest.php`
-- Импорт альбома из очереди (Job переиспользует Action, dispatch со страницы):
+- Импорт альбома из очереди (Job переиспользует Action, dispatch со страницы,
+  ShouldBeUnique против двойной отправки):
   `tests/Feature/Jobs/ImportAlbumFromYandexDiskJobTest.php`,
   `tests/Feature/Filament/ImportFromYandexDiskPageTest.php`
 - Lifecycle Media (создание/обновление/удаление): `tests/Feature/Models/MediaLifecycleTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 379 тестов, 728 утверждений
+- 381 тест, 734 утверждения
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой

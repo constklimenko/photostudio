@@ -3,11 +3,12 @@
 namespace App\Jobs;
 
 use App\Actions\Album\ImportAlbumFromYandexDisk as AlbumImportAction;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
-class ImportAlbumFromYandexDisk implements ShouldQueue
+class ImportAlbumFromYandexDisk implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
@@ -19,6 +20,11 @@ class ImportAlbumFromYandexDisk implements ShouldQueue
         public array $data,
         public string $diskName = 'yandex_disk',
     ) {}
+
+    public function uniqueId(): string
+    {
+        return md5($this->diskName.'|'.$this->data['type'].'|'.($this->data['folder'] ?? ''));
+    }
 
     public function backoff(): array
     {
