@@ -26,6 +26,7 @@ app/
 │   └── Commands/
 │       ├── MakeFilamentUser.php
 │       ├── MediaRegenerateThumbnails.php
+│       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
 │       └── MediaTestStorage.php          # Проверка подключения к диску
 ├── Jobs/
 │   └── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
@@ -112,6 +113,7 @@ app/
 │   ├── MediaObserver.php         # Авто-метаданные + WebP превью
 │   └── PageObserver.php          # Сброс кэша PageContentService
 ├── Services/
+│   ├── ImageCacheService.php     # Кэш производных изображений (display/lightbox) + вытеснение по лимиту
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
 │   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
@@ -166,6 +168,9 @@ resources/views/
 | GET | `/blog/{slug}` | `BlogController@show` | — |
 | GET | `/video` | `VideoController@index` | — |
 | GET | `/media/{media}/original` | `MediaController@original` | — |
+| GET | `/media/{media}/download` | `MediaController@download` | attachment |
+| GET | `/media/{media}/display` | `MediaController@display` | PNG ≤800px из кэша |
+| GET | `/media/{media}/lightbox` | `MediaController@lightbox` | PNG ≤1600px из кэша |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
@@ -333,9 +338,24 @@ storage/app/public/
 
 - MediaObserver генерирует превью на диске `thumbnails` через стримы (без path())
 - Media::getUrl() — URL оригинала через диск из Media::disk (для remote-дисков — прокси-роут)
-- Media::getThumbnailUrl() — URL превью через диск `thumbnails`
+- Media::getThumbnailUrl() — URL превью 400px (WebP) через диск `thumbnails`
+- Media::getDisplayUrl() / getLightboxUrl() — прокси-роуты кэша производных (см. ниже)
 - Video::source_url / embed_url — через конфиг `filesystems.default_media_disk`
 - Storage symlink: `public/storage -> storage/app/public`
+
+### Кэш производных изображений (display / lightbox)
+
+- Диск `image_cache` (локальный, `storage/app/image-cache`), параметры в `filesystems.image_cache`
+  (`tiers`: display = 800px, lightbox = 1600px; `max_size_mb`, `png_level`; env `IMAGE_CACHE_DISK`, `IMAGE_CACHE_MAX_MB`)
+- Сервис `ImageCacheService`: ленивая генерация PNG (≤800px для сетки альбома,
+  ≤1600px для lightbox) при первом запросе `media.display` / `media.lightbox`;
+  ключ файла: `{tier}/{media_id}-{sha1(id|tier|disk|path)[0..12]}.png`; повторные
+  запросы отдаются с диска (`Cache-Control: immutable`)
+- Источник — оригинал с любого диска (включая Яндекс.Диск) через временную копию;
+  после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы
+- Ручное управление: `php artisan media:prune-image-cache [--stats|--all]`
+- Страница альбома `/portfolio/{slug}`: сетка — `media.display`, lightbox — `media.lightbox`,
+  кнопка «Скачать в оригинальном разрешении» — `media.download` (attachment)
 
 ### Будущее
 - Перенос локальных оригиналов на Яндекс.Диск (команда миграции)

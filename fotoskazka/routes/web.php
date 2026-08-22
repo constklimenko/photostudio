@@ -30,6 +30,12 @@ Route::get('/video', [VideoController::class, 'index'])->name('video.index');
 
 Route::get('/media/{media}/original', [MediaController::class, 'original'])
     ->name('media.original');
+Route::get('/media/{media}/download', [MediaController::class, 'download'])
+    ->name('media.download');
+Route::get('/media/{media}/display', [MediaController::class, 'display'])
+    ->name('media.display');
+Route::get('/media/{media}/lightbox', [MediaController::class, 'lightbox'])
+    ->name('media.lightbox');
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\MediaObserver;
+use App\Services\ImageCacheService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,16 @@ class Media extends Model
         }
 
         return Storage::disk('thumbnails')->url($this->thumbnail_path);
+    }
+
+    public function getDisplayUrl(): ?string
+    {
+        return app(ImageCacheService::class)->url($this, ImageCacheService::TIER_DISPLAY);
+    }
+
+    public function getLightboxUrl(): ?string
+    {
+        return app(ImageCacheService::class)->url($this, ImageCacheService::TIER_LIGHTBOX);
     }
 
     protected static function booted(): void
