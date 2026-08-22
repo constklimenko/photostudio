@@ -2,13 +2,11 @@
 
 namespace App\Observers;
 
+use App\Jobs\ProcessMedia;
 use App\Models\Media;
-use App\Services\MediaProcessor;
 
 class MediaObserver
 {
-    public function __construct(protected MediaProcessor $processor) {}
-
     public function creating(Media $media): void
     {
         $media->disk = $media->disk ?? (string) config('filesystems.default_media_disk', 'public');
@@ -16,6 +14,6 @@ class MediaObserver
 
     public function created(Media $media): void
     {
-        $this->processor->process($media);
+        ProcessMedia::dispatch($media->id);
     }
 }

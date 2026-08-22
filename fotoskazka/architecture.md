@@ -28,8 +28,12 @@ app/
 │       ├── MediaRegenerateThumbnails.php
 │       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
 │       └── MediaTestStorage.php          # Проверка подключения к диску
+├── Filesystem/
+│   └── YandexDiskPaginatedAdapter.php    # Листинг Яндекс.Диска с пагинацией (чанки по 100)
 ├── Jobs/
-│   └── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
+│   ├── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
+│   ├── ProcessMedia.php              # Очередь: обработка Media (metadata + thumbnail)
+│   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
 │   │   ├── Albums/
@@ -110,7 +114,7 @@ app/
 │   └── Video.php
 ├── Observers/
 │   ├── InquiryObserver.php       # Диспатч SendInquiryNotifications в очередь
-│   ├── MediaObserver.php         # Тонкий: disk по умолчанию + запуск MediaProcessor
+│   ├── MediaObserver.php         # Тонкий: disk по умолчанию + dispatch ProcessMedia
 │   └── PageObserver.php          # Сброс кэша PageContentService
 ├── Services/
 │   ├── ImageCacheService.php     # Кэш производных изображений (display/lightbox) + вытеснение по лимиту
@@ -225,21 +229,61 @@ resources/views/
 `MediaObserver` — минимальная привязка жизненного цикла Media к Eloquent:
 
 - `creating` — гарантирует `disk` (по умолчанию `filesystems.default_media_disk`);
-- `created` — однократно запускает `MediaProcessor::process()`.
+- `created` — однократно диспатчит Job `ProcessMedia` (после вставки записи).
 
-Вся обработка файлов вынесена в `MediaProcessor`, Observer бизнес-логики не содержит.
+Вся обработка файлов выполняется асинхронно в очереди; Observer бизнес-логики не содержит.
+
+## ProcessMedia (`app/Jobs/ProcessMedia.php`) — этап B4
+
+Тяжёлая обработка фотографий выполняется вне HTTP-запроса:
+
+```text
+Filament upload / Action
+    ↓
+Media created → Observer.created
+    ↓
+ProcessMedia::dispatch(mediaId)   [afterCommit]
+    ↓
+очередь: original → metadata → thumbnail
+    ↓
+ready
+```
+
+- Параметры: `$tries = 3`, `$timeout = 180` сек, `backoff() = [30, 120]` сек,
+  `$afterCommit = true`.
+- Job получает `mediaId` (int), а не модель: каждая попытка читает свежее
+  состояние из БД; удалённая между dispatch и выполнением Media не роняет job.
+- Dispatch происходит в единственной точке — `MediaObserver::created`, после
+  успешного создания записи; покрывает все пути создания Media
+  (Filament UploadPhotos/CreateAlbum, EditAlbum, ImportFromYandexDisk,
+  MediaResource). Массовая загрузка даёт по одному job на каждый Media,
+  HTTP-запрос не ждёт обработки.
+- Транзакции: `afterCommit` гарантирует, что job попадает в очередь только
+  после commit; при rollback (например, ошибка в `CreateAlbum`) задание не
+  создаётся и не пытается обработать несуществующую Media.
+- Идемпотентность обеспечивается `MediaProcessor` (детерминированный путь
+  thumbnail, заполнение только пустых полей): повторное выполнение job не
+  создаёт дубликатов thumbnail/Media и лишних записей в БД.
+
+### Обработка ошибок в Job
+
+| Ситуация                                   | Поведение                                              |
+|--------------------------------------------|--------------------------------------------------------|
+| Media отсутствует в БД                      | warning, job завершается без ошибки                    |
+| Оригинал отсутствует / повреждён            | warning от процессора (`process()` → false), без retry |
+| Storage недоступен (временная ошибка)       | Throwable пробрасывается → retry очереди с backoff     |
 
 ## MediaProcessor (`app/Services/MediaProcessor.php`)
 
-Централизованная точка обработки Media. Единый lifecycle для создания записи,
-команды `media:regenerate-thumbnails` и будущих Queue Job (этап B4):
+Централизованная точка обработки Media. Единый lifecycle для Queue Job
+(`ProcessMedia`) и команды `media:regenerate-thumbnails`:
 
 ```text
-создание Media (Observer.created)
+ProcessMedia (queue worker)
     ↓
 сохранение оригинала — выполнено вызывающим кодом (Filament Upload, Action)
     ↓
-MediaProcessor::process(Media)
+MediaProcessor::processOrFail(Media)
     ├── определение MIME (mime_content_type)
     ├── file_size
     ├── width/height для изображений (getimagesize)
@@ -248,6 +292,10 @@ MediaProcessor::process(Media)
     ↓
 готово
 ```
+
+- `process()` — логирует сбой storage и возвращает `false` (CLI, команда регенерации).
+- `processOrFail()` — то же, но Throwable пробрасывается после логирования:
+  временные сбои storage приводят к retry очереди.
 
 - Оригинал читается с диска `Media::disk` через Laravel Filesystem (стримы,
   временный файл для GD — работает и с удалённым Яндекс.Диском).
@@ -269,13 +317,13 @@ MediaProcessor::process(Media)
 Ошибки логируются с контекстом (`media_id`, `disk`, `path`), возвращают `false`,
 не приводят к потере уже известных данных и не меняют запись разрушающе:
 
-| Ситуация                        | Поведение                                              |
-|---------------------------------|--------------------------------------------------------|
-| Отсутствует оригинал            | warning, запись без изменений                          |
-| Файл нельзя прочитать           | warning, запись без изменений                          |
-| Изображение повреждено          | warning; сохраняются mime/size, без width/height/thumb |
-| Невозможно создать thumbnail    | warning; метаданные сохраняются, thumbnail_path не пишется |
-| Storage недоступен (Throwable)  | error на верхнем уровне, запись без изменений          |
+| Ситуация                        | process()                     | processOrFail()            |
+|---------------------------------|-------------------------------|----------------------------|
+| Отсутствует оригинал            | warning, запись без изменений | warning                    |
+| Файл нельзя прочитать           | warning, запись без изменений | warning                    |
+| Изображение повреждено          | warning; mime/size сохраняются| warning                    |
+| Невозможно создать thumbnail    | warning; метаданные сохраняются | warning                  |
+| Storage недоступен (Throwable)  | error, false                  | error + throw (retry)      |
 
 Статусы обработки в БД не вводятся: «требует обработки» выводится из пустых
 полей и отсутствия файла thumbnail; повторный вызов `process()` безопасен.
@@ -376,6 +424,10 @@ storage/app/public/
 - Драйвер `yandex-disk` регистрируется в `AppServiceProvider::boot()` через `Storage::extend()`
 - SDK: `impressiveweb/yandex-disk` + Flysystem v3 адаптер `impressiveweb/yandex-disk-flysystem`
   (форк arhitector/yandex; оригинальный пакет несовместим с PHP 8.4 и Flysystem 3)
+- Адаптер обёрнут в `YandexDiskPaginatedAdapter`: базовый `listContents()` читал
+  только первую страницу API (20 элементов) — теперь листинг идёт чанками по
+  `_embedded.total` с offset-пагинацией (`PAGE_SIZE = 100`); deep-листинг остался
+  на поведении вендора (не используется, см. ограничение ниже)
 - OAuth-токен и параметры — только из env: `YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`
 - Корневая директория (`YANDEX_DISK_ROOT`) применяется как path-prefix клиента:
   все пути диска относительны ей, бизнес-логика не знает абсолютных путей Диска
@@ -383,8 +435,9 @@ storage/app/public/
   прокси-роут `media.original` (стриминг через Laravel), публичные URL отсутствуют
 - Проверка подключения: `php artisan media:test-storage` (mkdir → write → read → delete → rmdir)
 - Ограничение API: промежуточные папки не создаются при загрузке автоматически;
-  листинг «в глубину» делает запрос на каждую подпапку — использовать неглубокий
-  `directories($path)`; пути вида `.folder` не поддерживаются клиентом SDK
+  рекурсивный «deep»-листинг делает запрос на каждую подпапку и не пагинирован —
+  использовать неглубокий `directories($path)`/`files($path)`; пути вида `.folder`
+  не поддерживаются клиентом SDK
 
 ### Импорт альбома из Яндекс.Диска
 
@@ -393,10 +446,14 @@ storage/app/public/
   кэшируются на 10 минут) либо ручной ввод пути; валидация существования папки
 - Action `ImportAlbumFromYandexDisk`: фильтрация изображений по расширению,
   естественная сортировка по имени, лимит `filesystems.yandex_import.max_files`
-  (по умолчанию 100), обложка — первое фото (опционально), всё в одной транзакции
+  (env `YANDEX_IMPORT_MAX_FILES`, по умолчанию 500), обложка — первое фото
+  (опционально), создание альбома/Media/Photo в одной транзакции
+- Форма не запускает импорт синхронно: страница диспатчит Job
+  `App\Jobs\ImportAlbumFromYandexDisk` (tries=3, timeout=300, backoff [30,120]),
+  который выполняет тот же Action; ошибка листинга → rollback транзакции и retry,
+  дубликаты альбомов исключены атомарностью
 - Оригиналы остаются на Яндекс.Диске (`Media.disk = 'yandex_disk'`),
-  превью генерируются локально `MediaProcessor` (через Observer) по стримам
-- Импорт синхронный; вынос в очередь запланирован на этапе асинхронной обработки
+  метаданные и превью генерируются асинхронно Job `ProcessMedia` по стримам
 
 - MediaProcessor генерирует превью на диске `thumbnails` через стримы (без path())
 - Media::getUrl() — URL оригинала через диск из Media::disk (для remote-дисков — прокси-роут)
@@ -455,12 +512,26 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - MediaProcessor: metadata, dimensions, thumbnail, идемпотентность, ошибки
   (`tests/Unit/Services/MediaProcessorTest.php`, remote-stream —
   `tests/Feature/Services/MediaProcessorRemoteStreamTest.php`)
+- ProcessMedia Job: dispatch после commit, идемпотентность, отсутствие Media,
+  ошибки обработки, retry временного сбоя storage
+  (`tests/Feature/Jobs/ProcessMediaTest.php`)
+- Пагинация листинга Яндекс.Диска (чанки по 100, `_embedded.total`):
+  `tests/Unit/Filesystem/YandexDiskPaginationTest.php`
+- Импорт альбома из очереди (Job переиспользует Action, dispatch со страницы):
+  `tests/Feature/Jobs/ImportAlbumFromYandexDiskJobTest.php`,
+  `tests/Feature/Filament/ImportFromYandexDiskPageTest.php`
 - Lifecycle Media (создание/обновление/удаление): `tests/Feature/Models/MediaLifecycleTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 360 тестов, 674 утверждений
+- 379 тестов, 728 утверждений
 - CI: `php artisan config:clear && php artisan test`
+
+### Очередь и деплой
+
+- `QUEUE_CONNECTION=database`, воркер: `php artisan queue:work` (в dev — `composer dev`)
+- Воркер держит код в памяти: после обновления кода обязателен
+  `php artisan queue:restart`, иначе Job'ы выполняются старой версией классов
 
 ## Ключевые решения
 
@@ -469,11 +540,11 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 для портфолио, клиентских галерей, слайдеров и т.д.
 Простое и гибкое решение без избыточной нормализации.
 
-### MediaObserver + MediaProcessor вместо логики в Observer
+### MediaObserver + ProcessMedia Job вместо логики в Observer
 Обработка Media централизована в `MediaProcessor` (metadata, размеры, WebP-превью).
-Observer только задаёт `disk` по умолчанию и запускает обработку при создании —
-без сложной бизнес-логики в событиях модели. Обработка идемпотентна и доступна
-для повторного вызова (команда регенерации, будущий Queue Job).
+Observer только задаёт `disk` по умолчанию и диспатчит Job `ProcessMedia` при создании —
+обработка асинхронна (этап B4), идемпотентна и доступна для повторного вызова
+(команда регенерации, повторный dispatch).
 
 ### Action-классы вместо логики в Pages
 Бизнес-логика создания альбома вынесена в `CreateAlbum` Action

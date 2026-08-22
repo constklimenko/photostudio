@@ -17,6 +17,10 @@ return [
 
     'default_media_disk' => env('MEDIA_DISK', 'public'),
 
+    'yandex_import' => [
+        'max_files' => env('YANDEX_IMPORT_MAX_FILES', 500),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

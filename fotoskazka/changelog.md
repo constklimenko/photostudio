@@ -1,5 +1,101 @@
 # Changelog
 
+## 2026-08-22 — Импорт с Яндекс.Диска: пагинация листинга и асинхронный импорт
+
+### Исправлено
+- **Листинг Яндекс.Диска возвращал только 20 элементов**: API отдаёт содержимое
+  папки страницами (лимит по умолчанию 20), а `listContents()` вендорского адаптера
+  читал только первую страницу. Из-за этого импорт альбома из папки на 153 файла
+  создавал всего 20 Media
+  - **app/Filesystem/YandexDiskPaginatedAdapter.php**: подкласс вендорского адаптера,
+    `iterateFolderContents()` идёт чанками по 100 (`PAGE_SIZE`) с offset-пагинацией
+    до `_embedded.total`; при отсутствии total — до неполной страницы.
+    Deep-листинг оставлен на поведении вендора (в коде не используется)
+  - Драйвер `yandex-disk` в `AppServiceProvider` теперь создаёт этот адаптер;
+    исправление действует для всех вызовов `files()`/`directories()` (импорт,
+    каскад выбора папок, `media:test-storage`)
+
+### Добавлено
+- **app/Jobs/ImportAlbumFromYandexDisk.php**: импорт альбома выполняется очередью,
+  не в HTTP-запросе. Job переиспользует существующий Action (без дублирования);
+  tries=3, timeout=300, backoff [30,120]. Атомарность транзакции Action исключает
+  дубликаты альбомов при retry
+- **Filament ImportFromYandexDisk**: форма диспатчит Job и сразу сообщает
+  «Импорт запущен» с редиректом на список альбомов; тяжёлая обработка фото —
+  по-прежнему ProcessMedia (этап B4)
+- **config/filesystems.php**: секция `yandex_import.max_files`
+  (env `YANDEX_IMPORT_MAX_FILES`, по умолчанию 500; раньше лимит был жёстко 100
+  и молча обрезал папки больше 100 файлов)
+- Тесты: пагинация адаптера (4) — следование `_embedded.total`, одна страница,
+  остановка на неполной странице без total, продолжение на полной странице без total;
+  Job импорта (3) — создание альбома/фото/Media/dispatch ProcessMedia,
+  ошибка отсутствующей папки, параметры retry; страница (3) — dispatch Job вместо
+  синхронного импорта, альбом в БД не создаётся в запросе
+
+### Проверено на реальном Яндекс.Диске
+- `Storage::disk('yandex_disk')->files('японки')` → 153 файла (2 запроса API:
+  offset 0 → 100 записей, offset 100 → 53)
+- После перезапуска воркера полный импорт папки «японки»: альбом, 153 Media + Photo,
+  превью генерируются ProcessMedia
+
+### Важно при деплое
+- Воркер очереди держит код в памяти: после обновления кода выполнять
+  `php artisan queue:restart`, иначе Job'ы обрабатываются старой версией классов
+
+### Статистика
+- Тесты: 379 проходят (+8)
+- Assertions: 728
+- Pint: clean
+
+## 2026-08-21 — Этап B4: асинхронная обработка Media
+
+### Добавлено
+- **app/Jobs/ProcessMedia.php**: Queue Job обработки Media (metadata + WebP-thumbnail)
+  - Параметры: `$tries = 3`, `$timeout = 180`, `backoff() = [30, 120]` сек,
+    `$afterCommit = true`
+  - Принимает `mediaId` (int): каждая попытка читает свежую запись из БД,
+    удалённая Media не роняет job
+  - Обработка делегирована существующему `MediaProcessor::processOrFail()` —
+    без дублирования GD/mime-логики
+- **MediaProcessor::processOrFail()**: аналогичен `process()`, но Throwable после
+  логирования пробрасывается — временный сбой storage приводит к retry очереди.
+  Общая логика (`handle()`, `reportFailure()`) не дублируется; `process()` сохранён
+  для команды регенерации и CLI
+
+### Изменено
+- **app/Observers/MediaObserver.php**: `created` диспатчит `ProcessMedia::dispatch($media->id)`
+  вместо синхронной `MediaProcessor::process()`; зависимость от процессора убрана.
+  Dispatch — в единственной точке, после вставки записи: покрывает все пути создания
+  Media (UploadPhotos/CreateAlbum, EditAlbum, ImportFromYandexDisk, MediaResource);
+  массовая загрузка даёт по одному job на файл, HTTP-запрос не ждёт обработки
+- Тесты, ассертирующие результат обработки по in-memory экземпляру:
+  добавлен `refresh()` после `create()` — при асинхронной схеме состояние
+  появляется в БД, а не у создающего объекта
+  (MediaObserverTest, MediaProcessorRemoteStreamTest, MediaImageCacheTest)
+- Тесты: `tests/Feature/Jobs/ProcessMediaTest.php` (11) — dispatch при создании и
+  массовой загрузке (Queue::fake), dispatch только после commit / отбрасывание
+  при rollback (реальный database-драйвер), успешное выполнение, идемпотентный
+  повторный запуск, отсутствующая Media, отсутствие оригинала без retry,
+  повреждённое изображение, retry временного сбоя storage (Throwable),
+  параметры tries/backoff/timeout
+- architecture.md: lifecycle с очередью, контракт Job и processOrFail
+
+### Поведение
+- Lifecycle: Upload → создание Media → Observer → ProcessMedia (после commit)
+  → очередь → metadata + thumbnail → Ready. Тяжёлая обработка выведена из HTTP-запроса
+- Транзакции: `afterCommit` исключает ситуацию «job отправлен, transaction rollback» —
+  задание создаётся только для закоммиченной Media
+- Идемпотентность: повторный запуск job не создаёт дубликатов thumbnail/Media и лишних
+  записей БД (детерминированный путь превью, заполнение только пустых полей)
+- Ошибки: отсутствующая Media или оригинал — job завершается без ошибки (без бесконечных
+  retry); недоступность storage — исключение → retry очереди (3 попытки, backoff 30/120 c)
+- Миграция существующих Media и проверка целостности — вне рамок этапа
+
+### Статистика
+- Тесты: 371 проходят (+11)
+- Assertions: 710
+- Pint: clean
+
 ## 2026-08-21 — Этап B3: переработка жизненного цикла Media
 
 ### Добавлено

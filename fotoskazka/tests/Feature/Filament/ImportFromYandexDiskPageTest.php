@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Resources\Albums\Pages\ImportFromYandexDisk;
+use App\Jobs\ImportAlbumFromYandexDisk;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ImportFromYandexDiskPageTest extends TestCase
@@ -41,5 +45,24 @@ class ImportFromYandexDiskPageTest extends TestCase
         $response = $this->get('/admin/albums/import-yandex');
 
         $response->assertSuccessful();
+    }
+
+    public function test_create_dispatches_import_job_instead_of_sync_import(): void
+    {
+        Storage::disk('yandex_disk')->makeDirectory('японки');
+        Queue::fake();
+
+        Livewire::test(ImportFromYandexDisk::class)
+            ->set('data.title', 'Японки')
+            ->set('data.type', 'portfolio')
+            ->set('data.folder_top', 'японки')
+            ->call('create')
+            ->assertHasNoErrors();
+
+        Queue::assertPushed(ImportAlbumFromYandexDisk::class, function (ImportAlbumFromYandexDisk $job): bool {
+            return $job->data['folder'] === 'японки'
+                && $job->data['title'] === 'Японки';
+        });
+        $this->assertDatabaseCount('albums', 0);
     }
 }

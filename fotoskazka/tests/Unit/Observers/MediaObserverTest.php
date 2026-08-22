@@ -44,6 +44,7 @@ class MediaObserverTest extends TestCase
             'file_path' => $path,
             'disk' => 'public',
         ]);
+        $media->refresh();
 
         $this->assertSame('image/jpeg', $media->mime_type);
         $this->assertSame(640, $media->width);
@@ -60,6 +61,7 @@ class MediaObserverTest extends TestCase
             'file_path' => $path,
             'disk' => 'public',
         ]);
+        $media->refresh();
         $thumbnailPath = $media->thumbnail_path;
 
         Storage::disk('public')->delete($path);

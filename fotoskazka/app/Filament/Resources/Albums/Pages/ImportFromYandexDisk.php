@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Albums\Pages;
 
-use App\Actions\Album\ImportAlbumFromYandexDisk;
 use App\Filament\Resources\Albums\AlbumResource;
+use App\Jobs\ImportAlbumFromYandexDisk;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -183,31 +183,15 @@ class ImportFromYandexDisk extends Page
             return;
         }
 
-        try {
-            $album = app(ImportAlbumFromYandexDisk::class)->execute($data);
-        } catch (Throwable $e) {
-            Notification::make()
-                ->danger()
-                ->title('Ошибка импорта')
-                ->body($e->getMessage())
-                ->send();
-
-            return;
-        }
-
-        $message = "Альбом создан: импортировано файлов — {$album->imported_files_count}.";
-
-        if ($album->skipped_files_count > 0) {
-            $message .= " Пропущено (превышен лимит): {$album->skipped_files_count}.";
-        }
+        ImportAlbumFromYandexDisk::dispatch($data);
 
         Notification::make()
             ->success()
-            ->title('Импорт завершён')
-            ->body($message)
+            ->title('Импорт запущен')
+            ->body('Альбом создаётся в фоне; обработка фотографий выполняется очередью. Обновите список альбомов через минуту.')
             ->send();
 
-        $this->redirect(AlbumResource::getUrl('edit', ['record' => $album]));
+        $this->redirect(AlbumResource::getUrl('index'));
     }
 
     protected function resolveFolder(array $data): string

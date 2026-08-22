@@ -27,15 +27,35 @@ class MediaProcessor
         try {
             return $this->handle($media, $force);
         } catch (Throwable $exception) {
-            Log::error('Media processing failed.', [
-                'media_id' => $media->id,
-                'disk' => $media->disk,
-                'path' => $media->file_path,
-                'error' => $exception->getMessage(),
-            ]);
+            $this->reportFailure($media, $exception);
 
             return false;
         }
+    }
+
+    /**
+     * Аналог process(), но сбой storage (Throwable) пробрасывается после логирования —
+     * для Queue Job, где временные ошибки должны приводить к retry.
+     */
+    public function processOrFail(Media $media, bool $force = false): bool
+    {
+        try {
+            return $this->handle($media, $force);
+        } catch (Throwable $exception) {
+            $this->reportFailure($media, $exception);
+
+            throw $exception;
+        }
+    }
+
+    protected function reportFailure(Media $media, Throwable $exception): void
+    {
+        Log::error('Media processing failed.', [
+            'media_id' => $media->id,
+            'disk' => $media->disk,
+            'path' => $media->file_path,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     /**

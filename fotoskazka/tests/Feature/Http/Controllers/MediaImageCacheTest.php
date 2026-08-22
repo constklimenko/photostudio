@@ -154,6 +154,7 @@ class MediaImageCacheTest extends TestCase
             'disk' => 'public',
             'file_path' => 'albums/photo.jpg',
         ]);
+        $media->refresh();
 
         $this->assertSame(
             route('media.display', ['media' => $media->getKey()]),

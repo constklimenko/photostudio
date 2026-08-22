@@ -61,6 +61,7 @@ class MediaProcessorRemoteStreamTest extends TestCase
             'disk' => 'remote_like',
             'file_path' => 'albums/photo.jpg',
         ]);
+        $media->refresh();
 
         $this->assertSame('image/jpeg', $media->mime_type);
         $this->assertSame(600, $media->width);
@@ -77,6 +78,7 @@ class MediaProcessorRemoteStreamTest extends TestCase
             'disk' => 'remote_like',
             'file_path' => 'albums/photo.jpg',
         ]);
+        $media->refresh();
 
         $thumbDisk = Storage::disk('thumbnails');
 
@@ -92,6 +94,7 @@ class MediaProcessorRemoteStreamTest extends TestCase
             'disk' => 'remote_like',
             'file_path' => 'docs/readme.txt',
         ]);
+        $media->refresh();
 
         $this->assertSame('text/plain', $media->mime_type);
         $this->assertNull($media->thumbnail_path);

@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
+use App\Filesystem\YandexDiskPaginatedAdapter;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ServiceProvider;
-use ImpressiveWeb\Flysystem\YandexDiskAdapter;
 use ImpressiveWeb\YandexDisk\Client as YandexDiskClient;
 use League\Flysystem\Filesystem as Flysystem;
 
@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
                 $client->setPathPrefix((string) ($config['path_prefix'] ?? 'disk:/'));
             }
 
-            $adapter = new YandexDiskAdapter($client);
+            $adapter = new YandexDiskPaginatedAdapter($client);
 
             return new FilesystemAdapter(
                 new Flysystem($adapter, $config),
