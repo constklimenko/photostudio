@@ -23,7 +23,7 @@
                        class="group block relative overflow-hidden rounded-xl bg-black shadow-lg shadow-black/30 {{ $i % 4 === 0 ? 'sm:col-span-2 sm:row-span-2' : ($i % 5 === 0 ? 'sm:row-span-2' : '') }}"
                        data-aos="fade-up" data-aos-delay="{{ ($i % 9) * 100 }}">
 @if ($album->cover)
-                             <img src="{{ $album->cover->getUrl() }}"
+                             <img src="{{ $album->cover->getDisplayUrl() ?? $album->cover->getUrl() }}"
                                   alt="{{ $album->title }}"
                                   class="w-full h-full object-cover group-hover:scale-105 transition duration-700"
                                   loading="lazy">

@@ -1050,7 +1050,10 @@ Laravel Filesystem
     │
     ├── yandex_disk (Яндекс.Диск)    → оригиналы импорта из папок (Media::disk = 'yandex_disk')
     │
-    └── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
+    ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
+    │
+    └── image_cache disk (Local)     → ленивый кэш PNG: display ≤800px / lightbox ≤1600px,
+                                       лимит размера IMAGE_CACHE_MAX_MB, вытеснение по возрасту
 ```
 
 - MediaObserver генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
@@ -1059,7 +1062,10 @@ Laravel Filesystem
 - `Media::getUrl()` — URL оригинала через диск из `Media::disk`.
   Для remote-дисков (конфиг `remote => true`) возвращается прокси-роут
   `GET /media/{media}/original` — файл стримится через Laravel, публичных ссылок на Диск нет.
-- `Media::getThumbnailUrl()` — возвращает URL превью через диск `thumbnails`.
+- `Media::getThumbnailUrl()` — возвращает URL превью 400px через диск `thumbnails`.
+- `Media::getDisplayUrl()` / `Media::getLightboxUrl()` — прокси-роуты ленивого кэша
+  производных PNG (≤800px / ≤1600px, диск `image_cache`); скачивание оригинала —
+  `GET /media/{media}/download`.
 - `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
 - Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.
 - Все обращения к файлам в Blade — через аксессоры моделей (`getUrl()`, `getThumbnailUrl()`, `source_url`).

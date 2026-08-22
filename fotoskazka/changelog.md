@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-22 — Кэш производных изображений (display / lightbox)
+
+### Добавлено
+- **app/Services/ImageCacheService.php**: ленивый кэш PNG-версий оригиналов
+  - Уровни (`filesystems.image_cache.tiers`): `display` ≤800px (сетка альбома),
+    `lightbox` ≤1600px (полноэкранный просмотр)
+  - Генерация при первом запросе; источник — оригинал с любого диска (включая Яндекс.Диск)
+    через временный файл; ключ `{tier}/{media_id}-{hash}.png`; повторные запросы — с диска
+  - Вытеснение: при превышении `IMAGE_CACHE_MAX_MB` удаляются самые старые файлы
+    (проверяется после каждой генерации и в команде очистки)
+- **app/Console/Commands/MediaPruneImageCache.php**: `media:prune-image-cache [--stats|--all]`
+- **config/filesystems.php**: диск `image_cache` + секция параметров; env `IMAGE_CACHE_DISK`, `IMAGE_CACHE_MAX_MB`
+- **app/Models/Media.php**: аксессоры `getDisplayUrl()` / `getLightboxUrl()` (прокси-роуты кэша)
+- Роуты: `GET /media/{media}/download` (attachment), `/display`, `/lightbox` — `App\Http\Controllers\MediaController`
+  - Кэшированные ответы с `Cache-Control: public, max-age=31536000, immutable`
+- Страница альбома `portfolio/show.blade.php`:
+  - Сетка использует display-кэш вместо thumbnails 400px
+  - Список альбомов `portfolio/index.blade.php`: обложки используют display-кэш вместо оригиналов
+  - Lightbox получает ссылки на lightbox-кэш; кнопка «Скачать в оригинальном разрешении» (`media.download`)
+  - Мобильные (<800px): lightbox открывает display-версию для быстрой первой загрузки,
+    при смене ориентации подменяется на lightbox-версию; кнопка скачивания поднята над «Поделиться»
+  - Подпись фото из БД (Photo.caption) показывается под изображением в lightbox
+    (data-caption → #lightboxCaption, скрывается если пусто)
+  - Скачивание оригинала только для авторизованных: `auth`-middleware на
+    `media.download`, кнопка в lightbox рендерится через `@auth`
+- Тесты: `tests/Feature/Http/Controllers/MediaImageCacheTest.php` (9) — генерация/переиспользование
+  кэша, 404, скачивание оригинала, вытеснение по лимиту, команда;
+  тест страницы портфолио на ссылки кэша
+
+### Изменено
+- Тесты портфолио: добавлен `test_show_links_lightbox_to_cache_and_marks_display_url`
+
+### Статистика
+- Тесты: 338 проходят
+- Assertions: 585
+- Pint: clean
+
 ## 2026-08-22 — Исправление: mime_content_type при импорте с Яндекс.Диска
 
 ### Исправлено

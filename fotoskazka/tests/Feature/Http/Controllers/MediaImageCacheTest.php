@@ -3,6 +3,7 @@
 namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Media;
+use App\Models\User;
 use App\Services\ImageCacheService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -108,6 +109,21 @@ class MediaImageCacheTest extends TestCase
         $this->get(route('media.lightbox', ['media' => $media]))->assertNotFound();
     }
 
+    public function test_download_requires_authentication(): void
+    {
+        $bytes = $this->makeJpegBytes(800, 600);
+        Storage::disk('public')->put('albums/photo.jpg', $bytes);
+
+        $media = Media::query()->create([
+            'album_id' => null,
+            'disk' => 'public',
+            'file_path' => 'albums/photo.jpg',
+        ]);
+
+        $this->get(route('media.download', ['media' => $media]))
+            ->assertRedirect(route('login'));
+    }
+
     public function test_download_streams_original_as_attachment(): void
     {
         $bytes = $this->makeJpegBytes(800, 600);
@@ -119,7 +135,8 @@ class MediaImageCacheTest extends TestCase
             'file_path' => 'albums/photo.jpg',
         ]);
 
-        $response = $this->get(route('media.download', ['media' => $media]));
+        $response = $this->actingAs(User::factory()->create())
+            ->get(route('media.download', ['media' => $media]));
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'image/jpeg');

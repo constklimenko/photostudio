@@ -31,6 +31,7 @@ Route::get('/video', [VideoController::class, 'index'])->name('video.index');
 Route::get('/media/{media}/original', [MediaController::class, 'original'])
     ->name('media.original');
 Route::get('/media/{media}/download', [MediaController::class, 'download'])
+    ->middleware('auth')
     ->name('media.download');
 Route::get('/media/{media}/display', [MediaController::class, 'display'])
     ->name('media.display');
