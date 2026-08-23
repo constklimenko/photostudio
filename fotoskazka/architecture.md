@@ -469,12 +469,20 @@ storage/app/public/
 
 - Диск `image_cache` (локальный, `storage/app/image-cache`), параметры в `filesystems.image_cache`
   (`tiers`: display = 800px, lightbox = 1600px; `max_size_mb`, `png_level`; env `IMAGE_CACHE_DISK`, `IMAGE_CACHE_MAX_MB`)
-- Сервис `ImageCacheService`: ленивая генерация PNG (≤800px для сетки альбома,
-  ≤1600px для lightbox) при первом запросе `media.display` / `media.lightbox`;
+- **Прогрев через очередь**: `ProcessMedia` после метаданных и WebP-thumbnail
+  генерирует display + lightbox для изображений (`MediaProcessor::warmImageCache`),
+  переиспользуя уже скачанный temp-файл оригинала — повторного запроса к
+  Яндекс.Диску нет. Пропущенные варианты досчитываются при retry:
+  `needsProcessing()` считает отсутствие любого варианта незавершённой обработкой
+- Сервис `ImageCacheService`: ленивая генерация PNG осталась как fallback
+  (первый запрос `media.display` / `media.lightbox`) — на случай вытеснения LRU,
+  очистки командой или отставания воркера; пути детерминированы, поэтому файлы
+  прогрева и fallback совпадают
   ключ файла: `{tier}/{media_id}-{sha1(id|tier|disk|path)[0..12]}.png`; повторные
   запросы отдаются с диска (`Cache-Control: immutable`)
 - Источник — оригинал с любого диска (включая Яндекс.Диск) через временную копию;
-  после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы
+- после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы;
+  сбой LRU-обрезки не считается сбоем генерации (best-effort)
 - Ручное управление: `php artisan media:prune-image-cache [--stats|--all]`
 - Страница альбома `/portfolio/{slug}`: сетка — `media.display`, lightbox — `media.lightbox`,
   кнопка «Скачать в оригинальном разрешении» — `media.download` (attachment)
@@ -528,7 +536,7 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 381 тест, 734 утверждения
+- 383 теста, 754 утверждения
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой

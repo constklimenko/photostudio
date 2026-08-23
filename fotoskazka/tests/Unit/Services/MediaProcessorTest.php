@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\Media;
+use App\Services\ImageCacheService;
 use App\Services\MediaProcessor;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,7 @@ class MediaProcessorTest extends TestCase
         $this->processor = new MediaProcessor;
         Storage::fake('public');
         Storage::fake('thumbnails');
+        Storage::fake('image_cache');
     }
 
     public function test_fills_metadata_for_image(): void
@@ -110,6 +112,53 @@ class MediaProcessorTest extends TestCase
         $this->assertSame('x/y/c_thumb.webp', $this->processor->thumbnailPath('/x/y/c.webp'));
     }
 
+    public function test_warms_display_and_lightbox_variants_from_same_temp_file(): void
+    {
+        $media = $this->makeMedia($this->storeJpeg(2000, 1000));
+
+        $this->assertTrue($this->processor->process($media));
+        $media->refresh();
+
+        $service = new ImageCacheService;
+        $cacheDisk = Storage::disk('image_cache');
+
+        foreach ([ImageCacheService::TIER_DISPLAY => 800, ImageCacheService::TIER_LIGHTBOX => 1600] as $tier => $maxSide) {
+            $path = $service->relativePath($media, $tier);
+
+            $cacheDisk->assertExists($path);
+
+            [$width, $height] = getimagesize($cacheDisk->path($path));
+
+            $this->assertLessThanOrEqual($maxSide, max($width, $height));
+        }
+    }
+
+    public function test_variant_write_failure_marks_processing_incomplete(): void
+    {
+        Log::shouldReceive('warning')->atLeast()->once();
+
+        $realPublicDisk = Storage::disk('public');
+        $realThumbDisk = Storage::disk('thumbnails');
+        $path = $this->storeJpeg(600, 600);
+
+        $cacheMock = Mockery::mock(Filesystem::class);
+        $cacheMock->shouldReceive('exists')->andReturnFalse();
+        $cacheMock->shouldReceive('put')
+            ->andThrow(new RuntimeException('cache write failed'));
+
+        Storage::shouldReceive('disk')->with('public')->andReturn($realPublicDisk);
+        Storage::shouldReceive('disk')->with('thumbnails')->andReturn($realThumbDisk);
+        Storage::shouldReceive('disk')->with('image_cache')->andReturn($cacheMock);
+
+        $media = $this->makeMedia($path);
+
+        $this->assertFalse($this->processor->process($media));
+
+        $media->refresh();
+
+        $this->assertNotNull($media->thumbnail_path);
+    }
+
     public function test_repeated_processing_is_noop(): void
     {
         $media = $this->makeMedia($this->storeJpeg(800, 600));
@@ -118,7 +167,10 @@ class MediaProcessorTest extends TestCase
         $media->refresh();
 
         $thumbDisk = Storage::disk('thumbnails');
+        $cacheDisk = Storage::disk('image_cache');
         $thumbnailBefore = $thumbDisk->get($media->thumbnail_path);
+        $displayPath = (new ImageCacheService)->relativePath($media, ImageCacheService::TIER_DISPLAY);
+        $displayBefore = $cacheDisk->get($displayPath);
         $updatedAtBefore = $media->updated_at->toString();
         $metadataBefore = $media->only(['mime_type', 'width', 'height', 'file_size']);
 
@@ -129,7 +181,9 @@ class MediaProcessorTest extends TestCase
 
         $this->assertSame($metadataBefore, $media->only(['mime_type', 'width', 'height', 'file_size']));
         $this->assertSame($thumbnailBefore, $thumbDisk->get($media->thumbnail_path));
+        $this->assertSame($displayBefore, $cacheDisk->get($displayPath));
         $this->assertCount(1, $thumbDisk->allFiles());
+        $this->assertCount(2, $cacheDisk->allFiles());
         $this->assertSame($updatedAtBefore, $media->updated_at->toString());
     }
 
@@ -269,8 +323,14 @@ class MediaProcessorTest extends TestCase
         $thumbMock->shouldReceive('put')
             ->andThrow(new RuntimeException('write failed'));
 
+        $cacheMock = Mockery::mock(Filesystem::class);
+        $cacheMock->shouldReceive('exists')->andReturnFalse();
+        $cacheMock->shouldReceive('put')->andReturnTrue();
+        $cacheMock->shouldReceive('allFiles')->andReturn([]);
+
         Storage::shouldReceive('disk')->with('thumbnails')->andReturn($thumbMock);
         Storage::shouldReceive('disk')->with('public')->andReturn($realPublicDisk);
+        Storage::shouldReceive('disk')->with('image_cache')->andReturn($cacheMock);
 
         $media = $this->makeMedia($path);
 
