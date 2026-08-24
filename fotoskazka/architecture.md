@@ -20,8 +20,10 @@ app/
 │   ├── Album/
 │   │   ├── CreateAlbum.php     # Создание альбома с медиа и фото
 │   │   └── ImportAlbumFromYandexDisk.php  # Импорт альбома из папки Яндекс.Диска
-│   └── Inquiry/
-│       └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
+│   ├── Inquiry/
+│   │   └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
+│   └── Media/
+│       └── DeleteMedia.php     # Политика удаления Media и оригиналов (B6)
 ├── Console/
 │   └── Commands/
 │       ├── MakeFilamentUser.php
@@ -209,7 +211,8 @@ resources/views/
 - тестировать логику независимо;
 - переиспользовать в разных точках входа (HTTP, CLI, API).
 
-Пример: `CreateAlbum` — транзакция создания альбома с медиа и фото.
+Примеры: `CreateAlbum` — транзакция создания альбома с медиа и фото;
+`DeleteMedia` — политика удаления Media и физических оригиналов (этап B6).
 
 ### PageContentService (`app/Services/`)
 
@@ -333,6 +336,38 @@ MediaProcessor::processOrFail(Media)
 Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
 `--force`) остался в команде; сама обработка делегирована `MediaProcessor::process(force: true)` —
 единая реализация генерации превью без дублирования GD-кода.
+
+## Удаление Media — DeleteMedia (`app/Actions/Media/DeleteMedia.php`) — этап B6
+
+Удаление записи Media не всегда означает удаление оригинального файла.
+Единая точка политики — Action `DeleteMedia::execute(Media, bool $deleteRemoteOriginal)`:
+
+```text
+локальная Media:  удалить local original → удалить derivatives → удалить запись
+удалённая + «Да»: удалить remote original → удалить derivatives → удалить запись
+удалённая + «Нет»: ОСТАВИТЬ original (orphan) → удалить derivatives → удалить запись
+```
+
+- Диск считается удалённым через `Media::isRemoteDisk()` (флаг `remote => true`
+  в конфиге диска), а не по имени — политика работает с любым диском.
+- Derivatives (WebP-thumbnail на `thumbnails` + display/lightbox на `image_cache`)
+  удаляются всегда; сбой удаления производной логируется warning'ом и не блокирует
+  удаление записи — кэш несущественен, потеря записи недопустима из-за него.
+- **Критическое правило**: если запрошенный к удалению оригинал удалить не удалось
+  (Диск недоступен и т.п.) — запись Media сохраняется, ошибка логируется,
+  производные не трогаются. Сценарий «записи нет, файл есть» системой не создаётся.
+- Отказ от удаления Yandex-оригинала оставляет файл как потенциальный orphan;
+  автоматическая очистка orphan-файлов запрещена (обнаружение — задача
+  команды проверки целостности).
+- Filament-интеграция:
+  - одиночное удаление (`EditMedia`) — для remote-дисков модалка с вопросом
+    «Удалить файл с Яндекс-Диска?» (Toggle, по умолчанию выключен);
+  - массовое удаление (`MediaTable`) — одно подтверждение на всю выборку
+    с указанием количества Yandex-оригиналов; ответ применяется ко всем сразу;
+  - смешанные сбои при bulk: упавшие записи остаются в БД, пользователь получает
+    уведомление «Удалено X из Y», детали — в журнале ошибок.
+- Прямой `$media->delete()` мимо Action удаляет только запись БД (контракт:
+  физические файлы удаляет только `DeleteMedia`).
 
 ## Filament Resources
 
@@ -533,10 +568,13 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
   `tests/Feature/Jobs/ImportAlbumFromYandexDiskJobTest.php`,
   `tests/Feature/Filament/ImportFromYandexDiskPageTest.php`
 - Lifecycle Media (создание/обновление/удаление): `tests/Feature/Models/MediaLifecycleTest.php`
+- Политика удаления Media и оригиналов (Action + Filament bulk/single):
+  `tests/Feature/Actions/DeleteMediaTest.php`,
+  `tests/Feature/Filament/MediaDeletionTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 383 теста, 754 утверждения
+- 395 тестов, 897 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой

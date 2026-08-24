@@ -66,6 +66,21 @@ class ImageCacheService
     }
 
     /**
+     * Удаляет кэшированные варианты (display/lightbox) Media.
+     * Ошибка одного варианта не мешает остальным — сбой логируется.
+     */
+    public function forget(Media $media): void
+    {
+        foreach (array_keys($this->tiers()) as $tier) {
+            try {
+                $this->cacheDisk()->delete($this->relativePath($media, (string) $tier));
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+    }
+
+    /**
      * Прогрев кэша из уже скачанного локального файла оригинала
      * (без повторного скачивания с удалённого диска).
      */
