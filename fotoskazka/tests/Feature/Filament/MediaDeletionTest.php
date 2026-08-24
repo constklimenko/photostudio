@@ -50,7 +50,7 @@ class MediaDeletionTest extends TestCase
             ->callTableBulkAction(
                 'delete',
                 [$local->getKey(), $remote->getKey()],
-                ['delete_remote_original' => false],
+                ['delete_remote_original' => '0'],
             );
 
         $this->assertDatabaseMissing('media', ['id' => $local->id]);
@@ -71,8 +71,9 @@ class MediaDeletionTest extends TestCase
             ->callTableBulkAction(
                 'delete',
                 [$local->getKey(), $remote->getKey()],
-                ['delete_remote_original' => true],
-            );
+                ['delete_remote_original' => '1'],
+            )
+            ->assertNotified('Выбранные медиа удалены');
 
         $this->assertDatabaseMissing('media', ['id' => $local->id]);
         $this->assertDatabaseMissing('media', ['id' => $remote->id]);
@@ -82,7 +83,24 @@ class MediaDeletionTest extends TestCase
         $this->assertDerivativesDeleted($remote);
     }
 
-    public function test_bulk_partial_failure_keeps_failed_record(): void
+    public function test_bulk_delete_without_yandex_media_uses_plain_confirmation(): void
+    {
+        [$local, $secondLocal] = [$this->createMediaWithFiles('public'), $this->createMediaWithFiles('public', 'photo-2.jpg')];
+
+        Livewire::test(ListMedia::class)
+            ->callTableBulkAction(
+                'delete',
+                [$local->getKey(), $secondLocal->getKey()],
+            )
+            ->assertNotified();
+
+        $this->assertDatabaseMissing('media', ['id' => $local->id]);
+        $this->assertDatabaseMissing('media', ['id' => $secondLocal->id]);
+        $this->localDisk->assertMissing($local->file_path);
+        $this->localDisk->assertMissing($secondLocal->file_path);
+    }
+
+    public function test_bulk_partial_failure_keeps_failed_record_and_reports_counts(): void
     {
         Log::spy();
 
@@ -109,8 +127,9 @@ class MediaDeletionTest extends TestCase
             ->callTableBulkAction(
                 'delete',
                 collect([$local->getKey(), $failingRemote->getKey(), $okRemote->getKey()]),
-                ['delete_remote_original' => true],
-            );
+                ['delete_remote_original' => '1'],
+            )
+            ->assertNotified('Удалено файлов: 2 из 3');
 
         $this->assertDatabaseHas('media', ['id' => $failingRemote->id]);
         $this->assertDatabaseMissing('media', ['id' => $local->id]);
@@ -133,19 +152,28 @@ class MediaDeletionTest extends TestCase
         $this->assertDerivativesDeleted($media);
     }
 
-    public function test_single_delete_asks_about_yandex_file(): void
+    public function test_single_delete_confirming_removes_yandex_original(): void
     {
         $media = $this->createMediaWithFiles('yandex_disk');
 
         Livewire::test(EditMedia::class, ['record' => $media->getKey()])
-            ->mountAction('delete')
-            ->assertFormExists()
-            ->setActionData(['delete_remote_original' => true])
-            ->callMountedAction();
+            ->callAction('delete', arguments: ['delete_remote_original' => true]);
 
         $this->assertDatabaseMissing('media', ['id' => $media->id]);
         $this->remoteDisk->assertMissing($media->file_path);
         $this->assertDerivativesDeleted($media);
+    }
+
+    public function test_single_delete_default_choice_keeps_yandex_file(): void
+    {
+        $media = $this->createMediaWithFiles('yandex_disk');
+
+        Livewire::test(EditMedia::class, ['record' => $media->getKey()])
+            ->callAction('delete');
+
+        $this->assertDatabaseMissing('media', ['id' => $media->id]);
+        $this->assertDerivativesDeleted($media);
+        $this->remoteDisk->assertExists($media->file_path);
     }
 
     /**
