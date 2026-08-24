@@ -8,6 +8,7 @@ use App\Models\Photo;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class ImportAlbumFromYandexDisk
@@ -34,6 +35,14 @@ class ImportAlbumFromYandexDisk
         $files = $files->take($maxFiles)->values();
 
         $album = DB::transaction(function () use ($data, $files, $diskName) {
+            $base = Str::slug($data['title']);
+            $slug = $base;
+            $counter = 1;
+
+            while (Album::where('slug', $slug)->exists()) {
+                $slug = $base.'-'.$counter++;
+            }
+
             $album = Album::create([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
@@ -41,7 +50,7 @@ class ImportAlbumFromYandexDisk
                 'project_id' => ($data['type'] ?? 'portfolio') === 'project'
                     ? ($data['project_id'] ?? null)
                     : null,
-                'slug' => str($data['title'])->slug()->append('-'.now()->format('YmdHis')),
+                'slug' => $slug,
             ]);
 
             foreach ($files as $index => $path) {

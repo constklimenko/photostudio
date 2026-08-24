@@ -42,7 +42,7 @@ class ImportAlbumFromYandexDiskTest extends TestCase
 
         $this->assertSame('Выпускной 11А', $album->title);
         $this->assertSame('portfolio', $album->type);
-        $this->assertStringStartsWith(str('Выпускной 11А')->slug().'-', $album->slug);
+        $this->assertSame((string) str('Выпускной 11А')->slug(), $album->slug);
 
         $this->assertCount(2, $album->photos);
 
