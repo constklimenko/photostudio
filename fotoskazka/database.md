@@ -1075,6 +1075,10 @@ Laravel Filesystem
   (`YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`). Секреты не хранятся в БД.
 - Импорт альбома из папки Яндекс.Диска создаёт Media с `disk = 'yandex_disk'`;
   существующие записи Media не изменяются.
+- Миграция локальных оригиналов на Диск — команда `media:migrate-to-yandex`
+  (этап B8): переводит `Media.disk = 'public'` → `'yandex_disk'` после проверки
+  удалённого файла; `file_path`, `thumbnail_path` и метаданные не меняются.
+  Схема БД не изменяется.
 
 Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 

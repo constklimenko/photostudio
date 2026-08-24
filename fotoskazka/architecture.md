@@ -23,10 +23,13 @@ app/
 │   ├── Inquiry/
 │   │   └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
 │   └── Media/
-│       └── DeleteMedia.php     # Политика удаления Media и оригиналов (B6)
+│       ├── DeleteMedia.php               # Политика удаления Media и оригиналов (B6)
+│       ├── MediaMigrationResult.php      # Результат миграции одного Media (B8)
+│       └── MigrateMediaToYandexDisk.php  # Миграция оригинала на Яндекс.Диск (B8)
 ├── Console/
 │   └── Commands/
 │       ├── MakeFilamentUser.php
+│       ├── MediaMigrateToYandex.php      # Миграция локальных оригиналов на Диск (B8)
 │       ├── MediaRegenerateThumbnails.php
 │       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
 │       └── MediaTestStorage.php          # Проверка подключения к диску
@@ -385,6 +388,56 @@ MediaProcessor::processOrFail(Media)
 - Прямой `$media->delete()` мимо Action удаляет только запись БД (контракт:
   физические файлы удаляет только `DeleteMedia`).
 
+## Миграция локальных оригиналов на Яндекс.Диск — этап B8
+
+Одноразовая (но повторяемая) операция перевода существующих локальных оригиналов
+на схему «оригиналы на Диске, производные локально». Логика одной записи —
+Action `MigrateMediaToYandexDisk` (`app/Actions/Media/`); выборка, batching,
+вывод и обработка ошибок — Artisan-команда `media:migrate-to-yandex`.
+
+Порядок операций для одного Media — критическая последовательность:
+
+```text
+отбор кандидата (локальные проверки + наличие локального файла)
+      ↓
+upload (стрим во временную копию; при необходимости mkdir)
+      ↓
+verification: exists → size → sha256 содержимого
+      ↓
+update Media.disk = yandex_disk   ← только после проверки
+      ↓
+delete local original             ← только после обновления БД
+```
+
+- **Никогда** не удалять локальный файл до загрузки, проверки и обновления БД.
+  Любой сбой оставляет локальный оригинал на месте.
+- **Идемпотентность**: Media с `disk = yandex_disk` пропускаются; существующий
+  на Диске файл не перезаписывается — при совпадении размера и sha256 он
+  переиспользуется (без повторной загрузки), при расхождении миграция падает
+  с ошибкой конфликта. Неудачная собственная загрузка (провал верификации)
+  удаляется с Диска, чтобы повторный запуск прошёл начисто; чужой файл
+  по занятому пути никогда не трогается.
+- **Изоляция сбоев**: ошибка одного Media не прерывает batch; итог — FAILURE,
+  если были ошибки. Проблемы отбора (нет файла, не изображение и т.п.) — это
+  Skip с причиной; Failed — только сбои upload/verification/DB-update.
+  Сбой удаления локального файла после успешного update не откатывает миграцию:
+  запись уже указывает на Диск, локальный остаток — безвредный дубликат.
+- **Кандидаты**: только изображения (`image/*`), лежащие на дисках с драйвером
+  `local`. Не мигрируются: записи уже на remote-дисках, производные
+  (диски `thumbnails`, `image_cache`), неизвестные/чужие хранилища, записи без
+  пути или MIME. Видео в Media отсутствуют (Video хранится отдельно).
+- Удалённый путь = исходный `file_path` (детерминированный, без переименований).
+- Ключ кэша display/lightbox включает disk: старые варианты удаляются до
+  смены `disk` (best-effort); новые генерируются лениво или через
+  «Повторить обработку». Thumbnail остаётся валидным (путь не меняется).
+- После миграции удаление такой Media идёт по политике B6: пользователь решает,
+  удалять ли Yandex-оригинал.
+
+CLI: `php artisan media:migrate-to-yandex [--dry-run] [--limit=N] [--media-id=ID]`
+(`--limit` применяется после отбора кандидатов; записи сверх лимита учитываются
+как пропущенные). Dry-run ничего не пишет ни в БД, ни в storage; проверка
+удалённого конфликта в dry-run — по метаданным размера, без скачивания.
+
 ## Статус обработки и повторная обработка Media — этап B7
 
 Отдельное поле `status` в БД не введено (осознанно): состояние обработки
@@ -567,7 +620,8 @@ storage/app/public/
   кнопка «Скачать в оригинальном разрешении» — `media.download` (attachment)
 
 ### Будущее
-- Перенос локальных оригиналов на Яндекс.Диск (команда миграции)
+- ~~Перенос локальных оригиналов на Яндекс.Диск~~ — реализовано командой
+  `media:migrate-to-yandex` (этап B8)
 - Локальный кэш превью остаётся на диске `thumbnails`
 - Абстракция через драйверы Laravel Filesystem — бизнес-логика не привязана к конкретному диску
 
@@ -615,6 +669,9 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - Политика удаления Media и оригиналов (Action + Filament bulk/single):
   `tests/Feature/Actions/DeleteMediaTest.php`,
   `tests/Feature/Filament/MediaDeletionTest.php`
+- Миграция локальных оригиналов на Яндекс.Диск (upload → verify → DB → delete,
+  идемпотентность, изоляция сбоев): `tests/Feature/Actions/MigrateMediaToYandexDiskTest.php`,
+  `tests/Feature/Console/MediaMigrateToYandexCommandTest.php`
 - Filament UX обработки Media (retry-действие, статус, single-upload,
   переиспользование Media при удалении Photo/Album):
   `tests/Feature/Filament/MediaRetryProcessingTest.php`,
@@ -623,7 +680,7 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 408 тестов, 975 утверждений
+- 430 тестов, 1104 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой
