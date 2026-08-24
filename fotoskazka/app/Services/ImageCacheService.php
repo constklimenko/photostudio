@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Media;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ImageCacheService
 {
@@ -51,6 +52,48 @@ class ImageCacheService
         return $this->generate($media, $tier, $path) ? $path : null;
     }
 
+    public function isCached(Media $media, string $tier): bool
+    {
+        if (! array_key_exists($tier, $this->tiers())) {
+            return false;
+        }
+
+        if (! str_starts_with((string) $media->mime_type, 'image/')) {
+            return false;
+        }
+
+        return $this->cacheDisk()->exists($this->relativePath($media, $tier));
+    }
+
+    /**
+     * Прогрев кэша из уже скачанного локального файла оригинала
+     * (без повторного скачивания с удалённого диска).
+     */
+    public function warmCached(Media $media, string $tier, string $tempFile, bool $force = false): bool
+    {
+        if (! array_key_exists($tier, $this->tiers())) {
+            return false;
+        }
+
+        if (! str_starts_with((string) $media->mime_type, 'image/')) {
+            return false;
+        }
+
+        $path = $this->relativePath($media, $tier);
+
+        if (! $force && $this->cacheDisk()->exists($path)) {
+            return true;
+        }
+
+        if (! $this->generateFromTempFile($media, $tier, $tempFile, $path)) {
+            return false;
+        }
+
+        $this->purgeSafely();
+
+        return true;
+    }
+
     public function generate(Media $media, string $tier, ?string $path = null): bool
     {
         $sourceDisk = Storage::disk($media->disk ?? 'public');
@@ -66,12 +109,40 @@ class ImageCacheService
         }
 
         try {
-            $srcImage = $this->loadImage((string) $media->mime_type, $tempFile);
-
-            if ($srcImage === false || $srcImage === null) {
+            if (! $this->generateFromTempFile($media, $tier, $tempFile, $path)) {
                 return false;
             }
+        } finally {
+            @unlink($tempFile);
+        }
 
+        $this->purgeSafely();
+
+        return true;
+    }
+
+    /**
+     * LRU-обрезка не критична: сбой листинга/удаления не должен
+     * помечать генерацию варианта как неудачную.
+     */
+    protected function purgeSafely(): void
+    {
+        try {
+            $this->purgeToLimit();
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+    }
+
+    private function generateFromTempFile(Media $media, string $tier, string $tempFile, ?string $path): bool
+    {
+        $srcImage = $this->loadImage((string) $media->mime_type, $tempFile);
+
+        if ($srcImage === false || $srcImage === null) {
+            return false;
+        }
+
+        try {
             $width = imagesx($srcImage);
             $height = imagesy($srcImage);
             $maxSide = $this->maxSideFor($tier);
@@ -97,15 +168,15 @@ class ImageCacheService
 
             rewind($stream);
 
-            $this->cacheDisk()->put($path ?? $this->relativePath($media, $tier), $stream);
+            $written = $this->cacheDisk()->put($path ?? $this->relativePath($media, $tier), $stream);
             fclose($stream);
-        } finally {
-            @unlink($tempFile);
+
+            return (bool) $written;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return false;
         }
-
-        $this->purgeToLimit();
-
-        return true;
     }
 
     /**
@@ -127,7 +198,7 @@ class ImageCacheService
                     'size' => $disk->size($file),
                     'mtime' => $disk->lastModified($file),
                 ];
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 continue;
             }
         }
@@ -162,7 +233,7 @@ class ImageCacheService
         foreach ($disk->allFiles() as $file) {
             try {
                 $total += $disk->size($file);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 continue;
             }
         }

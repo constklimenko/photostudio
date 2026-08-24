@@ -6,6 +6,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Services\ImageCacheService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -22,6 +23,7 @@ class MediaImageCacheTest extends TestCase
         Storage::fake('public');
         Storage::fake('image_cache');
         Storage::fake('thumbnails');
+        Queue::fake();
     }
 
     public function test_display_generates_cached_png_on_first_request(): void
@@ -133,6 +135,7 @@ class MediaImageCacheTest extends TestCase
             'album_id' => null,
             'disk' => 'public',
             'file_path' => 'albums/photo.jpg',
+            'mime_type' => 'image/jpeg',
         ]);
 
         $response = $this->actingAs(User::factory()->create())
@@ -153,6 +156,7 @@ class MediaImageCacheTest extends TestCase
             'album_id' => null,
             'disk' => 'public',
             'file_path' => 'albums/photo.jpg',
+            'mime_type' => 'image/jpeg',
         ]);
         $media->refresh();
 
@@ -208,6 +212,7 @@ class MediaImageCacheTest extends TestCase
             'album_id' => null,
             'disk' => 'public',
             'file_path' => 'albums/photo.jpg',
+            'mime_type' => 'image/jpeg',
         ]);
     }
 

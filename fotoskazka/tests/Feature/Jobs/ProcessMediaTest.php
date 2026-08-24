@@ -4,6 +4,7 @@ namespace Tests\Feature\Jobs;
 
 use App\Jobs\ProcessMedia;
 use App\Models\Media;
+use App\Services\ImageCacheService;
 use App\Services\MediaProcessor;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,7 @@ class ProcessMediaTest extends TestCase
 
         Storage::fake('public');
         Storage::fake('thumbnails');
+        Storage::fake('image_cache');
     }
 
     public function test_creating_media_dispatches_process_media_job(): void
@@ -118,6 +120,19 @@ class ProcessMediaTest extends TestCase
         $this->assertNotNull($media->file_size);
         $this->assertSame('images/test_thumb.webp', $media->thumbnail_path);
         Storage::disk('thumbnails')->assertExists($media->thumbnail_path);
+
+        $cacheDisk = Storage::disk('image_cache');
+        $service = new ImageCacheService;
+
+        foreach ([ImageCacheService::TIER_DISPLAY => 800, ImageCacheService::TIER_LIGHTBOX => 1600] as $tier => $maxSide) {
+            $variantPath = $service->relativePath($media, $tier);
+
+            $cacheDisk->assertExists($variantPath);
+
+            [$width, $height] = getimagesize($cacheDisk->path($variantPath));
+
+            $this->assertLessThanOrEqual($maxSide, max($width, $height));
+        }
     }
 
     public function test_repeated_execution_is_idempotent(): void
@@ -130,17 +145,22 @@ class ProcessMediaTest extends TestCase
         $metadataBefore = $media->only(['mime_type', 'width', 'height', 'file_size', 'thumbnail_path']);
         $updatedAtBefore = $media->updated_at->toString();
         $thumbnailBefore = Storage::disk('thumbnails')->get($media->thumbnail_path);
+        $displayPath = (new ImageCacheService)->relativePath($media, ImageCacheService::TIER_DISPLAY);
+        $displayBefore = Storage::disk('image_cache')->get($displayPath);
 
         sleep(1);
         $this->runJob($media->id);
 
         $media->refresh();
         $thumbDisk = Storage::disk('thumbnails');
+        $cacheDisk = Storage::disk('image_cache');
 
         $this->assertSame($metadataBefore, $media->only(['mime_type', 'width', 'height', 'file_size', 'thumbnail_path']));
         $this->assertSame($updatedAtBefore, $media->updated_at->toString());
         $this->assertSame($thumbnailBefore, $thumbDisk->get($media->thumbnail_path));
+        $this->assertSame($displayBefore, $cacheDisk->get($displayPath));
         $this->assertCount(1, $thumbDisk->allFiles());
+        $this->assertCount(2, $cacheDisk->allFiles());
         $this->assertSame(1, Media::query()->count());
     }
 

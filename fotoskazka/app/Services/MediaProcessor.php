@@ -14,6 +14,8 @@ class MediaProcessor
 
     public const THUMBNAIL_QUALITY = 80;
 
+    public function __construct(protected ImageCacheService $imageCache = new ImageCacheService) {}
+
     /**
      * Централизованная обработка Media: метаданные оригинала + WebP-thumbnail.
      *
@@ -182,6 +184,10 @@ class MediaProcessor
             }
         }
 
+        if (! $this->warmImageCache($media, $tempFile, $force, $context)) {
+            $ok = false;
+        }
+
         $this->persistIfDirty($media);
 
         return $ok;
@@ -207,7 +213,48 @@ class MediaProcessor
             || blank($media->file_size)
             || blank($media->width)
             || blank($media->height)
-            || $thumbnailMissing;
+            || $thumbnailMissing
+            || $this->imageCacheVariantsMissing($media);
+    }
+
+    /**
+     * Прогрев display/lightbox из уже скачанного temp-файла оригинала.
+     * Ошибка одного варианта не мешает остальным, но помечает обработку
+     * как неполную — Queue Job повторит её при retry.
+     */
+    protected function warmImageCache(Media $media, string $tempFile, bool $force, array $context): bool
+    {
+        $ok = true;
+
+        foreach (array_keys($this->imageCache->tiers()) as $tier) {
+            try {
+                if (! $this->imageCache->warmCached($media, (string) $tier, $tempFile, $force)) {
+                    Log::warning('Unable to warm image cache variant.', $context + ['tier' => $tier]);
+
+                    $ok = false;
+                }
+            } catch (Throwable $exception) {
+                Log::warning('Unable to warm image cache variant.', $context + [
+                    'tier' => $tier,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    protected function imageCacheVariantsMissing(Media $media): bool
+    {
+        foreach (array_keys($this->imageCache->tiers()) as $tier) {
+            if (! $this->imageCache->isCached($media, (string) $tier)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function writeThumbnail(Media $media, string $tempFile): bool
