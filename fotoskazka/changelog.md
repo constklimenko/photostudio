@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-25 — Фикс: 500 на Select с media.title (NULL-заголовки)
+
+### Исправлено
+- **app/Models/Media.php**: добавлен аксессор `getTitleAttribute` — при NULL/пустом
+  `title` возвращается basename из `file_path`. Ранее наличие записей media без
+  заголовка (2 тестовые строки) роняло страницу `/admin/albums/{id}/edit` (и любые
+  формы с `Select::relationship('cover'/'media', 'title')`) ошибкой
+  `Select::isOptionDisabled(): Argument #2 ($label) must be of type string, null given`.
+  Аксессор также чинит отображение в таблицах (`TextColumn::make('media.title')`).
+  Данные БД не менялись.
+
 ## 2026-08-23 — Этап B8: миграция локальных оригиналов на Yandex Disk
 
 ### Добавлено

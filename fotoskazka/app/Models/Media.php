@@ -17,6 +17,15 @@ class Media extends Model
         'mime_type', 'width', 'height', 'file_size', 'collection',
     ];
 
+    public function getTitleAttribute(?string $value): string
+    {
+        if ($value !== null && $value !== '') {
+            return $value;
+        }
+
+        return basename((string) ($this->attributes['file_path'] ?? ''));
+    }
+
     public function getUrl(): ?string
     {
         if (! $this->file_path) {
