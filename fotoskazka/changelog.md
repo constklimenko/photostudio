@@ -1,5 +1,80 @@
 # Changelog
 
+## 2026-08-25 — Этап B10: финальная стабилизация Media Storage
+
+### Code review
+Проведён полный code review Media Storage (B1–B9):
+- Media, MediaObserver, MediaProcessor, ProcessMedia Job
+- ImageCacheService, DeleteMedia Action
+- MigrateMediaToYandexDisk Action, MediaMigrateToYandex command
+- CheckMediaIntegrity Action, MediaCheck command
+- Filament: EditMedia, MediaTable (bulk delete), MediaResource
+- MediaController (proxy routes), Photo/Album models
+- config/filesystems.php
+
+Результат: **архитектура стабильна, кодовых исправлений не требуется.**
+
+### Failure scenarios (A–J)
+
+| Сценарий | Существующая защита | Решение |
+|---|---|---|
+| A. Yandex недоступен при upload | MigrateMediaToYandexDisk::upload ловит Throwable → FAILED, БД не меняется, local original сохранён | OK |
+| B. Yandex недоступен при ProcessMedia | processOrFail() пробрасывает → retry (3 попытки, backoff 30/120 сек) | OK |
+| C. Thumbnail generation failed | catch Throwable + warning; metadata сохраняются; isPending() = true → retry доступен | OK |
+| D. ProcessMedia запускается повторно | needsProcessing() проверяет заполненность полей и наличие файлов →noop | OK |
+| E. Media удаляется во время ProcessMedia | find($id) → null → warning, job завершается; thumbnail на диске — безвредный orphan | OK |
+| F. Media заменяется во время обработки | Job читает свежие данные → обрабатывает актуальный файл | OK |
+| G. Migration останавливается посередине | Каждая Media обрабатывается изолированно; уже мигрированные пропускаются (идемпотентность) | OK |
+| H. Bulk delete: часть Yandex удалена, часть нет | Каждая запись обрабатывается независимо; упавшие → record сохранён, stats показывают failed | OK |
+| I. Bulk delete: «Не удалять Yandex originals» | $deleteRemoteOriginal = false → local + derivatives удалены, remote сохранён, record удалён | OK |
+| J. После удаления Media на Yandex остаётся original | Ожидаемое поведение (B6); media:check показывает «Potential orphan» | OK |
+
+### Проверка política удаления
+
+- **Local**: delete Media → local original удалён → derivatives удалены → record удалён ✓
+- **Yandex + Yes**: delete Media → remote original удалён → derivatives удалены → record удалён ✓
+- **Yandex + No**: delete Media → remote original сохранён (orphan) → derivatives удалены → record удалён ✓
+- **Bulk**: одно решение пользователя применяется ко всей выборке ✓
+- **Ошибка Yandex delete**: Media НЕ удаляется (запись сохранена) ✓
+
+### Проверка orphan semantics
+
+- Media отсутствует + Yandex original существует → не вызывает автоматическое удаление ✓
+- `media:check` показывает «Potential orphan files» (не ошибки) ✓
+
+### Проверка migration
+
+- После migration: `Media.disk = 'yandex_disk'` ✓
+- B6 корректно применяет Yandex deletion policy ✓
+
+### Проверка публичного сайта
+
+- Портфолио: display-кэш для сетки, lightbox-кэш для просмотра ✓
+- Альбомы: thumbnail для обложек услуг ✓
+- Кнопка скачивания оригинала — только для авторизованных (`@auth` + `auth` middleware) ✓
+- Yandex credentials не раскрываются (только proxy route) ✓
+- Кэш: `Cache-Control: immutable` для кэшированных, `max-age=86400` для оригиналов ✓
+
+### Проверка Filament
+
+- Upload: через MediaResource, dispatch ProcessMedia после commit ✓
+- Bulk upload: UploadPhotos в альбоме, по одному job на файл ✓
+- Delete: EditMedia — две кнопки для Yandex (оставить/удалить) ✓
+- Bulk delete: Radio Да/Нет, сводка результатов ✓
+- Albums: cover, sorting, relation manager ✓
+- Retry: Action «Повторить обработку» visible when isPending() ✓
+- Import: ImportFromYandexDisk страница, ShouldBeUnique job ✓
+
+### Документация
+- **architecture.md**: добавлен раздел «Итоговая архитектура Media Storage (этап B10)»
+  с 10 ключевыми правилами системы хранения
+- **roadmap.md**: Этап 4 (B) помечен как завершённый, текущий этап — 5 (Кабинеты клиентов)
+
+### Статистика
+- Тесты: 451 проходят
+- Assertions: 1154
+- Pint: clean
+
 ## 2026-08-25 — Этап B9: проверка целостности Media Storage и orphan-файлы
 
 ### Добавлено
