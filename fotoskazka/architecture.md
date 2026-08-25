@@ -23,12 +23,15 @@ app/
 │   ├── Inquiry/
 │   │   └── CreateProjectFromInquiry.php  # Транзакция: заявка → проект
 │   └── Media/
+│       ├── CheckMediaIntegrity.php         # Проверка целостности одного Media (B9)
 │       ├── DeleteMedia.php               # Политика удаления Media и оригиналов (B6)
+│       ├── MediaCheckResult.php          # Результат проверки целостности (B9)
 │       ├── MediaMigrationResult.php      # Результат миграции одного Media (B8)
 │       └── MigrateMediaToYandexDisk.php  # Миграция оригинала на Яндекс.Диск (B8)
 ├── Console/
 │   └── Commands/
 │       ├── MakeFilamentUser.php
+│       ├── MediaCheck.php                  # Проверка целостности + orphan-файлы (B9)
 │       ├── MediaMigrateToYandex.php      # Миграция локальных оригиналов на Диск (B8)
 │       ├── MediaRegenerateThumbnails.php
 │       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
@@ -345,6 +348,65 @@ MediaProcessor::processOrFail(Media)
 Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
 `--force`) остался в команде; сама обработка делегирована `MediaProcessor::process(force: true)` —
 единая реализация генерации превью без дублирования GD-кода.
+
+## Проверка целостности — media:check — этап B9
+
+Команда `php artisan media:check` проверяет целостность Media Storage
+и обнаруживает potential orphan-файлы на Яндекс.Диске.
+
+**Команда ничего не удаляет по умолчанию.**
+
+### Проверка DB → Storage
+
+Для каждого Media record:
+
+| Что проверяется | Как | Статус |
+|-----------------|-----|--------|
+| Оригинал существует | `Storage::disk($media->disk)->exists($path)` | `missing_original` |
+| Thumbnail существует (для изображений) | `Storage::disk('thumbnails')->exists($thumbnail_path)` | `missing_thumbnail` |
+| Кэш display/lightbox (для изображений) | `ImageCacheService::isCached()` по tiers | `missing_image_cache` |
+| Metadata: file_size, dimensions | Наличие и адекватность значений | `metadata_mismatch` |
+| File size vs disk (локальные файлы) | readStream → temp → filesize | `metadata_mismatch` |
+| Всё корректно | — | `valid` |
+
+Для remote-дисков (Яндекс.Диск) file size проверяется через HEAD/size (быстро),
+полное скачивание НЕ выполняется.
+
+### Проверка Yandex → DB (orphan-файлы)
+
+Сканируются все файлы на `yandex_disk` через `allFiles()`.
+Для каждого файла проверяется наличие записи Media с `disk = 'yandex_disk'`
+и соответствующим `file_path`.
+
+Файлы без соответствующей записи Media классифицируются как
+**potential orphans** — НЕ как ошибки.
+
+### Почему orphan НЕ удаляются автоматически
+
+Пользователь может удалить Media через политику B6, выбрав
+«Не удалять файл с Яндекс-Диска». В этом случае файл намеренно
+остаётся на Диске. Автоматическая очистка привела бы к потере данных.
+
+В будущем можно реализовать отдельную команду очистки orphan-файлов
+с явным подтверждением пользователя.
+
+### Опции команды
+
+```
+media:check [--fix-thumbnails] [--media-id=ID] [--limit=N]
+```
+
+- `--fix-thumbnails` — восстанавливает отсутствующие thumbnails
+  через `MediaProcessor::process(force: true)`. Не затрагивает originals.
+  Не восстанавливает orphan Yandex-оригиналы.
+- `--media-id=ID` — проверить конкретный Media record.
+- `--limit=N` — ограничить количество проверяемых записей.
+
+### Файлы
+
+- `app/Actions/Media/CheckMediaIntegrity.php` — проверка одного Media
+- `app/Actions/Media/MediaCheckResult.php` — результат проверки
+- `app/Console/Commands/MediaCheck.php` — Artisan-команда
 
 ## Удаление Media — DeleteMedia (`app/Actions/Media/DeleteMedia.php`) — этапы B6/B7
 
@@ -677,10 +739,13 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
   `tests/Feature/Filament/MediaRetryProcessingTest.php`,
   `tests/Feature/Filament/MediaUploadTest.php`,
   `tests/Feature/Models/MediaReuseSafetyTest.php`
+- Проверка целостности Media и orphan-файлы (B9):
+  `tests/Feature/Actions/MediaCheckTest.php`,
+  `tests/Feature/Console/MediaCheckCommandTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 430 тестов, 1104 утверждений
+- 451 тест, 1154 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой

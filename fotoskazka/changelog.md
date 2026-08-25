@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-08-25 — Этап B9: проверка целостности Media Storage и orphan-файлы
+
+### Добавлено
+- **app/Actions/Media/CheckMediaIntegrity.php**: проверка одного Media record
+  - DB → Storage: существует ли original на диске; thumbnail на диске `thumbnails`;
+    кэш display/lightbox через `ImageCacheService::isCached()`; metadata
+    (file_size, dimensions, file_size vs disk для локальных файлов)
+  - Не скачивает originals для проверки metadata — использует быстрые операции
+  - Ошибки storage не роняют проверку — логируются как warning
+  - Каждому типу проблемы соответствует свой статус: `missing_original`,
+    `missing_thumbnail`, `missing_image_cache`, `metadata_mismatch`, `valid`
+- **app/Actions/Media/MediaCheckResult.php**: value class результата проверки
+  с методами-предикатами (`isValid()`, `isMissingOriginal()` и т.д.)
+- **app/Console/Commands/MediaCheck.php**: `php artisan media:check`
+  - Проверяет все Media records (или конкретный через `--media-id=`)
+  - Обнаруживает orphan-файлы на Яндекс.Диске (файлы без записи Media)
+  - Orphan-файлы报告 как **Potential orphan files**, а НЕ как ошибки
+    (пользователь мог сознательно оставить файл при удалении Media через B6)
+  - Команда НИКОГДА не удаляет файлы — ни originals, ни thumbnails, ни Media
+  - `--fix-thumbnails` — восстанавливает отсутствующие thumbnails через
+    `MediaProcessor::process(force: true)`, не затрагивает originals
+  - `--limit=N` — ограничение проверяемых записей
+  - `--media-id=ID` — проверка конкретного Media
+  - Итоговый отчёт: Checked / OK / Missing original / Missing thumbnail /
+    Missing image cache / Metadata mismatch / Potential orphan Yandex files /
+    Errors + таблица с детализацией по каждой записи
+- Тесты: `tests/Feature/Actions/MediaCheckTest.php` (10) — valid, missing original,
+  missing thumbnail, missing image cache, metadata mismatch (file_size, dimensions),
+  non-image metadata, remote disk, empty disk;
+  `tests/Feature/Console/MediaCheckCommandTest.php` (11) — полный отчёт, missing
+  original, missing thumbnail, metadata mismatch, orphan, limit, media-id,
+  fix thumbnails, mixed media summary
+
+### Изменено
+- **architecture.md**: раздел «Проверка целостности — media:check — этап B9»
+  с описанием проверок DB→Storage, orphan-файлов, правил非автоудаления,
+  опций команды и списка файлов
+- **roadmap.md**: B9 отмечен как завершённый
+
+### Не изменено
+- Схема БД не менялась
+- Команда не удаляет файлы по умолчанию
+- Orphan-файлы не удаляются автоматически (осознанно)
+
+### Статистика
+- Тесты: 451 проходят (+21)
+- Assertions: 1154 (+50)
+- Pint: clean
+
 ## 2026-08-25 — Фикс: 500 на Select с media.title (NULL-заголовки)
 
 ### Исправлено

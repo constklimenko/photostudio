@@ -1079,6 +1079,11 @@ Laravel Filesystem
   (этап B8): переводит `Media.disk = 'public'` → `'yandex_disk'` после проверки
   удалённого файла; `file_path`, `thumbnail_path` и метаданные не меняются.
   Схема БД не изменяется.
+- Проверка целостности — команда `media:check` (этап B9): проверяет DB→Storage
+  (оригинал, thumbnail, кэш, metadata) и Yandex→DB (potential orphan-файлы).
+  Команда ничего не удаляет. Orphan-файлы — не ошибки (пользователь мог
+  сознательно оставить файл при удалении Media через B6).
+  `--fix-thumbnails` восстанавливает thumbnails через `MediaProcessor`.
 
 Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 

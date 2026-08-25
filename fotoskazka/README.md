@@ -141,6 +141,43 @@ php artisan media:test-storage
 php artisan media:test-storage --disk=public
 ```
 
+### Медиа — проверка целостности
+
+Команда `media:check` проверяет целостность Media Storage и обнаруживает
+potential orphan-файлы на Яндекс.Диске. **Ничего не удаляет по умолчанию.**
+
+```bash
+# Проверить все Media
+php artisan media:check
+
+# Проверить конкретный Media по ID
+php artisan media:check --media-id=123
+
+# Ограничить число проверяемых записей
+php artisan media:check --limit=100
+
+# Восстановить отсутствующие thumbnails
+php artisan media:check --fix-thumbnails
+```
+
+**Что проверяет:**
+- DB → Storage: оригинал существует на диске; thumbnail на диске `thumbnails`;
+  кэш display/lightbox; metadata (file_size, dimensions, file_size vs disk)
+- Yandex → DB: файлы на Яндекс.Диске без соответствующей записи Media —
+  **potential orphan files** (не ошибки — пользователь мог сознательно
+  оставить файл при удалении Media)
+
+**Итоговый отчёт:**
+```
+Checked: 1000
+OK: 950
+Missing original: 10
+Missing thumbnail: 20
+Metadata mismatch: 5
+Potential orphan Yandex files: 15
+Errors: 0
+```
+
 ### Структура
 
 Тесты делятся на **Unit** (изолированная логика) и **Feature** (HTTP-слой, маршруты, взаимодействие с БД).
