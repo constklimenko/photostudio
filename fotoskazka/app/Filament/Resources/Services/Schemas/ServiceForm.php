@@ -94,11 +94,23 @@ class ServiceForm
                                 TextInput::make('label')
                                     ->required()
                                     ->maxLength(255),
+                                TextInput::make('subtitle')
+                                    ->maxLength(255)
+                                    ->nullable(),
+                                Select::make('icon_id')
+                                    ->relationship('icon', 'name')
+                                    ->preload()
+                                    ->nullable()
+                                    ->searchable(),
                             ])
                             ->columnSpanFull(),
                     ]),
                 Section::make('Примеры работ')
                     ->schema([
+                        TextInput::make('examples_title')
+                            ->maxLength(255)
+                            ->nullable()
+                            ->placeholder('Примеры работ'),
                         Select::make('albums')
                             ->multiple()
                             ->relationship('albums', 'title')

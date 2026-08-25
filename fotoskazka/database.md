@@ -71,6 +71,8 @@ erDiagram
     SERVICES ||--o{ INQUIRIES : receives
     SERVICES ||--o{ SERVICE_ITEMS : includes
 
+    ICONS ||--o{ SERVICE_ITEMS : decorates
+
 ```
 
 ---
@@ -884,6 +886,10 @@ id BIGINT PRIMARY KEY
 
 label VARCHAR(255)
 
+subtitle VARCHAR(255) NULL
+
+icon_id BIGINT NULL
+
 is_included BOOLEAN DEFAULT TRUE
 
 sort_order INT DEFAULT 0
@@ -892,10 +898,42 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys:
+
+```sql
+icon_id -> icons.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 INDEX(sort_order)
+INDEX(icon_id)
+```
+
+---
+
+## icons
+
+Иконки для пунктов услуг. Файлы хранятся локально на диске `public`.
+
+```sql
+id BIGINT PRIMARY KEY
+
+name VARCHAR(255)
+
+file_path VARCHAR(255)
+
+disk VARCHAR(50) DEFAULT 'public'
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Indexes:
+
+```sql
+INDEX(name)
 ```
 
 ---

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers;
 
+use App\Models\Album;
 use App\Models\Category;
 use App\Models\Page;
 use App\Models\Service;
@@ -191,5 +192,47 @@ class ServiceControllerTest extends TestCase
 
         $response->assertSee('Reels ролик');
         $response->assertSee($video->embed_url);
+    }
+
+    public function test_show_displays_custom_examples_title(): void
+    {
+        $service = Service::factory()->create([
+            'is_published' => true,
+            'examples_title' => 'Наши работы',
+        ]);
+        $album = Album::factory()->create(['is_published' => true]);
+        $service->albums()->attach($album);
+
+        $response = $this->get(route('services.show', $service->slug));
+
+        $response->assertSee('Наши работы');
+        $response->assertDontSee('Примеры работ');
+    }
+
+    public function test_show_displays_default_examples_title_when_null(): void
+    {
+        $service = Service::factory()->create([
+            'is_published' => true,
+            'examples_title' => null,
+        ]);
+        $album = Album::factory()->create(['is_published' => true]);
+        $service->albums()->attach($album);
+
+        $response = $this->get(route('services.show', $service->slug));
+
+        $response->assertSee('Примеры работ');
+    }
+
+    public function test_show_does_not_render_examples_section_without_albums(): void
+    {
+        $service = Service::factory()->create([
+            'is_published' => true,
+            'examples_title' => 'Наши работы',
+        ]);
+
+        $response = $this->get(route('services.show', $service->slug));
+
+        $response->assertDontSee('Наши работы');
+        $response->assertDontSee('Примеры работ');
     }
 }

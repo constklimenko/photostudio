@@ -14,7 +14,7 @@ class Service extends Model
 
     protected $fillable = [
         'category_id', 'cover_media_id', 'title', 'slug',
-        'short_description', 'description', 'price_from', 'price_note',
+        'short_description', 'description', 'examples_title', 'price_from', 'price_note',
         'is_published', 'sort_order', 'seo_title', 'seo_description',
     ];
 

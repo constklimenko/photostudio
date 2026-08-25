@@ -23,16 +23,16 @@
                 @foreach ($category->services as $service)
                     <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
-                             <div class="lg:w-5/12 shrink-0">
+                             <a href="{{ route('services.show', $service->slug) }}" class="lg:w-5/12 shrink-0">
                                  <img src="{{ $service->cover->getThumbnailUrl() }}"
                                       alt="{{ $service->title }}"
                                       class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
                                       loading="lazy">
-                             </div>
+                             </a>
                         @endif
 
                         <div class="flex-1 flex flex-col justify-center">
-                            <h3 class="font-heading text-2xl font-normal tracking-wide text-white">{{ $service->title }}</h3>
+                            <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->slug) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
                             @if ($service->short_description)
                                 <p class="mt-3 text-gray-400 leading-relaxed">{{ $service->short_description }}</p>
                             @endif
@@ -42,7 +42,9 @@
                                     @foreach ($service->items as $item)
                                         @php $included = $item->pivot->is_included ?? true; @endphp
                                         <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
-                                            @if ($included)
+                                            @if ($item->icon)
+                                                <img src="{{ $item->icon->getUrl() }}" alt="{{ $item->icon->name }}" class="w-5 h-5 shrink-0 object-contain">
+                                            @elseif ($included)
                                                 <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                                 </svg>
@@ -51,7 +53,12 @@
                                                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                                 </svg>
                                             @endif
-                                            {{ $item->label }}
+                                            <span>
+                                                {{ $item->label }}
+                                                @if ($item->subtitle)
+                                                    <span class="text-gray-500 text-xs"> — {{ $item->subtitle }}</span>
+                                                @endif
+                                            </span>
                                         </li>
                                     @endforeach
                                 </ul>
@@ -83,16 +90,16 @@
             @foreach ($servicesWithoutCategory as $service)
                 <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
-                         <div class="lg:w-5/12 shrink-0">
+                         <a href="{{ route('services.show', $service->slug) }}" class="lg:w-5/12 shrink-0">
                              <img src="{{ $service->cover->getThumbnailUrl() }}"
                                   alt="{{ $service->title }}"
                                   class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
                                   loading="lazy">
-                         </div>
+                         </a>
                     @endif
 
                     <div class="flex-1 flex flex-col justify-center">
-                        <h3 class="font-heading text-2xl font-normal tracking-wide text-white">{{ $service->title }}</h3>
+                        <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->slug) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
                         @if ($service->short_description)
                             <p class="mt-3 text-gray-400 leading-relaxed">{{ $service->short_description }}</p>
                         @endif
@@ -100,8 +107,11 @@
                         @if ($service->items->isNotEmpty())
                             <ul class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                                 @foreach ($service->items as $item)
-                                    <li class="flex items-center gap-2 text-sm {{ $item->is_included ? 'text-gray-300' : 'text-gray-500' }}">
-                                        @if ($item->is_included)
+                                    @php $included = $item->pivot->is_included ?? true; @endphp
+                                    <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
+                                        @if ($item->icon)
+                                            <img src="{{ $item->icon->getUrl() }}" alt="{{ $item->icon->name }}" class="w-5 h-5 shrink-0 object-contain">
+                                        @elseif ($included)
                                             <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                             </svg>
@@ -110,7 +120,12 @@
                                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                             </svg>
                                         @endif
-                                        {{ $item->label }}
+                                        <span>
+                                            {{ $item->label }}
+                                            @if ($item->subtitle)
+                                                <span class="text-gray-500 text-xs"> — {{ $item->subtitle }}</span>
+                                            @endif
+                                        </span>
                                     </li>
                                 @endforeach
                             </ul>

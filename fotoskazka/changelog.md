@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-26 — Иконки пунктов услуг и подзаголовки
+
+### Добавлено
+- **Таблица `icons`**: справочник файловых иконок (SVG/PNG), хранимых локально
+  на диске `public` в директории `icons/`. Поля: `name`, `file_path`, `disk`
+- **Миграция `add_icon_id_and_subtitle_to_service_items`**: добавлены поля
+  `icon_id` (nullable FK → `icons.id`, SET NULL) и `subtitle` (nullable varchar 255)
+  в таблицу `service_items`
+- **app/Models/Icon.php**: Eloquent модель с `getUrl()` (через Storage),
+  `serviceItems()` HasMany
+- **app/Models/ServiceItem.php**: добавлены `icon_id`, `subtitle` в fillable,
+  relationship `icon()` BelongsTo
+- **app/Filament/Resources/Icons/**: полный CRUD для управления иконками
+  - `IconResource.php`, `IconForm.php` (name + file upload на public disk),
+    `IconsTable.php` (превью + название + путь), Create/Edit/List страницы
+- **app/Filament/Resources/ServiceItems/Schemas/ServiceItemForm.php**: добавлены
+  `Select` для иконки и `TextInput` для подзаголовка
+- **app/Filament/Resources/ServiceItems/Tables/ServiceItemsTable.php**: добавлены
+  колонки иконки (ImageColumn) и подзаголовка
+- **app/Filament/Resources/Services/Schemas/ServiceForm.php**: в `createOptionForm`
+  для пунктов добавлены поля иконки и подзаголовка
+- **database/factories/IconFactory.php**: фабрика для тестов
+- Тесты обновлены под новую схему
+
+### Изменено
+- **resources/views/services/show.blade.php**: при наличии иконки показывается
+  вместо SVG-галочки; подзаголовок отображается после названия
+- **resources/views/services/index.blade.php**: аналогично + **исправлен баг**:
+  `$item->is_included` → `$item->pivot->is_included` в секции услуг без категории
+  (pivot-поле `is_included` не принадлежит модели `ServiceItem`)
+
+### Документация
+- **database.md**: добавлена таблица `icons`, обновлена ER-диаграмма,
+  добавлены `subtitle` и `icon_id` в `service_items`
+- **architecture.md**: добавлен раздел «Icons — иконки пунктов услуг»,
+  обновлена структура приложения (Icon модель, Icons ресурс)
+
 ## 2026-08-25 — Этап B10: финальная стабилизация Media Storage
 
 ### Code review

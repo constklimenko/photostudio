@@ -61,6 +61,7 @@ app/
 │   │   │       └── AlbumsTable.php
 │   │   ├── Categories/
 │   │   ├── FaqItems/
+│   │   ├── Icons/
 │   │   ├── Inquiries/
 │   │   │   └── Schemas/
 │   │   │       └── InquiryForm.php
@@ -108,10 +109,11 @@ app/
 │   │   ├── ServiceController.php
 │   │   └── VideoController.php
 │   └── Middleware/
-├── Models/                     # Eloquent модели (17 шт.)
+├── Models/                     # Eloquent модели (18 шт.)
 │   ├── Album.php
 │   ├── Category.php
 │   ├── FaqItem.php
+│   ├── Icon.php
 │   ├── Inquiry.php
 │   ├── Media.php
 │   ├── NotificationSetting.php
@@ -744,8 +746,14 @@ storage/app/public/
 - `post_album` — статьи ↔ альбомы
 
 ### ServiceItems — мастер-справочник
-`service_items` — независимая таблица без FK, связь с услугами через
+`service_items` — независимая таблица, связь с услугами через
 BelongsToMany + pivot. Позволяет переиспользовать пункты в разных услугах.
+Пункты могут иметь иконку (`icons` FK) и подзаголовок (`subtitle`).
+
+### Icons — иконки пунктов услуг
+`icons` — справочник файловых иконок (SVG/PNG), хранимых локально
+на диске `public` в директории `icons/`. Связь с `service_items` one-to-many.
+Иконка опциональна: при наличии заменяет галочку/крестик в шаблоне.
 
 ## Тестирование
 

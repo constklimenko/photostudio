@@ -19,6 +19,7 @@ class ServiceItemFactory extends Factory
     {
         return [
             'label' => fake()->word(),
+            'subtitle' => fake()->optional()->sentence(3),
             'is_included' => fake()->boolean(80),
             'sort_order' => fake()->numberBetween(0, 100),
         ];
