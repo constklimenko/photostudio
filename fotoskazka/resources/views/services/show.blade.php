@@ -65,6 +65,12 @@
             </div>
         @endif
 
+        @if ($service->description)
+            <div class="mt-8 prose prose-invert max-w-none">
+                {!! $service->description !!}
+            </div>
+        @endif
+
         @if ($service->albums->isNotEmpty())
             <section class="mt-16" data-aos="fade-up">
                 <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">Примеры работ</h2>
@@ -112,11 +118,7 @@
 
         <x-site.videos :videos="$service->videos" title="Видео" />
 
-        @if ($service->description)
-            <div class="mt-8 prose prose-invert max-w-none">
-                {!! $service->description !!}
-            </div>
-        @endif
+
     </div>
 </section>
 
