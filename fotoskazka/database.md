@@ -54,6 +54,7 @@ erDiagram
 
     CATEGORIES ||--o{ SERVICES : categorizes
     CATEGORIES ||--o{ POSTS : categorizes
+    CATEGORIES }o--o{ CATEGORIES : parent_child
 
     PROJECTS ||--o{ ALBUMS : contains
     PROJECTS ||--o| INQUIRIES : source
@@ -70,6 +71,8 @@ erDiagram
 
     SERVICES ||--o{ INQUIRIES : receives
     SERVICES ||--o{ SERVICE_ITEMS : includes
+
+    ICONS ||--o{ SERVICE_ITEMS : decorates
 
 ```
 
@@ -317,23 +320,58 @@ video_id -> videos.id ON DELETE CASCADE
 
 Универсальные категории.
 
+Для `type = service` поддерживается иерархия (самоподчинение через `parent_id`)
+с неограниченной глубиной вложенности. Для `type = post` поведение плоское —
+категория блога привязана напрямую к статьям.
+
 ```sql
 id BIGINT PRIMARY KEY
 
+parent_id BIGINT NULL
+cover_media_id BIGINT NULL
 name VARCHAR(255)
-
 slug VARCHAR(255)
-
 type ENUM(
     'service',
     'post'
 )
-
+description TEXT NULL
+price_from DECIMAL(10,2) NULL
+price_note TEXT NULL
+seo_title VARCHAR(255) NULL
+seo_description TEXT NULL
+is_published BOOLEAN DEFAULT TRUE
 sort_order INT DEFAULT 0
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
+
+Связь:
+
+```sql
+parent_id -> categories.id ON DELETE SET NULL
+cover_media_id -> media.id ON DELETE SET NULL
+```
+
+Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
+
+Получатели:
+
+| Метод       | Связь / назначение                                           |
+|-------------|--------------------------------------------------------------|
+| `parent()`  | Непосредственный родитель (BelongsTo)                        |
+| `children()`| Дочерние категории (HasMany)                                 |
+| `cover()`   | Обложка категории (BelongsTo → media)                        |
+| `services()`| Услуги, непосредственно принадлежащие категории (HasMany)    |
+| `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
+| `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
+| `descendants()` | Все потомки в глубину любых уровней                       |
+| `path(true)` | Полный путь от корня до самой категории                     |
+
+Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
+запрещено выбирать категорию в качестве собственного родителя и делать
+потомка родителем предка (`A → B → C → A`).
 
 Indexes:
 
@@ -341,6 +379,9 @@ Indexes:
 UNIQUE(slug, type)
 INDEX(type)
 INDEX(sort_order)
+INDEX(parent_id)
+INDEX(cover_media_id)
+INDEX(is_published)
 ```
 
 ---
@@ -884,6 +925,10 @@ id BIGINT PRIMARY KEY
 
 label VARCHAR(255)
 
+subtitle VARCHAR(255) NULL
+
+icon_id BIGINT NULL
+
 is_included BOOLEAN DEFAULT TRUE
 
 sort_order INT DEFAULT 0
@@ -892,10 +937,42 @@ created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
 
+Foreign keys:
+
+```sql
+icon_id -> icons.id ON DELETE SET NULL
+```
+
 Indexes:
 
 ```sql
 INDEX(sort_order)
+INDEX(icon_id)
+```
+
+---
+
+## icons
+
+Иконки для пунктов услуг. Файлы хранятся локально на диске `public`.
+
+```sql
+id BIGINT PRIMARY KEY
+
+name VARCHAR(255)
+
+file_path VARCHAR(255)
+
+disk VARCHAR(50) DEFAULT 'public'
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Indexes:
+
+```sql
+INDEX(name)
 ```
 
 ---
@@ -1075,6 +1152,15 @@ Laravel Filesystem
   (`YANDEX_DISK_TOKEN`, `YANDEX_DISK_PATH_PREFIX`, `YANDEX_DISK_ROOT`). Секреты не хранятся в БД.
 - Импорт альбома из папки Яндекс.Диска создаёт Media с `disk = 'yandex_disk'`;
   существующие записи Media не изменяются.
+- Миграция локальных оригиналов на Диск — команда `media:migrate-to-yandex`
+  (этап B8): переводит `Media.disk = 'public'` → `'yandex_disk'` после проверки
+  удалённого файла; `file_path`, `thumbnail_path` и метаданные не меняются.
+  Схема БД не изменяется.
+- Проверка целостности — команда `media:check` (этап B9): проверяет DB→Storage
+  (оригинал, thumbnail, кэш, metadata) и Yandex→DB (potential orphan-файлы).
+  Команда ничего не удаляет. Orphan-файлы — не ошибки (пользователь мог
+  сознательно оставить файл при удалении Media через B6).
+  `--fix-thumbnails` восстанавливает thumbnails через `MediaProcessor`.
 
 Все обращения к файлам должны происходить через Laravel Storage API и аксессоры моделей.
 

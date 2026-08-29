@@ -40,7 +40,7 @@
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($services as $service)
-                    <a href="{{ route('services.show', $service->slug) }}"
+                    <a href="{{ route('services.show', $service->catalogPath()) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)

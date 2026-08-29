@@ -193,6 +193,16 @@ class MediaProcessor
         return $ok;
     }
 
+    /**
+     * Обработка Media не завершена: не хватает метаданных, thumbnail
+     * или одного из кэш-вариантов. Используется Filament-UX для показа
+     * статуса и действия «Повторить обработку».
+     */
+    public function isPending(Media $media): bool
+    {
+        return $this->needsProcessing($media, force: false);
+    }
+
     protected function needsProcessing(Media $media, bool $force): bool
     {
         if ($force) {

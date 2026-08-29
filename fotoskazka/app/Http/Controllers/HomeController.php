@@ -25,7 +25,7 @@ class HomeController extends Controller
             ->where('is_published', true)
             ->orderBy('sort_order')
             ->with('cover')
-            ->get(['id', 'cover_media_id', 'title', 'slug', 'short_description', 'price_from']);
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id', 'short_description', 'price_from']);
 
         $featuredWorks = Album::query()
             ->where('type', 'portfolio')

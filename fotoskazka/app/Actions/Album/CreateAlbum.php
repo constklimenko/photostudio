@@ -7,6 +7,7 @@ use App\Models\Media;
 use App\Models\Photo;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreateAlbum
 {
@@ -15,12 +16,20 @@ class CreateAlbum
         $defaultDisk = Config::get('filesystems.default_media_disk', 'public');
 
         return DB::transaction(function () use ($data, $defaultDisk) {
+            $base = Str::slug($data['title']);
+            $slug = $base;
+            $counter = 1;
+
+            while (Album::where('slug', $slug)->exists()) {
+                $slug = $base.'-'.$counter++;
+            }
+
             $album = Album::create([
                 'title' => $data['title'],
                 'description' => $data['description'] ?? null,
                 'type' => $data['type'] ?? 'portfolio',
                 'project_id' => $data['type'] === 'project' ? ($data['project_id'] ?? null) : null,
-                'slug' => str($data['title'])->slug()->append('-'.now()->format('YmdHis')),
+                'slug' => $slug,
             ]);
 
             if (! empty($data['cover'])) {

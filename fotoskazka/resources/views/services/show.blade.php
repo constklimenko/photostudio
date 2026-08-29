@@ -7,15 +7,18 @@
 
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav class="text-sm text-gray-500 mb-8">
-            <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
-            <span class="mx-2 text-gray-600">/</span>
-            <a href="{{ route('services.index') }}" class="hover:text-[#d4af37] transition">Услуги</a>
-            @if ($service->category)
-                <span class="mx-2 text-gray-600">/</span>
-                <span class="text-gray-300">{{ $service->category->name }}</span>
-            @endif
-        </nav>
+        <x-site.breadcrumbs :items="array_merge([
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => 'Услуги', 'url' => route('services.index')],
+        ], collect($service->category ? $service->category->ancestors() : [])->map(fn ($ancestor) => [
+            'label' => $ancestor->name,
+            'url' => route('services.show', $ancestor->catalogPath()),
+        ])->all(), $service->category ? [[
+            'label' => $service->category->name,
+            'url' => route('services.show', $service->category->catalogPath()),
+        ]] : [], [
+            ['label' => $service->title],
+        ])" />
 
         @if ($service->cover)
             <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10 shadow-lg shadow-black/30">
@@ -49,7 +52,9 @@
                     @foreach ($service->items as $item)
                         @php $included = $item->pivot->is_included ?? true; @endphp
                         <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
-                            @if ($included)
+                            @if ($item->icon)
+                                <img src="{{ $item->icon->getUrl() }}" alt="{{ $item->icon->name }}" class="w-5 h-5 shrink-0 object-contain">
+                            @elseif ($included)
                                 <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                                 </svg>
@@ -58,16 +63,27 @@
                                     <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
                             @endif
-                            {{ $item->label }}
+                            <span>
+                                {{ $item->label }}
+                                @if ($item->subtitle)
+                                    <span class="text-gray-500 text-xs"> — {{ $item->subtitle }}</span>
+                                @endif
+                            </span>
                         </li>
                     @endforeach
                 </ul>
             </div>
         @endif
 
+        @if ($service->description)
+            <div class="mt-8 prose prose-invert max-w-none">
+                {!! $service->description !!}
+            </div>
+        @endif
+
         @if ($service->albums->isNotEmpty())
             <section class="mt-16" data-aos="fade-up">
-                <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">Примеры работ</h2>
+                <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">{{ $service->examples_title ?: 'Примеры работ' }}</h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     @foreach ($service->albums as $album)
                         <a href="{{ route('portfolio.show', $album->slug) }}"
@@ -112,11 +128,7 @@
 
         <x-site.videos :videos="$service->videos" title="Видео" />
 
-        @if ($service->description)
-            <div class="mt-8 prose prose-invert max-w-none">
-                {!! $service->description !!}
-            </div>
-        @endif
+
     </div>
 </section>
 
@@ -142,7 +154,7 @@
 
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($serviceList as $other)
-                    <a href="{{ route('services.show', $other->slug) }}"
+                    <a href="{{ route('services.show', $other->catalogPath()) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                         <div class="aspect-[16/9] bg-gray-100">

@@ -1,5 +1,597 @@
 # Changelog
 
+## 2026-08-29 — Этап B11, часть 5: фотографии подкатегорий на /services
+
+### Изменено
+- **Публичная страница `/services`** (`resources/views/services/index.blade.php`):
+  - карточки подкатегорий приведены к виду карточек услуг: обложка
+    (`aspect-[16/9]`, `object-cover`, зум при наведении), название,
+    описание из категории (обрезанное по `line-clamp-2`, без HTML),
+    цена «от N ₽» и ссылка «Подробнее»;
+  - при отсутствии обложки у подкатегории показывается пустое серое поле
+    (как у карточек услуг)
+- **app/Http/Controllers/ServiceCatalogController.php**: в `index()` добавлена
+  жадная загрузка `children.cover` (устранён N+1 при выводе обложек)
+
+### Добавлено
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**:
+  тест `test_index_shows_child_categories_with_cover` — карточка подкатегории
+  на главной услуг выводит обложку, ссылку на раздел и «Подробнее»
+
+## 2026-08-29 — Этап B11, часть 4: дерево категорий в Filament
+
+### Добавлено
+- **app/Services/CategoryTreeService.php**: работа с деревом категорий услуг:
+  - `flatten(type)` — плоское представление дерева (BFS «родитель → дочерние»)
+    с глубиной, отступом и полным путём (`pathLabel`);
+  - `options(?Category $exclude)` — варианты для выбора родителя: только
+    категории `type = service`, без самой категории и всего её поддерева
+    (защита от циклов на уровне UI);
+  - `move(Category, offset)` — перенос категории внутри списка братьев
+    (вверх/вниз) с перерасчётом `sort_order` всего списка
+- **Дерево в CategoriesTable** (`/admin/categories`):
+  - название с отступами по уровню вложенности и цветовым различием уровней,
+    подпись с полным путём («Выпускные альбомы → Для школ»);
+  - колонки: тип (бейдж), «Цена от» (формат `от N ₽`), «Опубликована»
+    (быстрый ToggleColumn), `sort_order`, дата;
+  - фильтры: «Тип» и «Статус публикации»;
+  - сортировка по умолчанию по `sort_order`;
+  - действия строки: редактирование, «Подкатегория» (создание дочерней с
+    подставленным `parent_id`), «Переместить выше/ниже»;
+  - массовое удаление убрано (опасно в иерархии) — удаление доступно только
+    для безопасных категорий через карточку редактирования
+- **CategoryForm**: добавлены `parent_id` (Select с деревом вариантов, скрыт
+  для `type = post`), обложка `cover_media_id`, описание (RichEditor),
+  «цена от» + примечание, SEO-блок, `is_published`, `sort_order`; для `type`
+  задан default `service`, при переключении на `post` `parent_id` очищается;
+  создание подкатегории предзаполняет родителя из `?parent_id=`
+
+### Модель Category (защита корректности иерархии)
+- `canBeDeleted()`: категорию можно удалить только если у неё нет дочерних
+  категорий и услуг
+- событие `deleting`: удаление категории с потомками/услугами запрещено
+  (`LogicException`) — связанные услуги автоматически не удаляются
+- событие `saving`: перевод категории `service` с потомками или услугами
+  в `post` запрещён; смена `parent_id` по-прежнему защищена от циклов
+  (`assertNotCyclic`), включая `parent_id = id`
+- В EditCategory кнопка «Удалить» отключается с поясняющей подсказкой, когда
+  категория не может быть удалена
+
+### Тесты
+- **tests/Feature/Services/CategoryTreeServiceTest.php** (7): порядок и глубина
+  `flatten`, игнорирование `post`-категорий, включение/исключение вариантов
+  родителя (исключение себя и поддерева), перенос вверх/вниз и перерасчёт
+  `sort_order`, запрет сдвига на краю списка
+- **tests/Feature/Models/CategoryHierarchyTest.php** (+6): удаление пустой
+  категории разрешено, удаление с дочерними/услугами запрещено, перевод
+  категории с потомками/услугами в `post` запрещён, листовая категория
+  переводится свободно
+- **tests/Feature/Filament/CategoryTreeAdminTest.php** (11, Livewire):
+  создание корневой категории, создание дочерней, предзаполнение родителя из
+  query-параметра, смена родителя, изменение `sort_order`, защита от
+  `parent_id = id` и от цикла (через форму), сохранение новых полей
+  (обложка/описание/цена/SEO/пибликация), отображение дерева в списке,
+  действие «Переместить выше», отключённое удаление для категории с услугами
+
+### Не изменено
+- Схема БД не менялась (все поля добавлены ранее), `type = post` работает
+  по-прежнему (плоские категории блога), публичный каталог не затрагивался
+
+### Проверка
+- Полный тестовый набор: 538/538 passed
+- Pint: clean
+- Ручная проверка сценариев админки: дерево в списке (отступы, путь),
+  страница создания (поле «Родительская категория», варианты), страница
+  редактирования (исключение собственного поддерева из вариантов родителя)
+
+## 2026-08-29 — Этап B11, часть 3: хлебные крошки (проверка) и публичный интерфейс каталога
+
+### Изменено
+- **resources/views/components/site/breadcrumbs.blade.php**: очистка разметки —
+  убран пустой служебный `<span></span>` перед сепаратором. Поведение и сепаратор
+  (`&bull;`) не менялись: компонент принимает массив произвольной глубины
+  (`label` + необязательный `url`), последний элемент без `url` отображается как
+  текущая страница (`aria-current="page"`, без ссылки)
+- Компонент `<x-site.breadcrumbs />` уже используется на страницах категорий,
+  услуг, блога, портфолио и видео — дублирование HTML в шаблонах отсутствует
+
+### Тесты
+- **tests/Feature/Components/BreadcrumbsTest.php** (6): отрисовка цепочки
+  произвольной глубины в заданном порядке, ссылки у промежуточных элементов,
+  последний элемент не является ссылкой и помечен `aria-current="page"`,
+  сепараторы между элементами, пусто при пустом списке, вариант `center`
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**: полный
+  иерархический breadcrumb на странице категории и услуги (`assertSeeInOrder`:
+  Главная → Услуги → … → текущий), страница категории — обложка (img с alt),
+  дочерние категории (карточки со ссылками и ценой), карточки услуг (заголовок,
+  описание, цена, «Подробнее»), «Цена от» с примечанием, CTA/форма заявки
+  (маршрут, поля, соглашение)
+
+### Не изменено
+- Бизнес-логика и схема БД не затрагивались
+- Сепаратор хлебных крошек оставлен прежним (по указанию пользователя)
+
+### Проверка
+- Новые и расширенные тесты проходят без risky
+- Полный тестовый набор и Pint — в конце сессии
+
+## 2026-08-29 — Хлебные крошки и верхнее меню
+
+### Изменено
+- Переиспользуемый компонент **`<x-site.breadcrumbs />`** применён на всех
+  страницах, кроме главной:
+  - `services/category` и `services/show` уже использовали компонент;
+  - `blog/show` — инлайн-навигация заменена на компонент
+    (Главная • Блог • Категория • Пост);
+  - `portfolio/show` — инлайн-навигация заменена на компонент
+    (Главная • Портфолио • Альбом);
+  - добавлены в hero-блоки `services/index`, `portfolio/index`, `blog/index`,
+    `video/index` (Главная • Раздел) через новый проп `:center="true"`
+  - проп `center` компонента центрирует крошки по горизонтали
+- **Верхнее меню** (`components/site/header.blade.php`): ссылка на текущую
+  страницу скрывается в десктопном и мобильном меню (сравнение по
+  `request()->path()` с учётом вложенных URL, напр. на `/blog/история` ссылка
+  «Блог» не показывается) — без циклических ссылок
+
+### Тесты
+- **tests/Feature/Http/Controllers/HeaderMenuTest.php** (3): ссылка на текущий
+  раздел скрыта на странице раздела, на главной, на вложенной странице блога;
+  остальные пункты меню на месте
+
+## 2026-08-29 — Этап B11, часть 2: публичный иерархический каталог услуг
+
+### Добавлено
+- **app/Services/ServiceCatalogResolver.php**: отдельный resolver
+  `resolve(array $segments): Category|Service|null` для иерархического пути:
+  - каждый сегмент сначала разрешается как категория (`type = service`,
+    `is_published`, `parent_id` = предыдущей категории, у корня `parent_id IS NULL`);
+  - если дочерней категории нет и сегмент последний — разрешается как услуга
+    этой категории (`is_published`);
+  - сущность **не определяется по количеству сегментов**; при совпадении slug
+    приоритет у категории (детерминированно);
+  - неправильная цепочка родителей, неопубликованная/несуществующая категория
+    или услуга, категория блога (`type = post`) → `null` (404);
+  - поддерживаются услуги без категории на корневом уровне
+- **app/Http/Controllers/ServiceCatalogController.php**: единый контроллер раздела
+  `/services` (старый `ServiceController` удалён — логика перенесена без дублирования):
+  - `index()` — корневые опубликованные категории (`sort_order`) с детьми и
+    услугами непосредственного уровня + услуги без категории;
+  - `show($path)` — разбивает путь, делегирует резолверу и рендерит страницу
+    категории или услуги; `null` → 404 через `abort_unless`
+- **routes/web.php**: `GET /services/{path}` с `where('path', '.*')` вместо
+  `/{slug}` — путь категорий/услуги принимается целиком
+- **Методы генерации URL**: `Category::catalogPath()` и `Service::catalogPath()`
+  — иерархический slug-путь (`родитель/подкатегория/услуга`); все шаблоны строят
+  ссылки `route('services.show', $model->catalogPath())`
+- **resources/views/components/site/breadcrumbs.blade.php**: переиспользуемый
+  компонент `<x-site.breadcrumbs :items="…" />` (массив `label`/`url`, последний
+  без `url` — текущая страница)
+- **resources/views/services/category.blade.php**: страница категории — breadcrumbs,
+  обложка, title, описание, «Цена от», дочерние категории, услуги, CTA/форма заявки, SEO
+- Шаблоны `services/index.blade.php` и `services/show.blade.php` адаптированы под
+  иерархические URL; на странице услуги полный breadcrumb, остальной функционал сохранён
+
+### Тесты
+- **tests/Feature/Services/ServiceCatalogResolverTest.php** (16): корневая и
+  вложенная категории, услуга во вложенной категории, услуга на корневом уровне,
+  приоритет категории при совпадении slug, неправильная цепочка, несуществующие
+  категории/услуги, неопубликованные категории (корневая, вложенная) и услуга,
+  услуга в неопубликованной категории, `type = post` не резолвится, пустой путь
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** (17): index
+  с корневыми категориями и корневыми услугами, скрытие неопубликованного раздела,
+  страница категории (контент, цена, SEO, CTA), вложенная категория с детьми и
+  услугами, услуга во вложенной категории, сохранение функционала услуги (ServiceItems,
+  альбомы, видео, форма), полный breadcrumb, неправильная цепочка и неизвестная
+  категория → 404, неопубликованные категории/услуги → 404, услуга без категории,
+  корректная генерация иерархического URL
+
+### Изменено
+- **app/Http/Controllers/HomeController.php**: в выборку `services` добавлен
+  `category_id` — на главной ссылки строятся через `catalogPath()`
+- **app/Models/Category.php** / **app/Models/Service.php**: добавлены `catalogPath()`
+
+### Не изменено
+- `Service`, `ServiceItem`, Media Storage, схема БД — не трогались
+- Логика страницы услуги сохранена как была (расширена только ссылками и breadcrumb)
+- Filament-дерево категорий — следующая часть этапа B11
+
+### Документация
+- **architecture.md**: обновлены структура приложения (контроллер, resolver,
+  breadcrumbs, шаблоны), таблица маршрутов, новый раздел «Публичный каталог услуг —
+  URL-резолвер и страницы (этап B11, часть 2)», раздел «Тестирование»
+
+### Проверка
+- Полный тестовый набор: 499 тестов проходят (+48), 1254 утверждений (+100)
+- Pint: clean
+
+## 2026-08-29 — Этап B11, часть 1: иерархия категорий каталога услуг
+
+### Добавлено
+- **Миграция `add_hierarchy_fields_to_categories_table`**: таблица `categories`
+  расширена полями иерархии без замены существующей концепции и без отдельной
+  таблицы `service_categories`:
+  - `parent_id` — self-referencing FK → `categories.id` (ON DELETE SET NULL),
+    глубина дерева не ограничена;
+  - `cover_media_id` — FK → `media.id` (ON DELETE SET NULL);
+  - `description`, `price_from`, `price_note`, `seo_title`, `seo_description`;
+  - `is_published` (default true) — поля публикации в схеме категорий не было;
+  - индексы `parent_id`, `cover_media_id`, `is_published`
+- **app/Models/Category.php**:
+  - отношения `parent()` (BelongsTo), `children()` (HasMany), `cover()` (BelongsTo);
+  - существующие `services()`/`posts()` сохранены; `type`-политика без изменений
+    (`service` — иерархические категории каталога, `post` — плоские категории блога);
+  - методы `ancestors($withSelf = false)` (от корня к родителю),
+    `path($withSelf = false)` (полный путь), `descendants()` (все потомки в глубину);
+  - **защита от циклической иерархии** на уровне модели: хук `saving` вызывает
+    `assertNotCyclic()`, когда `parent_id` изменён; запрещены выбор категории
+    в качестве собственного родителя и цепочка `A → B → C → A`; обход
+    `ancestors`/`descendants` также защищён от зацикливания на битых данных;
+  - fillable и casts (`is_published`, `price_from`) обновлены
+- **database/factories/CategoryFactory.php**: null-поля `parent_id`,
+  `cover_media_id`, `is_published` по умолчанию
+
+### Тесты
+- **tests/Feature/Models/CategoryHierarchyTest.php** (13): parent/children,
+  несколько уровней вложенности и неограниченная глубина дерева, category →
+  services, cover_media (наличие и nullable), полный набор полей category
+  (description/price/SEO/is_published), независимая работа service- и post-категорий,
+  корневая категория, `ancestors`/`path`/`descendants`, запрет самородительства
+  и потомка в качестве родителя, разрыв цепочки при откреплении
+
+### Не изменено
+- `Service`, `ServiceItem`, `ServiceController`, Media Storage и публичные
+  страницы — не трогались
+- Существующая миграция создания `categories` не менялась
+- Filament-дерево категорий, страницы категорий, URL-резолвер и breadcrumbs
+  — следующие части этапа B11
+
+### Документация
+- **database.md**: схема `categories` (поля, FK, индексы, методы модели),
+  self-связь в ER-диаграмме
+- **architecture.md**: раздел «Каталог услуг — иерархия категорий (этап B11,
+  часть 1)», ссылки на тест в разделе «Тестирование»
+
+### Проверка
+- Миграция применена на dev-БД (MySQL): `php artisan migrate`
+- Полный тестовый набор: 451+ тест проходят
+- Pint: clean
+
+### Добавлено
+- **Таблица `icons`**: справочник файловых иконок (SVG/PNG), хранимых локально
+  на диске `public` в директории `icons/`. Поля: `name`, `file_path`, `disk`
+- **Миграция `add_icon_id_and_subtitle_to_service_items`**: добавлены поля
+  `icon_id` (nullable FK → `icons.id`, SET NULL) и `subtitle` (nullable varchar 255)
+  в таблицу `service_items`
+- **app/Models/Icon.php**: Eloquent модель с `getUrl()` (через Storage),
+  `serviceItems()` HasMany
+- **app/Models/ServiceItem.php**: добавлены `icon_id`, `subtitle` в fillable,
+  relationship `icon()` BelongsTo
+- **app/Filament/Resources/Icons/**: полный CRUD для управления иконками
+  - `IconResource.php`, `IconForm.php` (name + file upload на public disk),
+    `IconsTable.php` (превью + название + путь), Create/Edit/List страницы
+- **app/Filament/Resources/ServiceItems/Schemas/ServiceItemForm.php**: добавлены
+  `Select` для иконки и `TextInput` для подзаголовка
+- **app/Filament/Resources/ServiceItems/Tables/ServiceItemsTable.php**: добавлены
+  колонки иконки (ImageColumn) и подзаголовка
+- **app/Filament/Resources/Services/Schemas/ServiceForm.php**: в `createOptionForm`
+  для пунктов добавлены поля иконки и подзаголовка
+- **database/factories/IconFactory.php**: фабрика для тестов
+- Тесты обновлены под новую схему
+
+### Изменено
+- **resources/views/services/show.blade.php**: при наличии иконки показывается
+  вместо SVG-галочки; подзаголовок отображается после названия
+- **resources/views/services/index.blade.php**: аналогично + **исправлен баг**:
+  `$item->is_included` → `$item->pivot->is_included` в секции услуг без категории
+  (pivot-поле `is_included` не принадлежит модели `ServiceItem`)
+
+### Документация
+- **database.md**: добавлена таблица `icons`, обновлена ER-диаграмма,
+  добавлены `subtitle` и `icon_id` в `service_items`
+- **architecture.md**: добавлен раздел «Icons — иконки пунктов услуг»,
+  обновлена структура приложения (Icon модель, Icons ресурс)
+
+## 2026-08-25 — Этап B10: финальная стабилизация Media Storage
+
+### Code review
+Проведён полный code review Media Storage (B1–B9):
+- Media, MediaObserver, MediaProcessor, ProcessMedia Job
+- ImageCacheService, DeleteMedia Action
+- MigrateMediaToYandexDisk Action, MediaMigrateToYandex command
+- CheckMediaIntegrity Action, MediaCheck command
+- Filament: EditMedia, MediaTable (bulk delete), MediaResource
+- MediaController (proxy routes), Photo/Album models
+- config/filesystems.php
+
+Результат: **архитектура стабильна, кодовых исправлений не требуется.**
+
+### Failure scenarios (A–J)
+
+| Сценарий | Существующая защита | Решение |
+|---|---|---|
+| A. Yandex недоступен при upload | MigrateMediaToYandexDisk::upload ловит Throwable → FAILED, БД не меняется, local original сохранён | OK |
+| B. Yandex недоступен при ProcessMedia | processOrFail() пробрасывает → retry (3 попытки, backoff 30/120 сек) | OK |
+| C. Thumbnail generation failed | catch Throwable + warning; metadata сохраняются; isPending() = true → retry доступен | OK |
+| D. ProcessMedia запускается повторно | needsProcessing() проверяет заполненность полей и наличие файлов →noop | OK |
+| E. Media удаляется во время ProcessMedia | find($id) → null → warning, job завершается; thumbnail на диске — безвредный orphan | OK |
+| F. Media заменяется во время обработки | Job читает свежие данные → обрабатывает актуальный файл | OK |
+| G. Migration останавливается посередине | Каждая Media обрабатывается изолированно; уже мигрированные пропускаются (идемпотентность) | OK |
+| H. Bulk delete: часть Yandex удалена, часть нет | Каждая запись обрабатывается независимо; упавшие → record сохранён, stats показывают failed | OK |
+| I. Bulk delete: «Не удалять Yandex originals» | $deleteRemoteOriginal = false → local + derivatives удалены, remote сохранён, record удалён | OK |
+| J. После удаления Media на Yandex остаётся original | Ожидаемое поведение (B6); media:check показывает «Potential orphan» | OK |
+
+### Проверка política удаления
+
+- **Local**: delete Media → local original удалён → derivatives удалены → record удалён ✓
+- **Yandex + Yes**: delete Media → remote original удалён → derivatives удалены → record удалён ✓
+- **Yandex + No**: delete Media → remote original сохранён (orphan) → derivatives удалены → record удалён ✓
+- **Bulk**: одно решение пользователя применяется ко всей выборке ✓
+- **Ошибка Yandex delete**: Media НЕ удаляется (запись сохранена) ✓
+
+### Проверка orphan semantics
+
+- Media отсутствует + Yandex original существует → не вызывает автоматическое удаление ✓
+- `media:check` показывает «Potential orphan files» (не ошибки) ✓
+
+### Проверка migration
+
+- После migration: `Media.disk = 'yandex_disk'` ✓
+- B6 корректно применяет Yandex deletion policy ✓
+
+### Проверка публичного сайта
+
+- Портфолио: display-кэш для сетки, lightbox-кэш для просмотра ✓
+- Альбомы: thumbnail для обложек услуг ✓
+- Кнопка скачивания оригинала — только для авторизованных (`@auth` + `auth` middleware) ✓
+- Yandex credentials не раскрываются (только proxy route) ✓
+- Кэш: `Cache-Control: immutable` для кэшированных, `max-age=86400` для оригиналов ✓
+
+### Проверка Filament
+
+- Upload: через MediaResource, dispatch ProcessMedia после commit ✓
+- Bulk upload: UploadPhotos в альбоме, по одному job на файл ✓
+- Delete: EditMedia — две кнопки для Yandex (оставить/удалить) ✓
+- Bulk delete: Radio Да/Нет, сводка результатов ✓
+- Albums: cover, sorting, relation manager ✓
+- Retry: Action «Повторить обработку» visible when isPending() ✓
+- Import: ImportFromYandexDisk страница, ShouldBeUnique job ✓
+
+### Документация
+- **architecture.md**: добавлен раздел «Итоговая архитектура Media Storage (этап B10)»
+  с 10 ключевыми правилами системы хранения
+- **roadmap.md**: Этап 4 (B) помечен как завершённый, текущий этап — 5 (Кабинеты клиентов)
+
+### Статистика
+- Тесты: 451 проходят
+- Assertions: 1154
+- Pint: clean
+
+## 2026-08-25 — Этап B9: проверка целостности Media Storage и orphan-файлы
+
+### Добавлено
+- **app/Actions/Media/CheckMediaIntegrity.php**: проверка одного Media record
+  - DB → Storage: существует ли original на диске; thumbnail на диске `thumbnails`;
+    кэш display/lightbox через `ImageCacheService::isCached()`; metadata
+    (file_size, dimensions, file_size vs disk для локальных файлов)
+  - Не скачивает originals для проверки metadata — использует быстрые операции
+  - Ошибки storage не роняют проверку — логируются как warning
+  - Каждому типу проблемы соответствует свой статус: `missing_original`,
+    `missing_thumbnail`, `missing_image_cache`, `metadata_mismatch`, `valid`
+- **app/Actions/Media/MediaCheckResult.php**: value class результата проверки
+  с методами-предикатами (`isValid()`, `isMissingOriginal()` и т.д.)
+- **app/Console/Commands/MediaCheck.php**: `php artisan media:check`
+  - Проверяет все Media records (или конкретный через `--media-id=`)
+  - Обнаруживает orphan-файлы на Яндекс.Диске (файлы без записи Media)
+  - Orphan-файлы报告 как **Potential orphan files**, а НЕ как ошибки
+    (пользователь мог сознательно оставить файл при удалении Media через B6)
+  - Команда НИКОГДА не удаляет файлы — ни originals, ни thumbnails, ни Media
+  - `--fix-thumbnails` — восстанавливает отсутствующие thumbnails через
+    `MediaProcessor::process(force: true)`, не затрагивает originals
+  - `--limit=N` — ограничение проверяемых записей
+  - `--media-id=ID` — проверка конкретного Media
+  - Итоговый отчёт: Checked / OK / Missing original / Missing thumbnail /
+    Missing image cache / Metadata mismatch / Potential orphan Yandex files /
+    Errors + таблица с детализацией по каждой записи
+- Тесты: `tests/Feature/Actions/MediaCheckTest.php` (10) — valid, missing original,
+  missing thumbnail, missing image cache, metadata mismatch (file_size, dimensions),
+  non-image metadata, remote disk, empty disk;
+  `tests/Feature/Console/MediaCheckCommandTest.php` (11) — полный отчёт, missing
+  original, missing thumbnail, metadata mismatch, orphan, limit, media-id,
+  fix thumbnails, mixed media summary
+
+### Изменено
+- **architecture.md**: раздел «Проверка целостности — media:check — этап B9»
+  с описанием проверок DB→Storage, orphan-файлов, правил非автоудаления,
+  опций команды и списка файлов
+- **roadmap.md**: B9 отмечен как завершённый
+
+### Не изменено
+- Схема БД не менялась
+- Команда не удаляет файлы по умолчанию
+- Orphan-файлы не удаляются автоматически (осознанно)
+
+### Статистика
+- Тесты: 451 проходят (+21)
+- Assertions: 1154 (+50)
+- Pint: clean
+
+## 2026-08-25 — Фикс: 500 на Select с media.title (NULL-заголовки)
+
+### Исправлено
+- **app/Models/Media.php**: добавлен аксессор `getTitleAttribute` — при NULL/пустом
+  `title` возвращается basename из `file_path`. Ранее наличие записей media без
+  заголовка (2 тестовые строки) роняло страницу `/admin/albums/{id}/edit` (и любые
+  формы с `Select::relationship('cover'/'media', 'title')`) ошибкой
+  `Select::isOptionDisabled(): Argument #2 ($label) must be of type string, null given`.
+  Аксессор также чинит отображение в таблицах (`TextColumn::make('media.title')`).
+  Данные БД не менялись.
+
+## 2026-08-23 — Этап B8: миграция локальных оригиналов на Yandex Disk
+
+### Добавлено
+- **app/Actions/Media/MigrateMediaToYandexDisk.php**: миграция одного Media
+  по критической последовательности upload → verify → DB update → delete local.
+  Локальный оригинал гарантированно сохраняется до успешной проверки удалённого
+  файла и обновления записи БД; сценарий «delete local → upload» невозможен
+  - отбор кандидата: только `image/*` на локальных дисках (драйвер `local`);
+    пропускаются записи уже на remote-дисках, производные (диски `thumbnails`,
+    `image_cache`), неизвестные/чужие storage, без пути или MIME, с отсутствующим
+    локальным файлом — каждая с явной причиной
+  - загрузка стримом во временную копию на Диске (mkdir для вложенных путей);
+    верификация: наличие → размер → sha256 содержимого (чтение обратно)
+  - идемпотентность: `disk = yandex_disk` → skip; существующий remote-файл при
+    совпадении размера и sha256 переиспользуется (без повторной загрузки),
+    при расхождении — Failed «конфликт», чужой файл не перезаписывается;
+    собственная непрошедшая верификацию загрузка удаляется с Диска (повторный
+    запуск начисто), сбой удаления локального файла после update не откатывает
+    миграцию (безвредный дубликат)
+  - ключ кэша display/lightbox включает disk: старые варианты удаляются до
+    смены disk (best-effort), новые генерируются лениво / через retry; thumbnail
+    остаётся валидным (путь детерминирован от file_path)
+- **app/Actions/Media/MediaMigrationResult.php**: результат операции
+  (migrated / skipped / failed + причина + localDeleted)
+- **app/Console/Commands/MediaMigrateToYandex.php**:
+  `php artisan media:migrate-to-yandex [--dry-run] [--limit=] [--media-id=]`
+  - команда занимается выборкой, batching, выводом и обработкой ошибок;
+    логика одной записи — в Action
+  - dry-run: ничего не меняет (БД/storage/Media); показывает найдено,
+    доступно к миграции, пропущено и причины по каждой записи; конфликт
+    с remote-файлом проверяется по метаданным размера, без скачивания
+  - `--limit` применяется после отбора кандидатов; записи сверх лимита —
+    пропущенные с причиной; `--media-id=` — одна запись (несуществующая → FAILURE)
+  - изоляция сбоев: один проблемный Media не останавливает batch; статистика:
+    обработано / мигрировано / пропущено / с ошибками / локально удалено;
+    код возврата FAILURE при наличии ошибок
+
+### Не изменено
+- Схема БД не менялась (`database.md` дополнена примечанием в Storage Strategy)
+- Массовая миграция не запускалась — только dry-run проверка на реальных данных
+  (894 Media: 192 локальных, 702 уже на Диске, 2 без локального файла,
+  1 без MIME); данные после dry-run не изменились
+- Удаление Media после миграции работает по политике B6 (решение об
+  удалении Yandex-оригинала за пользователем)
+
+### Документация
+- **README.md**: добавлены разделы по artisan-командам медиа-хранилища:
+  `media:migrate-to-yandex` (B8), `media:prune-image-cache`, `media:test-storage`
+
+### Статистика
+- Тесты: 430 проходят (+22)
+- Assertions: 1104 (+129)
+- Pint: clean
+
+## 2026-08-23 — Этап B7: Filament UX Media Storage
+
+### Добавлено
+- **Действие «Повторить обработку»** для незавершённой обработки Media:
+  - `MediaTable` (действие записи) и `EditMedia` (header action) — видно только
+    когда `MediaProcessor::isPending()` = true; повторно диспатчит Job
+    `ProcessMedia` без дублирования логики обработки; HTTP-запрос тяжёлой
+    работы не выполняет
+  - **app/Services/MediaProcessor.php**: публичный метод `isPending(Media)` —
+    единый источник состояния «обработка не завершена» (пустые метаданные,
+    отсутствующий thumbnail или display/lightbox вариант)
+- **Колонка «Обработка»** в списке Media («Готово» / «В очереди») — вычисляемое
+  состояние через `isPending()`; поле status в БД сознательно не вводилось
+- Тесты: `tests/Feature/Filament/MediaRetryProcessingTest.php` (6) — видимость
+  retry в списке и на странице редактирования, dispatch ProcessMedia,
+  корректность `isPending()`, завершение обработки при повторном запуске;
+  `tests/Feature/Filament/MediaUploadTest.php` (1) — single upload через
+  страницу создания Media: запись создана, обработка ушла в очередь;
+  `tests/Feature/Models/MediaReuseSafetyTest.php` (4) — удаление Photo
+  сохраняет Media и файлы, Media переиспользуем вторым альбомом, удаление
+  Album сохраняет Media, удаление Media каскадно убирает Photo и обнуляет обложку
+
+### Изменено
+- **app/Filament/Resources/Media/Pages/EditMedia.php**: одиночное удаление
+  Yandex-Media переведено с Toggle на две явные кнопки в модалке
+  «Удалить файл с Яндекс-Диска?»:
+  - «Удалить Media, оставить файл» — кнопка по умолчанию (безопасный вариант);
+  - «Удалить Media и файл» — danger-кнопка (`makeModalSubmitAction`,
+    аргумент `delete_remote_original`);
+  - «Отмена» — стандартная; форма с checkbox убрана; для локальных дисков —
+    прежнее стандартное подтверждение
+- **app/Filament/Resources/Media/Tables/MediaTable.php**:
+  - выбор судьбы Yandex-оригиналов при bulk delete переведён с Toggle на
+    явное Radio «Да / Нет» (по умолчанию «Нет, оставить файлы на Яндекс-Диске»),
+    виден только если среди выбранных есть оригиналы на Диске; одно решение
+    применяется ко всей выборке
+  - сводка после bulk: уведомление показывает удалено всего, из них вместе
+    с оригиналами на Яндекс-Диске / с сохранением оригиналов и сколько не
+    удалено из-за ошибки; stack trace не показывается (детали в журнале)
+
+### Не изменено
+- Политика удаления (`DeleteMedia`) — без изменений с этапа B6
+- Массовая загрузка фото и импорт папки Яндекс.Диска — асинхронность уже
+  обеспечена ProcessMedia/ImportAlbumFromYandexDisk (B4), покрыта тестами
+- Удаление Photo/Album не затрагивает Media (проверено тестами, поведение прежнее)
+
+### Статистика
+- Тесты: 408 проходят (+13)
+- Assertions: 975 (+78)
+- Pint: clean
+
+## 2026-08-24 — Этап B6: новая политика удаления Media и физических оригиналов
+
+### Добавлено
+- **app/Actions/Media/DeleteMedia.php**: единая точка политики удаления Media
+  - Локальный оригинал удаляется всегда; оригинал на удалённом диске
+    (Яндекс.Диск) — только при явном подтверждении (`deleteRemoteOriginal`)
+  - Производные (WebP-thumbnail на диске `thumbnails` + display/lightbox
+    на диске `image_cache`) удаляются в любом случае
+  - **Критическое правило ошибок**: если запрошенный к удалению оригинал удалить
+    не удалось (Диск недоступен, API вернул ошибку) — запись Media сохраняется,
+    ошибка логируется (`Log::error` с media_id/disk/path), производные не трогаются.
+    Сценарий «записи нет, файл есть» невозможен по воле системы
+  - Ошибка удаления производных не блокирует удаление записи (несущественный
+    кэш), логируется как warning; отсутствующий на диске оригинал удалению не мешает
+  - При отказе от удаления Yandex-оригинала файл намеренно остаётся как
+    потенциальный orphan — автоматическая очистка не выполняется (по условию)
+- **ImageCacheService::forget()**: best-effort удаление display/lightbox вариантов,
+  сбой одного варианта не мешает остальным
+- Тесты: `tests/Feature/Actions/DeleteMediaTest.php` (7) — локальное удаление
+  (файлы + запись), сбой локального оригинала → запись сохранена, Yandex с
+  подтверждением, Yandex без подтверждения (orphan остаётся), сбой Диска при
+  подтверждении → запись сохранена и производные целы, отсутствующий remote-файл,
+  сбой удаления превью не блокирует запись;
+  `tests/Feature/Filament/MediaDeletionTest.php` (5) — массовое удаление вперемешку
+  local/Yandex с отказом и с подтверждением, частичный сбой из N (упавшая запись
+  остаётся в БД), одиночное удаление local и одиночное с вопросом про Яндекс
+
+### Изменено
+- **app/Filament/Resources/Media/Pages/EditMedia.php**: DeleteAction кастомизирован
+  - Для локального диска — обычное подтверждение «будут удалены запись и все файлы»
+  - Для remote-диска — форма с Toggle «Удалить файл с Яндекс-Диска?»
+    (по умолчанию выключен = оставить файл как потенциальный orphan)
+  - Удаление через `DeleteMedia`; при неудаче — notification «Не удалось удалить
+    оригинал файла. Запись сохранена…» вместо потери данных
+- **app/Filament/Resources/Media/Tables/MediaTable.php**: DeleteBulkAction
+  кастомизирован под массовое удаление с одним подтверждением
+  - Одно модальное окно на всю выборку: описание показывает количество выбранных
+    файлов и сколько оригиналов находится на Яндекс-Диске («В выбранных элементах
+    находятся N оригиналов на Яндекс-Диске»); Toggle вопроса виден только если
+    такие файлы есть среди выбранных (состояние через mountUsing + hidden-поле)
+  - Один ответ применяется ко всей выборке: Да — Yandex-оригиналы удаляются,
+    Нет — остаются (orphan), локальные оригиналы и производные удаляются всегда
+  - Смешанные ошибки: каждая запись обрабатывается независимо; упавшие записи
+    остаются в БД (`reportBulkProcessingFailure()`), пользователь получает
+    уведомление «Удалено файлов: X из Y. Остальные записи сохранены…»
+  - Добавлена колонка `disk` (toggleable) для наглядности места хранения
+- **architecture.md**: раздел «Удаление Media (этап B6)»
+
+### Не изменено
+- `MediaObserver` остался тонким: политика удаления живёт в Action, а не в Observer
+- Прямое `$media->delete()` мимо Action по-прежнему удаляет только запись БД —
+  контракт: физические файлы удаляет только `DeleteMedia`
+- Автоочистка orphan-файлов не реализована (осознанно, по условию задачи);
+  обнаружение — задача команды проверки целостности (B9)
+- Удаление Photo/Album записи Media не затрагивает (поведение прежнее)
+
+### Статистика
+- Тесты: 395 проходят (+12)
+- Assertions: 897 (+143)
+- Pint: clean
+
 ## 2026-08-23 — Прогрев display/lightbox через очередь + диагностика прод-воркера
 
 ### Добавлено

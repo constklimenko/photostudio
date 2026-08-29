@@ -7,6 +7,10 @@
 
 <section class="bg-[#111111] py-24" data-aos="fade-up">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <x-site.breadcrumbs :center="true" :items="[
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => $page?->title ?: 'Блог'],
+        ]" />
         <h1 class="font-heading text-4xl font-normal tracking-wide text-white">{{ $page?->title ?: 'Блог' }}</h1>
         <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Полезные статьи, советы и новости из мира фотографии' }}

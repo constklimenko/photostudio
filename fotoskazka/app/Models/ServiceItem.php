@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\ServiceItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ServiceItem extends Model
@@ -13,7 +14,7 @@ class ServiceItem extends Model
     use HasFactory;
 
     protected $fillable = [
-        'label', 'is_included', 'sort_order',
+        'label', 'subtitle', 'is_included', 'sort_order', 'icon_id',
     ];
 
     protected function casts(): array
@@ -21,6 +22,11 @@ class ServiceItem extends Model
         return [
             'is_included' => 'boolean',
         ];
+    }
+
+    public function icon(): BelongsTo
+    {
+        return $this->belongsTo(Icon::class);
     }
 
     public function services(): BelongsToMany

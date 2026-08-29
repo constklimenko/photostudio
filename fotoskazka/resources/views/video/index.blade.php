@@ -7,6 +7,10 @@
 
 <section class="relative py-24 bg-[#111111] overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <x-site.breadcrumbs :center="true" :items="[
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => $page?->title ?: 'Видеогалерея'],
+        ]" />
         <h1 class="font-heading text-4xl sm:text-5xl font-normal tracking-wide text-white">
             {{ $page?->title ?: 'Видеогалерея' }}
         </h1>

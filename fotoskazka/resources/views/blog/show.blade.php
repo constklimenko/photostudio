@@ -10,15 +10,12 @@
         <div class="flex flex-col lg:flex-row gap-12">
 
             <article class="flex-1 min-w-0">
-                <nav class="text-sm text-gray-500 mb-8">
-                    <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
-                    <span class="mx-2 text-gray-600">/</span>
-                    <a href="{{ route('blog.index') }}" class="hover:text-[#d4af37] transition">Блог</a>
-                    @if ($post->category)
-                        <span class="mx-2 text-gray-600">/</span>
-                        <span class="text-gray-300">{{ $post->category->name }}</span>
-                    @endif
-                </nav>
+                <x-site.breadcrumbs :items="array_merge([
+                    ['label' => 'Главная', 'url' => route('home')],
+                    ['label' => 'Блог', 'url' => route('blog.index')],
+                ], $post->category ? [['label' => $post->category->name]] : [], [
+                    ['label' => $post->title],
+                ])" />
 
                 @if ($post->cover)
                     <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-8 shadow-lg shadow-black/30">

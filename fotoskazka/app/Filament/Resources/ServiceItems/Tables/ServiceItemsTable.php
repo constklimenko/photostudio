@@ -6,6 +6,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
@@ -16,9 +17,18 @@ class ServiceItemsTable
     {
         return $table
             ->columns([
+                ImageColumn::make('icon.file_path')
+                    ->disk('public')
+                    ->label('Иконка')
+                    ->circular()
+                    ->default('—'),
                 TextColumn::make('label')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('subtitle')
+                    ->label('Подзаголовок')
+                    ->limit(50)
+                    ->placeholder('—'),
                 IconColumn::make('is_included')
                     ->boolean()
                     ->label('Включено'),
