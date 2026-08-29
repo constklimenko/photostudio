@@ -80,6 +80,26 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Индивидуальная съёмка');
     }
 
+    public function test_index_shows_child_categories_with_cover(): void
+    {
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'covers/schools-cover.jpg',
+            'thumbnail_path' => null,
+        ]);
+
+        $this->schools->update(['cover_media_id' => $media->id]);
+
+        $response = $this->get(route('services.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Для школ');
+        $response->assertSee('/services/vypusknye-albomy/dlya-shkol');
+        $response->assertSee('covers/schools-cover.jpg', false);
+        $response->assertSee('alt="Для школ"', false);
+        $response->assertSee('Подробнее');
+    }
+
     public function test_index_hides_unpublished_root_category(): void
     {
         Category::factory()->create([

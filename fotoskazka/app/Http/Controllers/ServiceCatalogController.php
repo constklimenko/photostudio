@@ -24,7 +24,7 @@ class ServiceCatalogController extends Controller
             ->where('is_published', true)
             ->whereNull('parent_id')
             ->orderBy('sort_order')
-            ->with(['cover', 'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')])
+            ->with(['cover', 'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover'])])
             ->with(['services' => function ($query) {
                 $query->where('is_published', true)
                     ->orderBy('sort_order')

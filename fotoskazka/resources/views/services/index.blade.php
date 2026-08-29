@@ -26,14 +26,30 @@
             </h2>
 
             @if ($category->children->isNotEmpty())
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                     @foreach ($category->children as $child)
                         <a href="{{ route('services.show', $child->catalogPath()) }}"
-                           class="group block bg-[#1a1a1a] rounded-xl p-5 shadow-lg shadow-black/30 hover:bg-[#242424] transition">
-                            <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $child->name }}</h3>
-                            @if ($child->price_from)
-                                <p class="mt-1 text-sm font-bold text-[#d4af37]">от {{ number_format($child->price_from, 0, ',', ' ') }} ₽</p>
-                            @endif
+                           class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition">
+                            <div class="aspect-[16/9] bg-gray-100">
+                                @if ($child->cover)
+                                    <img src="{{ $child->cover->getThumbnailUrl() }}"
+                                         alt="{{ $child->name }}"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                         loading="lazy">
+                                @endif
+                            </div>
+                            <div class="p-5">
+                                <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $child->name }}</h3>
+                                @if (filled(strip_tags((string) $child->description)))
+                                    <p class="mt-2 text-sm text-gray-400 line-clamp-2">{{ Str::limit(strip_tags((string) $child->description), 120) }}</p>
+                                @endif
+                                <div class="mt-3 flex items-center justify-between">
+                                    @if ($child->price_from)
+                                        <span class="text-sm font-bold text-[#d4af37]">от {{ number_format($child->price_from, 0, ',', ' ') }} ₽</span>
+                                    @endif
+                                    <span class="text-sm text-[#d4af37] font-semibold uppercase tracking-wider group-hover:opacity-70 transition">Подробнее</span>
+                                </div>
+                            </div>
                         </a>
                     @endforeach
                 </div>
