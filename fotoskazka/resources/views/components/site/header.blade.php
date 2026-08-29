@@ -1,4 +1,17 @@
 <header class="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#1a1a1a]">
+    @php
+        $currentPath = rtrim(request()->path(), '/');
+        $menuItems = array_values(array_filter($menuItems, function ($item) use ($currentPath) {
+            $target = trim($item['url'] ?? '', '/');
+
+            if ($target === '') {
+                return $currentPath !== '';
+            }
+
+            return $currentPath !== $target && ! str_starts_with($currentPath, $target.'/');
+        }));
+    @endphp
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
             <a href="/" class="text-xl font-semibold text-white">
