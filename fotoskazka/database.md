@@ -296,6 +296,36 @@ video_id -> videos.id ON DELETE CASCADE
 
 ---
 
+## category_video
+
+Pivot для many-to-many связи категорий и видео (видео, прикреплённые к категории
+и показываемые на её публичной странице `/services/...`).
+
+```sql
+category_id BIGINT UNSIGNED
+video_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, video_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+Порядок вывода — `videos.sort_order` (как у `service_video`).
+
+Foreign keys:
+
+```sql
+post_id -> posts.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+---
+
 ### Система ролей
 
 Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
@@ -1101,7 +1131,7 @@ updated_at TIMESTAMP
 Раздел `/video` — отдельная страница со всеми активными видео, контент управляется через Pages (slug: video).
 
 Видео могут прикрепляться к альбомам через pivot `album_video` (с подписью и порядком в альбоме),
-а также напрямую к услугам (`service_video`) и статьям (`post_video`).
+а также напрямую к услугам (`service_video`), статьям (`post_video`) и категориям (`category_video`).
 Альбомы с видео привязываются к услугам (`album_service`) и статьям (`post_album`) — как обычные фотоальбомы.
 Порядок видео внутри услуги/статьи определяется полем `videos.sort_order`.
 

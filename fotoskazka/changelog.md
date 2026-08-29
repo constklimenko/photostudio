@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-08-29 — Этап B11, часть 6: видео в категориях
+
+### Добавлено
+- **Миграция `create_category_video_table`**: pivot для many-to-many связи
+  категорий и видео (`category_id`, `video_id`, PK, каскадное удаление)
+- **app/Models/Category.php**: связь `videos()` (belongsToMany через
+  `category_video`, порядок — `videos.sort_order`)
+- **CategoryForm** (`/admin/categories`): секция «Видео» с мультиселектом
+  существующих видео
+- **Публичная страница категории** (`resources/views/services/category.blade.php`):
+  блок «Видео» через `x-site.videos` (горизонтальные — inline, вертикальные —
+  слайдер) между блоком услуг и формой заявки
+- **app/Http/Controllers/ServiceCatalogController.php**: eager loading `videos`
+  на странице категории
+
+### Тесты
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**:
+  `test_category_page_shows_attached_videos` — видео категории выводится на
+  публичной странице (title + YouTube-embed)
+- **tests/Feature/Filament/CategoryTreeAdminTest.php**:
+  `test_videos_can_be_attached_via_form` — мультиселект сохраняет связь в pivot
+
 ## 2026-08-29 — Этап B11, часть 5: фотографии подкатегорий на /services
 
 ### Изменено

@@ -78,6 +78,15 @@ class CategoryForm
                         RichEditor::make('description')
                             ->columnSpanFull(),
                     ]),
+                Section::make('Видео')
+                    ->schema([
+                        Select::make('videos')
+                            ->multiple()
+                            ->relationship('videos', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')

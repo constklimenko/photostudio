@@ -215,6 +215,23 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('от 8 000', false);
     }
 
+    public function test_category_page_shows_attached_videos(): void
+    {
+        $video = Video::factory()->create([
+            'title' => 'Видео о выпускных',
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            'is_active' => true,
+        ]);
+
+        $this->schools->videos()->attach($video->id);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertSee('Видео о выпускных');
+        $response->assertSee('https://www.youtube.com/embed/dQw4w9WgXcQ', false);
+    }
+
     public function test_category_page_shows_service_cards(): void
     {
         $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
