@@ -13,7 +13,12 @@ class EditCategory extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->requiresConfirmation()
+                ->disabled(fn (): bool => ! $this->record->canBeDeleted())
+                ->tooltip(fn (): ?string => $this->record->canBeDeleted()
+                    ? null
+                    : 'Нельзя удалить: сначала переместите или удалите дочерние категории и услуги'),
         ];
     }
 }

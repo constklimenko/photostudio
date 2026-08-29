@@ -183,4 +183,75 @@ class CategoryHierarchyTest extends TestCase
         $child->update(['parent_id' => $root->id]);
         $this->assertTrue($root->fresh()->children->contains($child));
     }
+
+    public function test_empty_category_can_be_deleted(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        $category->delete();
+
+        $this->assertDatabaseMissing('categories', ['id' => $category->id]);
+    }
+
+    public function test_deleting_category_with_children_is_blocked(): void
+    {
+        $parent = Category::factory()->create(['type' => 'service']);
+        Category::factory()->create(['type' => 'service', 'parent_id' => $parent->id]);
+
+        try {
+            $parent->delete();
+            $this->fail('Ожидалось исключение при удалении категории с дочерними категориями.');
+        } catch (LogicException) {
+            $this->assertDatabaseHas('categories', ['id' => $parent->id, 'parent_id' => null]);
+        }
+    }
+
+    public function test_deleting_category_with_services_is_blocked(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+        $service = Service::factory()->create(['category_id' => $category->id]);
+
+        try {
+            $category->delete();
+            $this->fail('Ожидалось исключение при удалении категории с услугами.');
+        } catch (LogicException) {
+            $this->assertDatabaseHas('categories', ['id' => $category->id]);
+            $this->assertDatabaseHas('services', ['id' => $service->id, 'category_id' => $category->id]);
+        }
+    }
+
+    public function test_switching_service_category_with_descendants_to_post_is_blocked(): void
+    {
+        $parent = Category::factory()->create(['type' => 'service']);
+        Category::factory()->create(['type' => 'service', 'parent_id' => $parent->id]);
+
+        try {
+            $parent->update(['type' => 'post']);
+            $this->fail('Ожидалось исключение при переводе категории с потомками в «Блог».');
+        } catch (LogicException) {
+            $this->assertDatabaseHas('categories', ['id' => $parent->id, 'type' => 'service']);
+        }
+    }
+
+    public function test_switching_service_category_with_services_to_post_is_blocked(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+        Service::factory()->create(['category_id' => $category->id]);
+
+        try {
+            $category->update(['type' => 'post']);
+            $this->fail('Ожидалось исключение при переводе категории с услугами в «Блог».');
+        } catch (LogicException) {
+            $this->assertDatabaseHas('categories', ['id' => $category->id, 'type' => 'service']);
+        }
+    }
+
+    public function test_leaf_service_category_can_switch_to_post(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        $category->update(['type' => 'post']);
+
+        $this->assertDatabaseHas('categories', ['id' => $category->id, 'type' => 'post']);
+    }
 }

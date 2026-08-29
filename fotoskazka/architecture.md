@@ -137,6 +137,7 @@ app/
 │   ├── MediaProcessor.php        # Централизованная обработка Media: metadata + WebP thumbnail
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
 │   ├── ServiceCatalogResolver.php # Разрешение иерархического пути /services (B11)
+│   ├── CategoryTreeService.php    # Дерево категорий услуг для админки (B11): flatten/options/move
 │   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
     └── Filament/

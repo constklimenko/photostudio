@@ -193,11 +193,41 @@ class Category extends Model
         }
     }
 
+    /**
+     * Корректно ли удалять категорию: у неё не должно быть
+     * дочерних категорий или услуг — их требуется предварительно
+     * переместить или удалить.
+     */
+    public function canBeDeleted(): bool
+    {
+        return ! $this->children()->exists() && ! $this->services()->exists();
+    }
+
     protected static function booted(): void
     {
         static::saving(function (self $category) {
             if ($category->isDirty('parent_id') && $category->parent_id) {
                 $category->assertNotCyclic();
+            }
+
+            if (! $category->exists) {
+                return;
+            }
+
+            if ($category->isDirty('type') && $category->type === 'post'
+                && ($category->children()->exists() || $category->services()->exists())) {
+                throw new LogicException(
+                    'Нельзя перевести категорию в «Блог», пока у неё есть дочерние категории или услуги.'
+                );
+            }
+        });
+
+        static::deleting(function (self $category) {
+            if (! $category->canBeDeleted()) {
+                throw new LogicException(
+                    'Нельзя удалить категорию, пока у неё есть дочерние категории или услуги. '
+                    .'Сначала переместите или удалите их.'
+                );
             }
         });
     }
