@@ -78,6 +78,28 @@ class CategoryForm
                         RichEditor::make('description')
                             ->columnSpanFull(),
                     ]),
+                Section::make('Что входит')
+                    ->schema([
+                        Select::make('items')
+                            ->multiple()
+                            ->relationship('items', 'label')
+                            ->preload()
+                            ->searchable()
+                            ->createOptionForm([
+                                TextInput::make('label')
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('subtitle')
+                                    ->maxLength(255)
+                                    ->nullable(),
+                                Select::make('icon_id')
+                                    ->relationship('icon', 'name')
+                                    ->preload()
+                                    ->nullable()
+                                    ->searchable(),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Видео')
                     ->schema([
                         Select::make('videos')

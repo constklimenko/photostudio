@@ -317,6 +317,38 @@ video_id -> videos.id ON DELETE CASCADE
 
 Порядок вывода — `videos.sort_order` (как у `service_video`).
 
+---
+
+## category_service_item
+
+Pivot для many-to-many связи категорий и пунктов «Что входит»
+(общий список пунктов категории на её публичной странице `/services/...`).
+
+```sql
+category_id BIGINT UNSIGNED
+service_item_id BIGINT UNSIGNED
+is_included BOOLEAN DEFAULT TRUE
+sort_order INT DEFAULT 0
+
+PRIMARY KEY(category_id, service_item_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+service_item_id -> service_items.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(sort_order)
+```
+
+Аналогично `service_service_item`: `is_included` — «включено в цену»,
+`sort_order` — порядок вывода пунктов.
+
 Foreign keys:
 
 ```sql
@@ -948,7 +980,8 @@ album_id -> albums.id ON DELETE CASCADE
 ## service_items
 
 Мастер-справочник пунктов/характеристик услуг (ретушь, печать, видеосъёмка и т.п.).
-Связаны с услугами many-to-many через `service_service_item`.
+Связаны с услугами many-to-many через `service_service_item`, а также с
+категориями через `category_service_item`.
 
 ```sql
 id BIGINT PRIMARY KEY

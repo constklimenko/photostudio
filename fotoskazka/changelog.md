@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-08-29 — Этап B11, часть 7: пункты «Что входит» в категориях
+
+### Добавлено
+- **Миграция `create_category_service_item_table`**: pivot для many-to-many
+  связи категорий и пунктов услуг (`category_id`, `service_item_id`,
+  `is_included`, `sort_order`, PK, каскадное удаление)
+- **app/Models/Category.php**: связь `items()` (belongsToMany через
+  `category_service_item` с pivot `is_included`/`sort_order`, порядок — pivot)
+- **CategoryForm** (`/admin/categories`): секция «Что входит» с мультиселектом
+  пунктов и созданием новых прямо из формы (паттерн ServiceForm)
+- **Публичная страница категории** (`resources/views/services/category.blade.php`):
+  блок «Что входит» (список пунктов с иконками и состоянием «включено в цену»)
+  после цены в интро-секции
+- **app/Http/Controllers/ServiceCatalogController.php**: eager loading
+  `items.icon` на странице категории
+
+### Тесты
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**:
+  `test_category_page_shows_attached_items` — пункты категории выводятся на
+  публичной странице
+- **tests/Feature/Filament/CategoryTreeAdminTest.php**:
+  `test_service_items_can_be_attached_via_form` — мультиселект сохраняет связь
+  в pivot
+
 ## 2026-08-29 — Этап B11, часть 6: видео в категориях
 
 ### Добавлено

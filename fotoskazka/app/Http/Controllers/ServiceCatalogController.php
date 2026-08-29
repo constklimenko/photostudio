@@ -81,6 +81,7 @@ class ServiceCatalogController extends Controller
             'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover']),
             'services' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'items']),
             'videos',
+            'items.icon',
         ]);
 
         return view('services.category', compact('page', 'category'));

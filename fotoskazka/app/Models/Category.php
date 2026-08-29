@@ -67,6 +67,13 @@ class Category extends Model
             ->orderBy('videos.sort_order');
     }
 
+    public function items(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceItem::class, 'category_service_item')
+            ->withPivot('is_included', 'sort_order')
+            ->orderByPivot('sort_order');
+    }
+
     /**
      * Цепочка предков от корня до непосредственного родителя.
      * Корневая категория возвращает пустой массив.
