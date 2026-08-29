@@ -4,13 +4,16 @@ namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Album;
 use App\Models\FaqItem;
+use App\Models\Media;
 use App\Models\NotificationSetting;
 use App\Models\Page;
+use App\Models\Photo;
 use App\Models\Post;
 use App\Models\Service;
 use App\Models\Testimonial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HomeControllerTest extends TestCase
@@ -136,6 +139,72 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertSee('Сколько стоят услуги?');
+    }
+
+    public function test_home_hero_loads_cached_version_first_then_original(): void
+    {
+        Storage::fake('public');
+        Storage::fake('thumbnails');
+
+        $image = imagecreatetruecolor(1200, 800);
+        ob_start();
+        imagejpeg($image, quality: 85);
+        imagedestroy($image);
+
+        Storage::disk('public')->put('hero/photo.jpg', (string) ob_get_clean());
+
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'hero/photo.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        $album = Album::factory()->create([
+            'type' => 'homepage',
+            'is_published' => true,
+            'title' => 'Главная',
+        ]);
+
+        Photo::factory()->create([
+            'album_id' => $album->getKey(),
+            'media_id' => $media->getKey(),
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $response->assertSee(route('media.display', ['media' => $media->getKey()]), false);
+        $response->assertSee('data-original="'.e($media->getUrl()).'"', false);
+    }
+
+    public function test_home_hero_without_cache_falls_back_to_original(): void
+    {
+        Storage::fake('public');
+
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'hero/photo.jpg',
+            'mime_type' => 'application/octet-stream',
+        ]);
+
+        $album = Album::factory()->create([
+            'type' => 'homepage',
+            'is_published' => true,
+            'title' => 'Главная',
+        ]);
+
+        Photo::factory()->create([
+            'album_id' => $album->getKey(),
+            'media_id' => $media->getKey(),
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $response->assertSee($media->getUrl(), false);
+        $response->assertDontSee('data-original="'.$media->getUrl().'"', false);
     }
 
     public function test_home_page_shows_inquiry_form(): void

@@ -7,9 +7,14 @@
 
 <section class="relative min-h-screen flex items-center justify-center overflow-hidden bg-black" id="hero-block">
     @if ($heroImages && $heroImages->isNotEmpty())
-        @php $heroBg = $heroImages->first(); @endphp
+        @php
+            $heroBg = $heroImages->first();
+            $heroCacheUrl = $heroBg->getDisplayUrl();
+            $heroOriginalUrl = $heroBg->getUrl();
+        @endphp
         <div class="absolute inset-0">
-            <img src="{{ $heroBg->getUrl() }}"
+            <img src="{{ $heroCacheUrl ?: $heroOriginalUrl }}"
+                 @if ($heroCacheUrl && $heroOriginalUrl) data-original="{{ $heroOriginalUrl }}" @endif
                  alt=""
                  class="w-full h-full object-cover">
         </div>

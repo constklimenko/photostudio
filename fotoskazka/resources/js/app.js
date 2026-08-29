@@ -6,6 +6,28 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 document.addEventListener('DOMContentLoaded', () => {
+    const heroImage = document.querySelector('#hero-block img[data-original]');
+
+    if (heroImage) {
+        const swapToOriginal = () => {
+            const original = heroImage.dataset.original;
+            if (!original || heroImage.dataset.swapped) return;
+            heroImage.dataset.swapped = '1';
+
+            const image = new Image();
+            image.onload = () => {
+                heroImage.src = original;
+            };
+            image.src = original;
+        };
+
+        if (heroImage.complete && heroImage.naturalWidth > 0) {
+            swapToOriginal();
+        } else {
+            heroImage.addEventListener('load', swapToOriginal);
+        }
+    }
+
     AOS.init({
         duration: 600,
         easing: 'ease-out-cubic',
