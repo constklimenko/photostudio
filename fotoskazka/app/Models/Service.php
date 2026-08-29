@@ -50,4 +50,18 @@ class Service extends Model
         return $this->belongsToMany(Video::class)
             ->orderBy('videos.sort_order');
     }
+
+    /**
+     * Иерархический slug-путь услуги для URL каталога,
+     * включающий путь категории: "категория/подкатегория/услуга".
+     * Для услуги без категории — просто её slug.
+     */
+    public function catalogPath(): string
+    {
+        if (! $this->category) {
+            return $this->slug;
+        }
+
+        return $this->category->catalogPath().'/'.$this->slug;
+    }
 }

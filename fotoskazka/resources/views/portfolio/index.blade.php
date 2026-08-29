@@ -7,6 +7,10 @@
 
 <section class="relative bg-[#111111] text-white py-24" data-aos="fade-up">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <x-site.breadcrumbs :center="true" :items="[
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => $page?->title ?: 'Портфолио'],
+        ]" />
         <h1 class="font-heading text-4xl sm:text-5xl font-normal tracking-wide">{{ $page?->title ?: 'Портфолио' }}</h1>
         <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Избранные проекты, которые рассказывают истории' }}

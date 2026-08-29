@@ -99,6 +99,15 @@ class Category extends Model
     }
 
     /**
+     * Иерархический slug-путь для URL каталога: "родитель/подкатегория".
+     * Для корневой категории — просто её slug.
+     */
+    public function catalogPath(): string
+    {
+        return collect($this->path(true))->pluck('slug')->implode('/');
+    }
+
+    /**
      * Все потомки в глубину любых уровней.
      */
     public function descendants(): array

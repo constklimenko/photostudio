@@ -7,6 +7,10 @@
 
 <section class="bg-[#111111] py-24" data-aos="fade-up">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <x-site.breadcrumbs :center="true" :items="[
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => $page?->title ?: 'Услуги'],
+        ]" />
         <h1 class="font-heading text-4xl font-normal tracking-wide text-white">{{ $page?->title ?: 'Наши услуги' }}</h1>
         <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Профессиональная фотосъёмка для любых событий. Выберите подходящий формат.' }}
@@ -15,15 +19,31 @@
 </section>
 
 @foreach ($categories as $category)
-    @if ($category->services->isNotEmpty())
-        <section class="py-24 {{ $loop->even ? 'bg-[#111111]' : '' }}" data-aos="fade-up">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="font-heading text-3xl font-normal tracking-wide text-white mb-12">{{ $category->name }}</h2>
+    <section class="py-24 {{ $loop->even ? 'bg-[#111111]' : '' }}" data-aos="fade-up">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white mb-12">
+                <a href="{{ route('services.show', $category->catalogPath()) }}" class="hover:text-[#d4af37] transition">{{ $category->name }}</a>
+            </h2>
 
+            @if ($category->children->isNotEmpty())
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+                    @foreach ($category->children as $child)
+                        <a href="{{ route('services.show', $child->catalogPath()) }}"
+                           class="group block bg-[#1a1a1a] rounded-xl p-5 shadow-lg shadow-black/30 hover:bg-[#242424] transition">
+                            <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $child->name }}</h3>
+                            @if ($child->price_from)
+                                <p class="mt-1 text-sm font-bold text-[#d4af37]">от {{ number_format($child->price_from, 0, ',', ' ') }} ₽</p>
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+
+            @if ($category->services->isNotEmpty())
                 @foreach ($category->services as $service)
                     <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
-                             <a href="{{ route('services.show', $service->slug) }}" class="lg:w-5/12 shrink-0">
+                             <a href="{{ route('services.show', $service->catalogPath()) }}" class="lg:w-5/12 shrink-0">
                                  <img src="{{ $service->cover->getThumbnailUrl() }}"
                                       alt="{{ $service->title }}"
                                       class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
@@ -32,7 +52,7 @@
                         @endif
 
                         <div class="flex-1 flex flex-col justify-center">
-                            <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->slug) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
+                            <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->catalogPath()) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
                             @if ($service->short_description)
                                 <p class="mt-3 text-gray-400 leading-relaxed">{{ $service->short_description }}</p>
                             @endif
@@ -68,7 +88,7 @@
                                 @if ($service->price_from)
                                     <span class="text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                                 @endif
-                                <a href="{{ route('services.show', $service->slug) }}"
+                                <a href="{{ route('services.show', $service->catalogPath()) }}"
                                    class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
                                     Подробнее
                                 </a>
@@ -79,9 +99,9 @@
                         </div>
                     </article>
                 @endforeach
-            </div>
-        </section>
-    @endif
+            @endif
+        </div>
+    </section>
 @endforeach
 
 @if ($servicesWithoutCategory->isNotEmpty())
@@ -90,7 +110,7 @@
             @foreach ($servicesWithoutCategory as $service)
                 <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
-                         <a href="{{ route('services.show', $service->slug) }}" class="lg:w-5/12 shrink-0">
+                         <a href="{{ route('services.show', $service->catalogPath()) }}" class="lg:w-5/12 shrink-0">
                              <img src="{{ $service->cover->getThumbnailUrl() }}"
                                   alt="{{ $service->title }}"
                                   class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
@@ -99,7 +119,7 @@
                     @endif
 
                     <div class="flex-1 flex flex-col justify-center">
-                        <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->slug) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
+                        <h3 class="font-heading text-2xl font-normal tracking-wide text-white"><a href="{{ route('services.show', $service->catalogPath()) }}" class="hover:text-[#d4af37] transition">{{ $service->title }}</a></h3>
                         @if ($service->short_description)
                             <p class="mt-3 text-gray-400 leading-relaxed">{{ $service->short_description }}</p>
                         @endif
@@ -135,7 +155,7 @@
                             @if ($service->price_from)
                                 <span class="text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                             @endif
-                            <a href="{{ route('services.show', $service->slug) }}"
+                            <a href="{{ route('services.show', $service->catalogPath()) }}"
                                class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
                                 Подробнее
                             </a>

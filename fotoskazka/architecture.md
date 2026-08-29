@@ -106,7 +106,7 @@ app/
 │   │   ├── HomeController.php
 │   │   ├── MediaController.php        # Прокси-отдача оригиналов с удалённых дисков
 │   │   ├── PortfolioController.php
-│   │   ├── ServiceController.php
+│   │   ├── ServiceCatalogController.php  # Иерархический каталог услуг (B11)
 │   │   └── VideoController.php
 │   └── Middleware/
 ├── Models/                     # Eloquent модели (18 шт.)
@@ -136,6 +136,7 @@ app/
 │   ├── ImageCacheService.php     # Кэш производных изображений (display/lightbox) + вытеснение по лимиту
 │   ├── MediaProcessor.php        # Централизованная обработка Media: metadata + WebP thumbnail
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
+│   ├── ServiceCatalogResolver.php # Разрешение иерархического пути /services (B11)
 │   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
     └── Filament/
@@ -149,7 +150,8 @@ resources/views/
 ├── layouts/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
-│   ├── header.blade.php        # Шапка (меню, auth-условные ссылки, бургер)
+│   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
+│   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
 │   ├── footer.blade.php        # Подвал (контакты, политика)
 │   ├── inquiry-form.blade.php  # Форма заявки
 │   ├── inquiry-modal.blade.php # Модальное окно заявки
@@ -166,8 +168,9 @@ resources/views/
 │   ├── index.blade.php         # Сетка альбомов (masonry, fadeInUp)
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
-│   ├── index.blade.php         # Услуги по категориям (блоки с items, CTA)
-│   └── show.blade.php          # Детальная (items, альбомы-примеры, форма)
+│   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, форма (B11)
+│   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма)
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
 ├── cabinet/
@@ -181,8 +184,8 @@ resources/views/
 | Метод | URI | Контроллер | Middleware |
 |-------|-----|-----------|-----------|
 | GET | `/` | `HomeController` | — |
-| GET | `/services` | `ServiceController@index` | — |
-| GET | `/services/{slug}` | `ServiceController@show` | — |
+| GET | `/services` | `ServiceCatalogController@index` | — |
+| GET | `/services/{path}` | `ServiceCatalogController@show` (path = категории/…/услуга) | — |
 | GET | `/portfolio` | `PortfolioController@index` | — |
 | GET | `/portfolio/{slug}` | `PortfolioController@show` | — |
 | GET | `/blog` | `BlogController@index` | — |
@@ -793,8 +796,70 @@ Category
 └── posts       (HasMany → статьи блога)
 ```
 
-Filament-дерево, URL-резолвер (`ServiceCatalogController`), страницы категорий
-и breadcrumbs — следующие части этапа B11.
+### Публичный каталог услуг — URL-резолвер и страницы (этап B11, часть 2)
+
+Единый контроллер `ServiceCatalogController` (`app/Http/Controllers/`) обслуживает
+все URL раздела услуг:
+
+```text
+/services                                    → index (корневые категории + услуги без категории)
+/services/{category-path}                    → страница категории
+/services/{category-path}/{service-slug}     → страница услуги
+```
+
+- Роут `GET /services/{path}` использует `where('path', '.*')` — путь принимается
+  целиком и разбивается на сегменты в контроллере.
+- **Разрешение пути — отдельный сервис `ServiceCatalogResolver`**
+  (`app/Services/ServiceCatalogResolver.php`), метод `resolve(array $segments)`
+  возвращает `Category | Service | null`.
+- Сущность **не определяется по количеству сегментов**: каждый сегмент сначала
+  проверяется как категория (`type = service`, `is_published`, `parent_id`
+  ровно предыдущей категории, у корня `parent_id IS NULL`); если дочерней
+  категории нет и сегмент последний — он разрешается как услуга категории
+  (`is_published`). Так `/services/vypusknye-albomy/dlya-shkol` → Category,
+  а `/services/vypusknye-albomy/dlya-shkol/klassika` → Service. Категория имеет
+  приоритет при совпадении slug (детерминированно).
+- Некорректная цепочка родителей, неопубликованная категория или услуга,
+  обращение к категории блога (`type = post`) → `null` → 404.
+- `abort_unless()` в контроллере превращает `null` в 404; сущность не может
+  попасть в шаблоны без проверки типа.
+
+Генерация URL:
+
+- `Category::catalogPath()` — иерархический slug-путь категории (`parent/sub`);
+- `Service::catalogPath()` — полный путь услуги с категориями (`parent/sub/service`),
+  для услуги без категории — просто slug;
+- шаблоны строят ссылки через `route('services.show', $model->catalogPath())`;
+  единственное необходимое поле у `Service` для генерation — `category_id`
+  (добавлено в выборку `HomeController` и `ServiceCatalogController`).
+
+Страница категории (`services/category.blade.php`):
+
+```text
+breadcrumbs (Главная → Услуги → … → Категория)
+cover (оригинал)
+title
+description
+«Цена от XX ₽» + price_note
+Разделы → дочерние опубликованные категории (карточки)
+Варианты оформления → услуги непосредственного уровня (карточки)
+CTA / форма заявки
+SEO (seo_title / seo_description, фоллбэк на Page services)
+```
+
+Страница услуги (`services/show.blade.php`) сохраняет ранее реализованные
+функции: цена, описание, обложка, ServiceItems, альбомы-примеры, видео,
+форма заявки + полный иерархический breadcrumb через компонент.
+
+Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
+принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`
+отображается как текущая страница. Используется на страницах категории и услуги.
+
+Контроллер не содержит бизнес-логики разрешения: `index()` выбирает корневые
+категории и услуги без категории, `show()` делегирует определение сущности
+резолверу и рендерит соответствующий шаблон.
+
+Filament-дерево категорий — следующая часть этапа B11.
 
 ## Тестирование
 
@@ -837,10 +902,16 @@ Filament-дерево, URL-резолвер (`ServiceCatalogController`), стр
 - Иерархия категорий каталога услуг (B11, часть 1): parent/children, несколько
   уровней вложенности, category→services, cover_media, независимость service/post,
   защита от циклов: `tests/Feature/Models/CategoryHierarchyTest.php`
+- Публичный каталог услуг (B11, часть 2) — корневые/вложенные категории, услуга
+  во вложенной категории и на корневом уровне, приоритет категории над услугой,
+  неправильная цепочка URL, неопубликованные категории/услуги, генерация
+  иерархического URL, сохранение функционала страницы услуги и breadcrumb:
+  `tests/Feature/Services/ServiceCatalogResolverTest.php`,
+  `tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
-- 451 тест, 1154 утверждений
+- 499 тестов, 1254 утверждений
 - CI: `php artisan config:clear && php artisan test`
 
 ### Очередь и деплой

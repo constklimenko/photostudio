@@ -7,15 +7,18 @@
 
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav class="text-sm text-gray-500 mb-8">
-            <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
-            <span class="mx-2 text-gray-600">/</span>
-            <a href="{{ route('services.index') }}" class="hover:text-[#d4af37] transition">Услуги</a>
-            @if ($service->category)
-                <span class="mx-2 text-gray-600">/</span>
-                <span class="text-gray-300">{{ $service->category->name }}</span>
-            @endif
-        </nav>
+        <x-site.breadcrumbs :items="array_merge([
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => 'Услуги', 'url' => route('services.index')],
+        ], collect($service->category ? $service->category->ancestors() : [])->map(fn ($ancestor) => [
+            'label' => $ancestor->name,
+            'url' => route('services.show', $ancestor->catalogPath()),
+        ])->all(), $service->category ? [[
+            'label' => $service->category->name,
+            'url' => route('services.show', $service->category->catalogPath()),
+        ]] : [], [
+            ['label' => $service->title],
+        ])" />
 
         @if ($service->cover)
             <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10 shadow-lg shadow-black/30">
@@ -151,7 +154,7 @@
 
             <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($serviceList as $other)
-                    <a href="{{ route('services.show', $other->slug) }}"
+                    <a href="{{ route('services.show', $other->catalogPath()) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                         <div class="aspect-[16/9] bg-gray-100">

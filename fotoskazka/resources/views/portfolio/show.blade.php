@@ -7,13 +7,11 @@
 
 <section class="py-24">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav class="text-sm text-gray-500 mb-8">
-            <a href="{{ route('home') }}" class="hover:text-[#d4af37] transition">Главная</a>
-            <span class="mx-2 text-gray-600">/</span>
-            <a href="{{ route('portfolio.index') }}" class="hover:text-[#d4af37] transition">Портфолио</a>
-            <span class="mx-2 text-gray-600">/</span>
-            <span class="text-gray-300">{{ $album->title }}</span>
-        </nav>
+        <x-site.breadcrumbs :items="[
+            ['label' => 'Главная', 'url' => route('home')],
+            ['label' => 'Портфолио', 'url' => route('portfolio.index')],
+            ['label' => $album->title],
+        ]" />
 
         <div class="max-w-3xl mx-auto text-center mb-12">
             <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $album->title }}</h1>
@@ -215,7 +213,7 @@
             <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center mb-8">Эта съёмка доступна в&nbsp;услугах</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
                 @foreach ($album->services as $service)
-                    <a href="{{ route('services.show', $service->slug) }}"
+                    <a href="{{ route('services.show', $service->catalogPath()) }}"
                        class="block bg-[#1a1a1a] rounded-xl shadow-lg shadow-black/30 hover:bg-[#242424] transition overflow-hidden"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)

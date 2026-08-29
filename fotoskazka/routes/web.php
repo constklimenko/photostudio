@@ -5,15 +5,15 @@ use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PortfolioController;
-use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\VideoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 
-Route::controller(ServiceController::class)->prefix('services')->name('services.')->group(function () {
+Route::controller(ServiceCatalogController::class)->prefix('services')->name('services.')->group(function () {
     Route::get('/', 'index')->name('index');
-    Route::get('/{slug}', 'show')->name('show');
+    Route::get('/{path}', 'show')->where('path', '.*')->name('show');
 });
 
 Route::controller(PortfolioController::class)->prefix('portfolio')->name('portfolio.')->group(function () {
