@@ -1,6 +1,56 @@
 # Changelog
 
-## 2026-08-26 — Иконки пунктов услуг и подзаголовки
+## 2026-08-29 — Этап B11, часть 1: иерархия категорий каталога услуг
+
+### Добавлено
+- **Миграция `add_hierarchy_fields_to_categories_table`**: таблица `categories`
+  расширена полями иерархии без замены существующей концепции и без отдельной
+  таблицы `service_categories`:
+  - `parent_id` — self-referencing FK → `categories.id` (ON DELETE SET NULL),
+    глубина дерева не ограничена;
+  - `cover_media_id` — FK → `media.id` (ON DELETE SET NULL);
+  - `description`, `price_from`, `price_note`, `seo_title`, `seo_description`;
+  - `is_published` (default true) — поля публикации в схеме категорий не было;
+  - индексы `parent_id`, `cover_media_id`, `is_published`
+- **app/Models/Category.php**:
+  - отношения `parent()` (BelongsTo), `children()` (HasMany), `cover()` (BelongsTo);
+  - существующие `services()`/`posts()` сохранены; `type`-политика без изменений
+    (`service` — иерархические категории каталога, `post` — плоские категории блога);
+  - методы `ancestors($withSelf = false)` (от корня к родителю),
+    `path($withSelf = false)` (полный путь), `descendants()` (все потомки в глубину);
+  - **защита от циклической иерархии** на уровне модели: хук `saving` вызывает
+    `assertNotCyclic()`, когда `parent_id` изменён; запрещены выбор категории
+    в качестве собственного родителя и цепочка `A → B → C → A`; обход
+    `ancestors`/`descendants` также защищён от зацикливания на битых данных;
+  - fillable и casts (`is_published`, `price_from`) обновлены
+- **database/factories/CategoryFactory.php**: null-поля `parent_id`,
+  `cover_media_id`, `is_published` по умолчанию
+
+### Тесты
+- **tests/Feature/Models/CategoryHierarchyTest.php** (13): parent/children,
+  несколько уровней вложенности и неограниченная глубина дерева, category →
+  services, cover_media (наличие и nullable), полный набор полей category
+  (description/price/SEO/is_published), независимая работа service- и post-категорий,
+  корневая категория, `ancestors`/`path`/`descendants`, запрет самородительства
+  и потомка в качестве родителя, разрыв цепочки при откреплении
+
+### Не изменено
+- `Service`, `ServiceItem`, `ServiceController`, Media Storage и публичные
+  страницы — не трогались
+- Существующая миграция создания `categories` не менялась
+- Filament-дерево категорий, страницы категорий, URL-резолвер и breadcrumbs
+  — следующие части этапа B11
+
+### Документация
+- **database.md**: схема `categories` (поля, FK, индексы, методы модели),
+  self-связь в ER-диаграмме
+- **architecture.md**: раздел «Каталог услуг — иерархия категорий (этап B11,
+  часть 1)», ссылки на тест в разделе «Тестирование»
+
+### Проверка
+- Миграция применена на dev-БД (MySQL): `php artisan migrate`
+- Полный тестовый набор: 451+ тест проходят
+- Pint: clean
 
 ### Добавлено
 - **Таблица `icons`**: справочник файловых иконок (SVG/PNG), хранимых локально

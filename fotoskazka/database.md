@@ -54,6 +54,7 @@ erDiagram
 
     CATEGORIES ||--o{ SERVICES : categorizes
     CATEGORIES ||--o{ POSTS : categorizes
+    CATEGORIES }o--o{ CATEGORIES : parent_child
 
     PROJECTS ||--o{ ALBUMS : contains
     PROJECTS ||--o| INQUIRIES : source
@@ -319,23 +320,58 @@ video_id -> videos.id ON DELETE CASCADE
 
 Универсальные категории.
 
+Для `type = service` поддерживается иерархия (самоподчинение через `parent_id`)
+с неограниченной глубиной вложенности. Для `type = post` поведение плоское —
+категория блога привязана напрямую к статьям.
+
 ```sql
 id BIGINT PRIMARY KEY
 
+parent_id BIGINT NULL
+cover_media_id BIGINT NULL
 name VARCHAR(255)
-
 slug VARCHAR(255)
-
 type ENUM(
     'service',
     'post'
 )
-
+description TEXT NULL
+price_from DECIMAL(10,2) NULL
+price_note TEXT NULL
+seo_title VARCHAR(255) NULL
+seo_description TEXT NULL
+is_published BOOLEAN DEFAULT TRUE
 sort_order INT DEFAULT 0
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
+
+Связь:
+
+```sql
+parent_id -> categories.id ON DELETE SET NULL
+cover_media_id -> media.id ON DELETE SET NULL
+```
+
+Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
+
+Получатели:
+
+| Метод       | Связь / назначение                                           |
+|-------------|--------------------------------------------------------------|
+| `parent()`  | Непосредственный родитель (BelongsTo)                        |
+| `children()`| Дочерние категории (HasMany)                                 |
+| `cover()`   | Обложка категории (BelongsTo → media)                        |
+| `services()`| Услуги, непосредственно принадлежащие категории (HasMany)    |
+| `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
+| `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
+| `descendants()` | Все потомки в глубину любых уровней                       |
+| `path(true)` | Полный путь от корня до самой категории                     |
+
+Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
+запрещено выбирать категорию в качестве собственного родителя и делать
+потомка родителем предка (`A → B → C → A`).
 
 Indexes:
 
@@ -343,6 +379,9 @@ Indexes:
 UNIQUE(slug, type)
 INDEX(type)
 INDEX(sort_order)
+INDEX(parent_id)
+INDEX(cover_media_id)
+INDEX(is_published)
 ```
 
 ---

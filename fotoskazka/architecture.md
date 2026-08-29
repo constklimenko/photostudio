@@ -755,6 +755,47 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 на диске `public` в директории `icons/`. Связь с `service_items` one-to-many.
 Иконка опциональна: при наличии заменяет галочку/крестик в шаблоне.
 
+### Каталог услуг — иерархия категорий (этап B11, часть 1)
+
+Таблица `categories` (единая для услуг и блога) расширена полями иерархии:
+
+- `parent_id` — self-referencing FK → `categories.id` (ON DELETE SET NULL),
+  глубина дерева не ограничена;
+- `cover_media_id` — обложка категории (FK → `media.id`, SET NULL);
+- `description`, `price_from`, `price_note` — контент страницы каталога;
+- `seo_title`, `seo_description` — SEO-метаданные страницы категории;
+- `is_published` — публикация категории (default true).
+
+Политика `type`: `service` — категории каталога услуг с произвольной вложенностью;
+`post` — плоские категории блога (поведение не изменено).
+
+Модель `Category` (`app/Models/Category.php`):
+
+- отношения `parent()`, `children()`, `cover()`, а также существующие
+  `services()`, `posts()`;
+- методы `ancestors($withSelf = false)` (от корня к родителю), `path($withSelf = false)`
+  (полный путь), `descendants()` (все потомки в глубину);
+- **защита от циклов** на уровне модели: хук `saving` вызывает
+  `assertNotCyclic()`, когда `parent_id` изменён. Запрещены выбор категории
+  в качестве собственного родителя и цепочка вида `A → B → C → A`
+  (проверка поднимается по цепочке предков нового родителя; глубина ограничена
+  стражем итераций). Обход путей (`ancestors`/`descendants`) также защищён
+  от зацикливания на битых данных.
+
+Структура сущности:
+
+```text
+Category
+├── parent      (BelongsTo, категорию можно перемещать)
+├── children    (HasMany, произвольная вложенность)
+├── cover       (BelongsTo → media)
+├── services    (HasMany → услуги непосредственного уровня)
+└── posts       (HasMany → статьи блога)
+```
+
+Filament-дерево, URL-резолвер (`ServiceCatalogController`), страницы категорий
+и breadcrumbs — следующие части этапа B11.
+
 ## Тестирование
 
 | Уровень  | Расположение                       | Запуск          |
@@ -793,6 +834,9 @@ BelongsToMany + pivot. Позволяет переиспользовать пу�
 - Проверка целостности Media и orphan-файлы (B9):
   `tests/Feature/Actions/MediaCheckTest.php`,
   `tests/Feature/Console/MediaCheckCommandTest.php`
+- Иерархия категорий каталога услуг (B11, часть 1): parent/children, несколько
+  уровней вложенности, category→services, cover_media, независимость service/post,
+  защита от циклов: `tests/Feature/Models/CategoryHierarchyTest.php`
 - PageContentService с кэшированием (get, getHomeSections, getMenuItems, clearCache)
 - PageObserver — сброс кэша при сохранении/удалении страницы
 - ViewComposerServiceProvider — передача menuItems в шапку
