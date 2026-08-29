@@ -6,8 +6,7 @@
             @foreach ($items as $item)
                 <li class="flex items-center gap-2">
                     @unless ($loop->first)
-                        <span></span>
-                        <span class="text-gray-600" aria-hidden="true">&bull;</span>
+                        <span class="text-gray-600 ml-0.5" aria-hidden="true">&bull;</span>
                     @endunless
 
                     @if (! empty($item['url']))

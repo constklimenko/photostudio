@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Album;
 use App\Models\Category;
+use App\Models\Media;
 use App\Models\Page;
 use App\Models\Service;
 use App\Models\ServiceItem;
@@ -111,6 +112,16 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Выпускные альбомы — SEO');
     }
 
+    public function test_nested_category_page_renders_full_breadcrumb(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ']);
+        $response->assertSee('/services/vypusknye-albomy');
+        $response->assertSeeHtml('aria-current="page">Для школ</span>');
+        $response->assertDontSee('aria-current="page">Выпускные альбомы</span>');
+    }
+
     public function test_nested_category_page_shows_child_and_service(): void
     {
         $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
@@ -153,11 +164,76 @@ class ServiceCatalogControllerTest extends TestCase
     {
         $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
 
-        $response->assertSee('Услуги');
-        $response->assertSee('Выпускные альбомы');
-        $response->assertSee('Для школ');
-        $response->assertSee('Классика');
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ', 'Классика']);
+        $response->assertSee('/services/vypusknye-albomy');
         $response->assertSee('/services/vypusknye-albomy/dlya-shkol');
+        $response->assertSeeHtml('aria-current="page">Классика</span>');
+    }
+
+    public function test_category_page_shows_cover_image(): void
+    {
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'covers/album-cover.jpg',
+        ]);
+
+        $this->albums->update(['cover_media_id' => $media->id]);
+
+        $response = $this->get('/services/vypusknye-albomy');
+
+        $response->assertSee('covers/album-cover.jpg', false);
+        $response->assertSee('alt="Выпускные альбомы"', false);
+    }
+
+    public function test_category_page_shows_child_categories(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy');
+
+        $response->assertSee('Разделы');
+        $response->assertSee('Для школ');
+        $response->assertSee('/services/vypusknye-albomy/dlya-shkol');
+        $response->assertSee('от 8 000', false);
+    }
+
+    public function test_category_page_shows_service_cards(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertSee('Варианты оформления');
+        $response->assertSee('Классика');
+        $response->assertSee('Классический альбом');
+        $response->assertSee('от 15 000', false);
+        $response->assertSee('Подробнее');
+        $response->assertSee('/services/vypusknye-albomy/dlya-shkol/klassika');
+    }
+
+    public function test_category_page_renders_price_and_note(): void
+    {
+        Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'semejnaya-semka',
+            'name' => 'Семейная фотосессия',
+            'parent_id' => null,
+            'is_published' => true,
+            'description' => '<p>Съёмка для всей семьи</p>',
+            'price_from' => 7000,
+            'price_note' => 'до 1 часа съёмки',
+        ]);
+
+        $response = $this->get('/services/semejnaya-semka');
+
+        $response->assertSee('от 7 000 ₽', false);
+        $response->assertSee('до 1 часа съёмки');
+    }
+
+    public function test_category_page_shows_inquiry_cta_form(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy');
+
+        $response->assertSee('Оставить заявку');
+        $response->assertSee(route('inquiry.store'));
+        $response->assertSee('Соглашаюсь на обработку персональных данных');
+        $response->assertSee('name="phone"', false);
     }
 
     public function test_wrong_chain_returns_404(): void
