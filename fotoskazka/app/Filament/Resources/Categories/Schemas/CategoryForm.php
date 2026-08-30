@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Categories\Schemas;
 
 use App\Models\Category;
 use App\Services\CategoryTreeService;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -14,6 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class CategoryForm
 {
@@ -25,10 +27,34 @@ class CategoryForm
                     ->schema([
                         TextInput::make('name')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $slugManual = $get('_slug_manual');
+                                if ($slugManual && $slugManual !== '') {
+                                    return;
+                                }
+                                $type = $get('type') ?? 'service';
+                                $base = Str::slug($state);
+                                $slug = $base;
+                                $counter = 1;
+                                while (Category::where('slug', $slug)->where('type', $type)->exists()) {
+                                    $slug = $base.'-'.$counter++;
+                                }
+                                $set('slug', $slug);
+                            }),
                         TextInput::make('slug')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->live(true)
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $set('_slug_manual', '1');
+                                $slugged = Str::slug($state);
+                                if ($state !== $slugged) {
+                                    $set('slug', $slugged);
+                                }
+                            }),
+                        Hidden::make('_slug_manual'),
                         Select::make('type')
                             ->required()
                             ->options([
@@ -76,6 +102,37 @@ class CategoryForm
                 Section::make('Описание')
                     ->schema([
                         RichEditor::make('description')
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Что входит')
+                    ->schema([
+                        Select::make('items')
+                            ->multiple()
+                            ->relationship('items', 'label')
+                            ->preload()
+                            ->searchable()
+                            ->createOptionForm([
+                                TextInput::make('label')
+                                    ->required()
+                                    ->maxLength(255),
+                                TextInput::make('subtitle')
+                                    ->maxLength(255)
+                                    ->nullable(),
+                                Select::make('icon_id')
+                                    ->relationship('icon', 'name')
+                                    ->preload()
+                                    ->nullable()
+                                    ->searchable(),
+                            ])
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Видео')
+                    ->schema([
+                        Select::make('videos')
+                            ->multiple()
+                            ->relationship('videos', 'title')
+                            ->preload()
+                            ->searchable()
                             ->columnSpanFull(),
                     ]),
                 Section::make('SEO')

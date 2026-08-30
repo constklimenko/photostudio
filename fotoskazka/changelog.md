@@ -1,5 +1,95 @@
 # Changelog
 
+## 2026-08-29 — Категории: автогенерация slug
+
+### Изменено
+- **CategoryForm** (`/admin/categories`): добавлена автогенерация slug из названия
+  по паттерну альбомов/страниц/статей/услуг:
+  - поле `name` при изменении автоматически генерирует slug через `Str::slug()`
+    с проверкой уникальности в рамках текущего `type` (UNIQUE(slug, type));
+    при дубликате добавляется числовой суффикс (`-1`, `-2`);
+  - ручное редактирование slug прекращает автогенерацию
+    (флаг `_slug_manual` через `Hidden`-поле);
+  - slug всегда приводится к slug-формату при редактировании
+
+### Проверка
+- Полный тестовый набор: 545/545 passed, 1375 assertions
+- Pint: clean
+
+## 2026-08-29 — Главная: hero на мобильных остаётся в кэше
+
+### Изменено
+- **resources/js/app.js**: подмена hero-картинки оригиналом выполняется только
+  на экранах ≥ 768px (`matchMedia('(min-width: 768px)')`, совпадает с
+  `md`-брейкпоинтом шапки). На мобильных загружается только display-кэш,
+  оригинал не скачивается; при повороте/ресайзе на десктоп срабатывает `change`
+  и оригинал подгружается
+
+## 2026-08-29 — Главная: hero-картинка «из кэша, затем оригинал»
+
+### Изменено
+- **resources/views/home.blade.php**: image hero-блока (`#hero-block`) сначала
+  грузится из кэша (`media.display`, 800px PNG) вместо оригинала; URL оригинала
+  передаётся в `data-original` (fallback на оригинал, если кэш недоступен)
+- **resources/js/app.js**: после загрузки кэшированной версии оригинал
+  предзагружается через `new Image()` и подменяет `src` без мигания
+  (защита от повторного свапа через `data-swapped`)
+
+### Тесты
+- **tests/Feature/Http/Controllers/HomeControllerTest.php**:
+  - `test_home_hero_loads_cached_version_first_then_original` — hero использует
+    `media.display` как `src` и содержит `data-original` с URL оригинала;
+  - `test_home_hero_without_cache_falls_back_to_original` — при недоступном
+    display-кэше (не image) используется оригинал без `data-original`
+
+### Проверка
+- Полный тестовый набор: 545/545 passed (+2)
+- Pint: clean
+
+### Добавлено
+- **Миграция `create_category_service_item_table`**: pivot для many-to-many
+  связи категорий и пунктов услуг (`category_id`, `service_item_id`,
+  `is_included`, `sort_order`, PK, каскадное удаление)
+- **app/Models/Category.php**: связь `items()` (belongsToMany через
+  `category_service_item` с pivot `is_included`/`sort_order`, порядок — pivot)
+- **CategoryForm** (`/admin/categories`): секция «Что входит» с мультиселектом
+  пунктов и созданием новых прямо из формы (паттерн ServiceForm)
+- **Публичная страница категории** (`resources/views/services/category.blade.php`):
+  блок «Что входит» (список пунктов с иконками и состоянием «включено в цену»)
+  после цены в интро-секции
+- **app/Http/Controllers/ServiceCatalogController.php**: eager loading
+  `items.icon` на странице категории
+
+### Тесты
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**:
+  `test_category_page_shows_attached_items` — пункты категории выводятся на
+  публичной странице
+- **tests/Feature/Filament/CategoryTreeAdminTest.php**:
+  `test_service_items_can_be_attached_via_form` — мультиселект сохраняет связь
+  в pivot
+
+## 2026-08-29 — Этап B11, часть 6: видео в категориях
+
+### Добавлено
+- **Миграция `create_category_video_table`**: pivot для many-to-many связи
+  категорий и видео (`category_id`, `video_id`, PK, каскадное удаление)
+- **app/Models/Category.php**: связь `videos()` (belongsToMany через
+  `category_video`, порядок — `videos.sort_order`)
+- **CategoryForm** (`/admin/categories`): секция «Видео» с мультиселектом
+  существующих видео
+- **Публичная страница категории** (`resources/views/services/category.blade.php`):
+  блок «Видео» через `x-site.videos` (горизонтальные — inline, вертикальные —
+  слайдер) между блоком услуг и формой заявки
+- **app/Http/Controllers/ServiceCatalogController.php**: eager loading `videos`
+  на странице категории
+
+### Тесты
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php**:
+  `test_category_page_shows_attached_videos` — видео категории выводится на
+  публичной странице (title + YouTube-embed)
+- **tests/Feature/Filament/CategoryTreeAdminTest.php**:
+  `test_videos_can_be_attached_via_form` — мультиселект сохраняет связь в pivot
+
 ## 2026-08-29 — Этап B11, часть 5: фотографии подкатегорий на /services
 
 ### Изменено

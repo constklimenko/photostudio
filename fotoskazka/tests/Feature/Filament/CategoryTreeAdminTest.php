@@ -8,6 +8,8 @@ use App\Filament\Resources\Categories\Pages\ListCategories;
 use App\Models\Category;
 use App\Models\Media;
 use App\Models\Service;
+use App\Models\ServiceItem;
+use App\Models\Video;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -160,6 +162,51 @@ class CategoryTreeAdminTest extends TestCase
             'seo_description' => 'SEO описание семейной съёмки',
             'is_published' => false,
             'sort_order' => 7,
+        ]);
+    }
+
+    public function test_videos_can_be_attached_via_form(): void
+    {
+        $video = Video::factory()->create(['title' => 'Видеоответ о выпускных']);
+
+        Livewire::test(CreateCategory::class)
+            ->fillForm([
+                'name' => 'Выпускные альбомы',
+                'slug' => 'vypusknye-albomy',
+                'type' => 'service',
+                'videos' => [$video->id],
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $category = Category::where('slug', 'vypusknye-albomy')->firstOrFail();
+
+        $this->assertDatabaseHas('category_video', [
+            'category_id' => $category->id,
+            'video_id' => $video->id,
+        ]);
+    }
+
+    public function test_service_items_can_be_attached_via_form(): void
+    {
+        $item = ServiceItem::factory()->included()->create(['label' => 'Дизайнерская вёрстка']);
+
+        Livewire::test(CreateCategory::class)
+            ->fillForm([
+                'name' => 'Выпускные альбомы',
+                'slug' => 'vypusknye-albomy',
+                'type' => 'service',
+                'items' => [$item->id],
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $category = Category::where('slug', 'vypusknye-albomy')->firstOrFail();
+
+        $this->assertDatabaseHas('category_service_item', [
+            'category_id' => $category->id,
+            'service_item_id' => $item->id,
+            'is_included' => true,
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
@@ -58,6 +59,19 @@ class Category extends Model
     public function posts(): HasMany
     {
         return $this->hasMany(Post::class);
+    }
+
+    public function videos(): BelongsToMany
+    {
+        return $this->belongsToMany(Video::class, 'category_video')
+            ->orderBy('videos.sort_order');
+    }
+
+    public function items(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceItem::class, 'category_service_item')
+            ->withPivot('is_included', 'sort_order')
+            ->orderByPivot('sort_order');
     }
 
     /**

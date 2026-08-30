@@ -296,6 +296,68 @@ video_id -> videos.id ON DELETE CASCADE
 
 ---
 
+## category_video
+
+Pivot для many-to-many связи категорий и видео (видео, прикреплённые к категории
+и показываемые на её публичной странице `/services/...`).
+
+```sql
+category_id BIGINT UNSIGNED
+video_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, video_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+Порядок вывода — `videos.sort_order` (как у `service_video`).
+
+---
+
+## category_service_item
+
+Pivot для many-to-many связи категорий и пунктов «Что входит»
+(общий список пунктов категории на её публичной странице `/services/...`).
+
+```sql
+category_id BIGINT UNSIGNED
+service_item_id BIGINT UNSIGNED
+is_included BOOLEAN DEFAULT TRUE
+sort_order INT DEFAULT 0
+
+PRIMARY KEY(category_id, service_item_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+service_item_id -> service_items.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(sort_order)
+```
+
+Аналогично `service_service_item`: `is_included` — «включено в цену»,
+`sort_order` — порядок вывода пунктов.
+
+Foreign keys:
+
+```sql
+post_id -> posts.id ON DELETE CASCADE
+video_id -> videos.id ON DELETE CASCADE
+```
+
+---
+
 ### Система ролей
 
 Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
@@ -918,7 +980,8 @@ album_id -> albums.id ON DELETE CASCADE
 ## service_items
 
 Мастер-справочник пунктов/характеристик услуг (ретушь, печать, видеосъёмка и т.п.).
-Связаны с услугами many-to-many через `service_service_item`.
+Связаны с услугами many-to-many через `service_service_item`, а также с
+категориями через `category_service_item`.
 
 ```sql
 id BIGINT PRIMARY KEY
@@ -1101,7 +1164,7 @@ updated_at TIMESTAMP
 Раздел `/video` — отдельная страница со всеми активными видео, контент управляется через Pages (slug: video).
 
 Видео могут прикрепляться к альбомам через pivot `album_video` (с подписью и порядком в альбоме),
-а также напрямую к услугам (`service_video`) и статьям (`post_video`).
+а также напрямую к услугам (`service_video`), статьям (`post_video`) и категориям (`category_video`).
 Альбомы с видео привязываются к услугам (`album_service`) и статьям (`post_album`) — как обычные фотоальбомы.
 Порядок видео внутри услуги/статьи определяется полем `videos.sort_order`.
 
