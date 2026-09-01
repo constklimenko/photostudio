@@ -27,6 +27,10 @@
 
         <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $category->name }}</h1>
 
+        <div class="mt-6">
+            <x-site.share-button :title="$category->name" />
+        </div>
+
         @if ($category->description)
             <div class="mt-6 prose prose-invert max-w-none">
                 {!! $category->description !!}
