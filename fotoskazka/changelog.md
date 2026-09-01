@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-01 — Главная: блок «Наши услуги» — категории вместо услуг
+
+### Изменено
+- **app/Http/Controllers/HomeController.php**: вместо выборки всех опубликованных
+  услуг теперь загружаются корневые категории услуг (`type = service`,
+  `parent_id IS NULL`, `is_published`, `sort_order`) с обложкой
+- **resources/views/home.blade.php**: блок «Наши услуги» отображает карточки
+  категорий (обложка, название, описание, цена «от», кнопка «Подробнее»)
+  вместо карточек услуг; добавлена кнопка «Все услуги» со ссылкой на
+  `route('services.index')` внизу блока
+
+### Тесты
+- **tests/Feature/Http/Controllers/HomeControllerTest.php**:
+  - `test_home_page_shows_services` → `test_home_page_shows_service_categories` —
+    на главной отображается корневая категория услуг
+  - `test_home_page_hides_unpublished_services` → `test_home_page_hides_unpublished_categories` —
+    неопубликованная категория скрыта
+  - добавлен `test_home_page_hides_child_categories` — дочерние категории
+    не отображаются в корневом блоке
+  - добавлен `test_home_page_shows_all_services_link` — кнопка «Все услуги»
+    ведёт на `route('services.index')`
+
+### Проверка
+- HomeController + ServiceCatalogController тесты: 51/51 passed
+- Pint: clean
+
 ## 2026-09-01 — B11 «Иерархический каталог услуг»: итоговый аудит и закрытие
 
 ### Аудит (без переписывания)
