@@ -128,7 +128,6 @@
 
         @if ($service->show_album_photos && $service->featuredAlbum)
             <section class="mt-16" data-aos="fade-up">
-                <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">{{ $service->featuredAlbum->title }}</h2>
                 <x-site.album-photos :album="$service->featuredAlbum" />
             </section>
         @endif
