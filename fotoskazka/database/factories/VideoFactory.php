@@ -16,6 +16,7 @@ class VideoFactory extends Factory
             'url' => 'https://www.youtube.com/watch?v='.fake()->regexify('[a-zA-Z0-9_-]{11}'),
             'type' => 'horizontal',
             'rotation' => 0,
+            'has_sound' => true,
             'sort_order' => fake()->numberBetween(0, 100),
             'is_active' => true,
             'show_on_home' => false,

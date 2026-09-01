@@ -1,8 +1,19 @@
 # Changelog
 
-## 2026-09-01 — Вращение видео на ±90° и запрет скачивания
+## 2026-09-01 — Вращение видео на ±90°, управление звуком и запрет скачивания
 
 ### Добавлено
+- **Миграция `add_has_sound_to_videos_table`**: поле `videos.has_sound`
+  (BOOLEAN, default true) — «С сайта звук должен звучать».
+- **app/Models/Video.php**: `has_sound` в fillable + cast boolean.
+- **VideoForm** (Filament): Toggle «С сайта звук должен звучать»; при
+  выключении видео на страницах сайта воспроизводится без звука (muted).
+- **VideosTable**: бейдж «Звук» (IconColumn boolean).
+- **resources/views/components/site/video-player.blade.php**: при
+  `has_sound = false` на `<video>` добавляется атрибут `muted` (для повёрнутых
+  и обычных загруженных видео; звук включается/выключается только в админке,
+  кнопки в плеере нет).
+- **VideoController::index()** и **VideoFactory**: `has_sound` в выборку/дефолт.
 - **Миграция `replace_rotate_90_with_rotation_in_videos_table`**: вместо булева
   `videos.rotate_90` введено поле `videos.rotation` (INT, default 0): `0` — без
   поворота, `90` — по часовой, `-90` — против часовой. Backfill: `rotate_90 = true`

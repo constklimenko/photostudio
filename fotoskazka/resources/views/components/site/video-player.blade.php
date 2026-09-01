@@ -16,6 +16,7 @@
                 class="rotated-media absolute"
                 playsinline
                 preload="none"
+                {{ $video->has_sound ? '' : 'muted' }}
                 controlsList="nodownload noremoteplayback"
                 disablepictureinpicture
                 oncontextmenu="return false"
@@ -62,6 +63,7 @@
             controls
             playsinline
             preload="none"
+            {{ $video->has_sound ? '' : 'muted' }}
             controlsList="nodownload noremoteplayback"
             disablepictureinpicture
             oncontextmenu="return false"

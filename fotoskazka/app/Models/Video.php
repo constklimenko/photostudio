@@ -12,13 +12,14 @@ class Video extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'url', 'file_path', 'type', 'rotation', 'sort_order', 'is_active', 'show_on_home'];
+    protected $fillable = ['title', 'url', 'file_path', 'type', 'rotation', 'has_sound', 'sort_order', 'is_active', 'show_on_home'];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
             'show_on_home' => 'boolean',
+            'has_sound' => 'boolean',
             'rotation' => 'integer',
             'sort_order' => 'integer',
         ];

@@ -239,4 +239,42 @@ class VideoControllerTest extends TestCase
         $response->assertDontSee('rotate(-90deg)', false);
         $response->assertDontSee('data-video-player', false);
     }
+
+    public function test_index_renders_muted_when_has_sound_disabled(): void
+    {
+        Storage::fake('public');
+
+        Video::factory()->create([
+            'title' => 'Без звука',
+            'type' => 'vertical',
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+            'rotation' => 0,
+            'has_sound' => false,
+        ]);
+
+        $response = $this->get(route('video.index'));
+
+        $response->assertSee('<video', false);
+        $response->assertSee(' muted', false);
+    }
+
+    public function test_index_does_not_render_muted_when_has_sound_enabled(): void
+    {
+        Storage::fake('public');
+
+        Video::factory()->create([
+            'title' => 'Со звуком',
+            'type' => 'vertical',
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+            'rotation' => 0,
+            'has_sound' => true,
+        ]);
+
+        $response = $this->get(route('video.index'));
+
+        $response->assertSee('<video', false);
+        $response->assertDontSee(' muted', false);
+    }
 }

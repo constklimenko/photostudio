@@ -48,6 +48,10 @@ class VideosTable
                 IconColumn::make('show_on_home')
                     ->boolean()
                     ->label('На главной'),
+                IconColumn::make('has_sound')
+                    ->boolean()
+                    ->label('Звук')
+                    ->tooltip('Звук на сайте включён'),
                 IconColumn::make('is_active')
                     ->boolean()
                     ->label('Активно'),

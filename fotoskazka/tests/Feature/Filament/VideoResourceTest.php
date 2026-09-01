@@ -103,13 +103,14 @@ class VideoResourceTest extends TestCase
         $this->assertDatabaseHas('videos', ['title' => 'Unique Searchable Video']);
     }
 
-    public function test_can_create_video_with_rotation_via_form(): void
+    public function test_can_create_video_with_rotation_and_sound_via_form(): void
     {
         Livewire::test(CreateVideo::class)
             ->fillForm([
                 'title' => 'Повёрнутое видео',
                 'type' => 'vertical',
                 'rotation' => -90,
+                'has_sound' => false,
                 'is_active' => true,
                 'show_on_home' => false,
             ])
@@ -120,6 +121,7 @@ class VideoResourceTest extends TestCase
             'title' => 'Повёрнутое видео',
             'type' => 'vertical',
             'rotation' => -90,
+            'has_sound' => false,
         ]);
     }
 
