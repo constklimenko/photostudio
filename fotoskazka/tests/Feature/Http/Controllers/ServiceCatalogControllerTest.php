@@ -180,6 +180,77 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Оставить заявку');
     }
 
+    public function test_three_level_parent_page_hides_grandchild_services(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Стандарт');
+    }
+
+    public function test_three_level_category_page_renders_full_breadcrumb(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ', 'Классика']);
+        $response->assertSee('Стандарт');
+    }
+
+    public function test_three_level_service_renders_full_breadcrumb(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika/standart');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ', 'Классика', 'Стандарт']);
+        $response->assertSee('Стандарт');
+    }
+
     public function test_service_page_renders_full_breadcrumb(): void
     {
         $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');

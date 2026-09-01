@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-09-01 — B11 «Иерархический каталог услуг»: итоговый аудит и закрытие
+
+### Аудит (без переписывания)
+- Проверена функциональность иерархии `categories` (self-referencing `parent_id`),
+  неограниченной глубины, полей категории, `ServiceCatalogResolver` / `ServiceCatalogController`,
+  URL `/services/{path}`, breadcrumbs-компонента `<x-site.breadcrumbs>`, дерева в Filament,
+  защиты от циклов и удаления категорий с детьми/услугами.
+- Миграции этапа на месте: `add_hierarchy_fields_to_categories_table`,
+  `create_category_video_table`, `create_category_service_item_table`.
+
+### Исправлено (оптимизация запросов, N+1)
+- **`ServiceCatalogController::index()`**:
+  - дочерние категории грузятся с `parent` (устранена ленивая загрузка родителя
+    при `$child->catalogPath()` на карточках подкатегорий);
+  - услуги в категориях грузятся как `cover, items.icon, category`;
+  - `servicesWithoutCategory` грузится как `cover, items.icon, category`;
+    в `get([...])` добавлен столбец `category_id` (нужен для eager load `category`).
+- **`ServiceCatalogController::showService()`**:
+  - основные данные услуги грузятся с `items.icon` (список ServiceItems в шаблоне
+    обращается к `$item->icon`);
+  - список «Другие услуги» (`serviceList`) дополнен связью `category`
+    (устранена ленивая загрузка при `catalogPath()` каждого элемента).
+
+### Тесты (добавлено +3)
+- **`tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php`** — глубина 3:
+  - `test_three_level_parent_page_hides_grandchild_services` — страница родителя не
+    показывает услуги вложенных категорий;
+  - `test_three_level_category_page_renders_full_breadcrumb` — полные breadcrumbs
+    категории 3-го уровня;
+  - `test_three_level_service_renders_full_breadcrumb` — полные breadcrumbs услуги
+    на 3-м уровне вложенности.
+
+### Документация
+- **roadmap.md**: B11 отмечен как выполненный; следующий этап — «Этап 5. Кабинеты клиентов».
+
+### Проверка
+- Полный тестовый набор: 548/548 passed, 1383 assertions (+3 теста к этапу)
+- Pint: clean
+
 ## 2026-08-29 — Категории: автогенерация slug
 
 ### Изменено
