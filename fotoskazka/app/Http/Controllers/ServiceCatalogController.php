@@ -59,7 +59,31 @@ class ServiceCatalogController extends Controller
     {
         $page = $this->pageContent->get('services');
 
-        $service->load(['cover', 'category', 'items.icon', 'videos', 'albums' => fn ($query) => $query->where('is_published', true)->with(['cover', 'videos'])]);
+        $service->load([
+            'cover',
+            'category',
+            'items.icon',
+            'videos',
+            'albums' => function ($query) use ($service) {
+                $query->where('is_published', true);
+
+                if ($service->show_album_photos && $service->featured_album_id) {
+                    $query->whereKeyNot($service->featured_album_id);
+                }
+
+                $query->with(['cover', 'videos']);
+            },
+        ]);
+
+        if ($service->show_album_photos && $service->featured_album_id) {
+            $service->load([
+                'featuredAlbum' => fn ($query) => $query->where('is_published', true),
+            ]);
+
+            if ($service->featuredAlbum) {
+                $service->featuredAlbum->load('photos.media');
+            }
+        }
 
         $serviceList = Service::query()
             ->where('is_published', true)
