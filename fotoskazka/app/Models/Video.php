@@ -12,14 +12,14 @@ class Video extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'url', 'file_path', 'type', 'rotate_90', 'sort_order', 'is_active', 'show_on_home'];
+    protected $fillable = ['title', 'url', 'file_path', 'type', 'rotation', 'sort_order', 'is_active', 'show_on_home'];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
             'show_on_home' => 'boolean',
-            'rotate_90' => 'boolean',
+            'rotation' => 'integer',
             'sort_order' => 'integer',
         ];
     }
@@ -90,6 +90,11 @@ class Video extends Model
     public function getIsUploadAttribute(): bool
     {
         return ! is_null($this->file_path);
+    }
+
+    public function isRotated(): bool
+    {
+        return (int) $this->rotation !== 0;
     }
 
     public function getSourceUrlAttribute(): ?string

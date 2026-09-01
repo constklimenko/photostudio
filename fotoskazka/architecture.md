@@ -151,6 +151,7 @@ resources/views/
 ├── layouts/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
+│   ├── album-photos.blade.php # Сетка фото альбома + lightbox (страница альбома и блок в услуге)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
 │   ├── footer.blade.php        # Подвал (контакты, политика)
@@ -158,7 +159,8 @@ resources/views/
 │   ├── inquiry-modal.blade.php # Модальное окно заявки
 │   ├── share-button.blade.php  # Кнопка шаринга
 │   ├── social-links.blade.php  # Иконки соцсетей
-│   └── videos.blade.php        # Блок видео
+│   ├── video-player.blade.php  # Плеер видео: поворот ±90°, запрет скачивания, кастомные контролы
+│   └── videos.blade.php        # Блок видео (через x-site.video-player) (через x-site.video-player)
 ├── emails/
 │   └── new-inquiry.blade.php   # Шаблон письма о новой заявке
 ├── home.blade.php              # Главная (hero, услуги, портфолио, отзывы, блог, форма)
@@ -171,7 +173,7 @@ resources/views/
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
 │   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, форма (B11)
-│   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма)
+│   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
 ├── cabinet/
@@ -192,6 +194,7 @@ resources/views/
 | GET | `/blog` | `BlogController@index` | — |
 | GET | `/blog/{slug}` | `BlogController@show` | — |
 | GET | `/video` | `VideoController@index` | — |
+| GET | `/video/{video}/stream` | `VideoController@stream` | raw |
 | GET | `/media/{media}/original` | `MediaController@original` | — |
 | GET | `/media/{media}/download` | `MediaController@download` | attachment |
 | GET | `/media/{media}/display` | `MediaController@display` | PNG ≤800px из кэша |
@@ -517,6 +520,35 @@ isPending = пустые метаданные (mime/size/width/height)
           || отсутствует display/lightbox вариант кэша
 ```
 
+## Поворот фото — RotateMedia (`app/Actions/Media/RotateMedia.php`)
+
+Единая точка поворота оригинала изображения из админки (альбом → фотография):
+
+```text
+Filament «Повернуть» (90/180/270° CW)
+    ↓
+RotateMedia::execute(Media, degrees)
+    ├── чтение оригинала с Media::disk (Filesystem)
+    ├── GD-поворот (JPEG/PNG/WebP; только кратно 90°)
+    ├── перезапись повёрнутого оригинала на том же диске
+    ├── обновление width / height / file_size
+    ├── ImageCacheService::forget  (сброс устаревшего кэша)
+    └── MediaProcessor::process(force: true)  (WebP-thumbnail + display/lightbox)
+```
+
+Правила:
+
+- оригинал перезаписывается на исходном `disk`/`file_path` — идемпотентности
+  нет (повторный вызов = ещё один поворот), но производные пересобираются
+  детерминированно;
+- производные (thumbnail и image-cache) регенерируются принудительно и
+  синхронно, устаревшие варианты кэша удаляются до пересборки;
+- сбой на любом шаге не теряет запись Media — ошибки логируются с контекстом;
+- неподдерживаемые форматы (GIF и др.), некратные 90° углы и отсутствующие
+  файлы возвращают `false` без изменений;
+- в `PhotosRelationManager` изменение `title` фотографии редактирует
+  `media.title` через отдельное действие «Редактировать».
+
 Filament-UX (`MediaTable`, `EditMedia`):
 
 - колонка «Обработка» в списке Media: «Готово» / «В очереди» — вычисляется
@@ -665,6 +697,34 @@ storage/app/public/
 - Video::source_url / embed_url — через конфиг `filesystems.default_media_disk`
 - Storage symlink: `public/storage -> storage/app/public`
 
+### Плеер видео: поворот ±90° и запрет скачивания
+
+- **Роут `GET /video/{video}/stream`** — сырой поток загруженного видео через
+  `VideoController@stream` (StreamedResponse, диск `filesystems.default_media_disk`).
+  Заголовки: `Content-Type: video/mp4`, `Content-Disposition: inline`,
+  `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`,
+  `Accept-Ranges: bytes`. 404 при отсутствии `file_path` или файла.
+- **`Video::source_url`** указывает на `video.stream` (прокси вместо `Storage::url`),
+  чтобы не публиковать реальный путь файла напрямую.
+- **Компонент `x-site.video-player`** (`resources/views/components/site/video-player.blade.php`)
+  — единый рендер видео на страницах сайта (главная, раздел `/video`,
+  блоки в услугах/статьях/альбомах через `x-site.videos`):
+  - embed-видео → iframe;
+  - загруженный файл без поворота → нативный `<video>` c `controls`;
+  - загруженный файл с поворотом → `<video>` без нативных контрол +
+    кастомный плеер (большая кнопка Play/Pause, прогресс-бар, таймкод),
+    инициализируемый JS-хендлером `[data-video-player]` в `resources/js/app.js`.
+- **Поворот визуальный (CSS-transform)**, файл на диске не изменяется:
+  для вписывания 9:16 → 16:9 в ландшафтный контейнер `aspect-video`
+  применены `width:56.25%`, `height:177.78%`, `object-fit:cover`,
+  `transform:translate(-50%,-50%) rotate(±90deg)`. Управляется полем `Video.rotation`
+  (`0` / `90` / `-90`); контейнер повёрнутого видео — `aspect-video`, неповёрнутого
+  вертикального — `aspect-[9/16]`. Прямой `/video/{id}/stream` отдаёт файл без поворота.
+- **Запрет скачивания (затруднение, не 100% защита)**: прокси-роут с
+  `Cache-Control: private, no-store` + `Content-Disposition: inline`;
+  на `<video>` — `controlsList="nodownload noremoteplayback"`,
+  `disablepictureinpicture`, `oncontextmenu="return false"`, `preload="none"`.
+
 ### Кэш производных изображений (display / lightbox)
 
 - Диск `image_cache` (локальный, `storage/app/image-cache`), параметры в `filesystems.image_cache`
@@ -738,12 +798,13 @@ storage/app/public/
 
 ## База данных
 
-См. `database.md` — 18 бизнес-таблиц + 7 pivot-таблиц + служебные.
+См. `database.md` — 18 бизнес-таблиц + 8 pivot-таблиц + служебные.
 
-### Пivot-таблицы
+### Pivot-таблицы
 - `service_service_item` — услуги ↔ пункты (с полями `is_included`, `sort_order`)
 - `album_service` — услуги ↔ альбомы-примеры работ
 - `album_video` — альбомы ↔ видео (с полями `caption`, `sort_order`)
+- `album_user` — пользователи (`parent`) ↔ клиентские альбомы (C1.1)
 - `service_video` — услуги ↔ видео
 - `post_video` — статьи ↔ видео
 - `page_album` — страницы ↔ альбомы
@@ -851,6 +912,30 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
 Страница услуги (`services/show.blade.php`) сохраняет ранее реализованные
 функции: цена, описание, обложка, ServiceItems, альбомы-примеры, видео,
 форма заявки + полный иерархический breadcrumb через компонент.
+
+### Альбом на странице услуги, отображаемый всеми фото
+
+Дополнительная настройка услуги в админке (`ServiceForm`, раздел «Примеры работ»):
+
+- `show_album_photos` — Toggle «Показать первый альбом блоком с фото»;
+- `featured_album_id` — Select конкретного альбома (BelongsTo → `albums`,
+  `ON DELETE SET NULL`).
+
+Поведение публичной страницы услуги (`ServiceCatalogController::showService`):
+
+- при `show_album_photos = true` выбранный альбом **исключается** из списка
+  альбомов-примеров (карточек) и выводится ниже в виде сетки фотографий
+  с lightbox — тем же переиспользуемым компонентом `<x-site.album-photos :album="…" />`,
+  который используется на странице альбома `/portfolio/{slug}`;
+- если после исключения в списке остаются альбомы (≥ 1), сначала рендерится
+  секция «Примеры работ» с карточками, затем — блок фото выбранного альбома
+  (заголовок блока — название альбома);
+- неопубликованный `featured_album_id` игнорируется (блок не выводится);
+- при выключенном toggle выбранный альбом остаётся обычной карточкой.
+
+Функция реализована только для услуги; категории не затрагиваются.
+Компонент `<x-site.album-photos>` расположил разметку сетки + lightbox и JS
+в одном месте, устранив дублирование со страницей альбома.
 
 Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
 принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`

@@ -1,7 +1,16 @@
 @props(['video'])
 
+@php
+    $rotation = (int) $video->rotation;
+    $rotateTransform = match ($rotation) {
+        90 => 'rotate(90deg)',
+        -90 => 'rotate(-90deg)',
+        default => null,
+    };
+@endphp
+
 @if ($video->is_upload)
-    @if ($video->rotate_90)
+    @if ($rotateTransform)
         <div class="relative w-full h-full" data-video-player>
             <video
                 class="rotated-media absolute"
@@ -10,7 +19,7 @@
                 controlsList="nodownload noremoteplayback"
                 disablepictureinpicture
                 oncontextmenu="return false"
-                style="position:absolute;top:50%;left:50%;width:56.25%;height:177.78%;max-width:none;max-height:none;object-fit:cover;transform:translate(-50%,-50%) rotate(90deg);"
+                style="position:absolute;top:50%;left:50%;width:56.25%;height:177.78%;max-width:none;max-height:none;object-fit:cover;transform:translate(-50%,-50%) {{ $rotateTransform }};"
             >
                 <source src="{{ $video->source_url }}" type="video/mp4">
             </video>

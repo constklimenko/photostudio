@@ -30,9 +30,14 @@ class VideoForm
                             ])
                             ->default('horizontal')
                             ->label('Формат'),
-                        Toggle::make('rotate_90')
-                            ->default(false)
-                            ->label('Повернуть на 90°')
+                        Select::make('rotation')
+                            ->default(0)
+                            ->options([
+                                0 => 'Без поворота',
+                                90 => '90° по часовой',
+                                -90 => '90° против часовой',
+                            ])
+                            ->label('Поворот')
                             ->helperText('Применяется к загруженному файлу: вертикальный клип будет отображаться горизонтально'),
                         TextInput::make('url')
                             ->nullable()

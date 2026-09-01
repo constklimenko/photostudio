@@ -128,21 +128,9 @@
             @if ($horizontalVideos->isNotEmpty())
                 <div class="mt-12 max-w-5xl mx-auto space-y-10">
                     @foreach ($horizontalVideos as $video)
-                        <div class="aspect-[4/3] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
+                        <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
                              data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            @if ($video->is_upload)
-                                <video class="w-full h-full" controls playsinline preload="metadata">
-                                    <source src="{{ $video->source_url }}" type="video/mp4">
-                                </video>
-                            @else
-                                <iframe src="{{ $video->embed_url }}"
-                                        title="{{ $video->title }}"
-                                        class="w-full h-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen
-                                        loading="lazy">
-                                </iframe>
-                            @endif
+                            <x-site.video-player :video="$video" />
                         </div>
                     @endforeach
                 </div>
@@ -152,20 +140,8 @@
                 <div class="mt-12 video-slider" data-video-slider data-aos="fade-up">
                     @foreach ($verticalVideos as $video)
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-                                @if ($video->is_upload)
-                                    <video class="w-full h-full object-cover" controls playsinline preload="metadata">
-                                        <source src="{{ $video->source_url }}" type="video/mp4">
-                                    </video>
-                                @else
-                                    <iframe src="{{ $video->embed_url }}"
-                                            title="{{ $video->title }}"
-                                            class="w-full h-full"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen
-                                            loading="lazy">
-                                    </iframe>
-                                @endif
+                            <div class="relative {{ $video->isRotated() ? 'aspect-video' : 'aspect-[9/16]' }} rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
+                                <x-site.video-player :video="$video" />
                             </div>
                         </div>
                     @endforeach

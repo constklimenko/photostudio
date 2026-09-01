@@ -36,10 +36,15 @@ class VideosTable
                     ->boolean()
                     ->label('Файл')
                     ->tooltip('Загруженный файл, а не ссылка'),
-                IconColumn::make('rotate_90')
-                    ->boolean()
-                    ->label('90°')
-                    ->tooltip('Повёрнуто на 90°'),
+                TextColumn::make('rotation')
+                    ->badge()
+                    ->formatStateUsing(fn ($state): string => match ((int) $state) {
+                        90 => '90°',
+                        -90 => '-90°',
+                        default => '—',
+                    })
+                    ->color(fn ($state): string => (int) $state === 0 ? 'gray' : 'info')
+                    ->label('Поворот'),
                 IconColumn::make('show_on_home')
                     ->boolean()
                     ->label('На главной'),

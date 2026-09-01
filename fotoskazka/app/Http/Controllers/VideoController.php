@@ -17,7 +17,7 @@ class VideoController extends Controller
         $videos = Video::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
-            ->get(['id', 'title', 'url', 'file_path', 'type', 'rotate_90', 'sort_order']);
+            ->get(['id', 'title', 'url', 'file_path', 'type', 'rotation', 'sort_order']);
 
         $horizontalVideos = $videos->where('type', 'horizontal');
         $verticalVideos = $videos->where('type', 'vertical');
