@@ -5,8 +5,11 @@ namespace Tests\Feature\Filament;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Video;
+use App\Filament\Resources\Videos\Pages\CreateVideo;
+use App\Filament\Resources\Videos\Pages\EditVideo;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class VideoResourceTest extends TestCase
@@ -98,5 +101,42 @@ class VideoResourceTest extends TestCase
 
         $response->assertSuccessful();
         $this->assertDatabaseHas('videos', ['title' => 'Unique Searchable Video']);
+    }
+
+    public function test_can_create_video_with_rotate_90_via_form(): void
+    {
+        Livewire::test(CreateVideo::class)
+            ->fillForm([
+                'title' => 'Повёрнутое видео',
+                'type' => 'vertical',
+                'rotate_90' => true,
+                'is_active' => true,
+                'show_on_home' => false,
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('videos', [
+            'title' => 'Повёрнутое видео',
+            'type' => 'vertical',
+            'rotate_90' => true,
+        ]);
+    }
+
+    public function test_can_update_rotate_90_via_form(): void
+    {
+        $video = Video::factory()->create(['title' => 'Видео', 'rotate_90' => false]);
+
+        Livewire::test(EditVideo::class, ['record' => $video->getRouteKey()])
+            ->fillForm([
+                'rotate_90' => true,
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('videos', [
+            'id' => $video->id,
+            'rotate_90' => true,
+        ]);
     }
 }

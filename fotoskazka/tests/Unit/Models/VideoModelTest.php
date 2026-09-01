@@ -128,11 +128,13 @@ class VideoModelTest extends TestCase
         $this->assertFalse($video->is_upload);
     }
 
-    public function test_source_url_returns_storage_url_for_uploaded_file(): void
+    public function test_source_url_returns_proxy_file_route_for_uploaded_file(): void
     {
         $video = new Video(['file_path' => 'videos/clip.mp4', 'url' => 'https://example.com/video']);
+        $video->id = 42;
 
-        $this->assertStringContainsString('/storage/videos/clip.mp4', $video->source_url);
+        $this->assertEquals(route('video.file', 42), $video->source_url);
+        $this->assertStringContainsString('/video/42/file', $video->source_url);
     }
 
     public function test_source_url_returns_embed_url_for_external_url(): void

@@ -130,4 +130,139 @@ class VideoControllerTest extends TestCase
 
         $response->assertSee('Видео пока не добавлены');
     }
+
+    public function test_index_uploaded_video_uses_proxy_route_not_public_url(): void
+    {
+        Storage::fake('public');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.index'));
+
+        $response->assertSee(route('video.file', $video->id));
+        $response->assertDontSee('/storage/videos/clip.mp4');
+    }
+
+    public function test_raw_file_route_returns_video_inline(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', 'fake-binary-content');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.file', $video->id));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'video/mp4');
+        $response->assertHeader('Content-Disposition', 'inline; filename="clip.mp4"');
+        $response->assertHeaderContains('Cache-Control', 'no-store');
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertStringContainsString('fake-binary-content', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_html_player_page(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', 'fake-binary-content');
+
+        $video = Video::factory()->create([
+            'title' => 'Видео плеер',
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id));
+
+        $response->assertStatus(200);
+        $response->assertSee('Видео плеер');
+        $response->assertSee(route('video.file', $video->id));
+        $response->assertSee('<video', false);
+        $this->assertStringNotContainsString('fake-binary-content', $response->getContent());
+    }
+
+    public function test_stream_player_renders_rotation_when_enabled(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', 'fake-binary-content');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+            'type' => 'vertical',
+            'rotate_90' => true,
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id));
+
+        $response->assertStatus(200);
+        $response->assertSee('rotate(90deg)', false);
+    }
+
+    public function test_file_returns_404_when_video_has_no_file(): void
+    {
+        $video = Video::factory()->create([
+            'file_path' => null,
+            'url' => 'https://www.youtube.com/watch?v=abcdefghijk',
+        ]);
+
+        $response = $this->get(route('video.file', $video->id));
+
+        $response->assertStatus(404);
+    }
+
+    public function test_stream_returns_404_when_video_has_no_file(): void
+    {
+        $video = Video::factory()->create([
+            'file_path' => null,
+            'url' => 'https://www.youtube.com/watch?v=abcdefghijk',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id));
+
+        $response->assertStatus(404);
+    }
+
+    public function test_index_renders_rotation_and_download_protection_attributes(): void
+    {
+        Storage::fake('public');
+
+        $video = Video::factory()->create([
+            'title' => 'Повёрнутое видео',
+            'type' => 'vertical',
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+            'rotate_90' => true,
+        ]);
+
+        $response = $this->get(route('video.index'));
+
+        $response->assertSee('rotate(90deg)', false);
+        $response->assertSee('controlsList', false);
+        $response->assertSee('nodownload', false);
+        $response->assertSee('disablepictureinpicture', false);
+        $response->assertSee('oncontextmenu="return false"', false);
+    }
+
+    public function test_index_does_not_render_rotation_when_disabled(): void
+    {
+        Storage::fake('public');
+
+        $video = Video::factory()->create([
+            'title' => 'Обычное видео',
+            'type' => 'vertical',
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+            'rotate_90' => false,
+        ]);
+
+        $response = $this->get(route('video.index'));
+
+        $response->assertDontSee('rotate(90deg)', false);
+    }
 }

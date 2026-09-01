@@ -36,6 +36,10 @@ class VideosTable
                     ->boolean()
                     ->label('Файл')
                     ->tooltip('Загруженный файл, а не ссылка'),
+                IconColumn::make('rotate_90')
+                    ->boolean()
+                    ->label('90°')
+                    ->tooltip('Повёрнуто на 90°'),
                 IconColumn::make('show_on_home')
                     ->boolean()
                     ->label('На главной'),
