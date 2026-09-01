@@ -3,6 +3,7 @@
 namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Album;
+use App\Models\Category;
 use App\Models\FaqItem;
 use App\Models\Media;
 use App\Models\NotificationSetting;
@@ -61,28 +62,68 @@ class HomeControllerTest extends TestCase
         $response->assertSee('Фотосказка — Главная');
     }
 
-    public function test_home_page_shows_services(): void
+    public function test_home_page_shows_service_categories(): void
     {
-        $service = Service::factory()->create([
+        $category = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
             'is_published' => true,
-            'title' => 'Свадебная съёмка',
+            'name' => 'Выпускные альбомы',
         ]);
 
         $response = $this->get('/');
 
-        $response->assertSee('Свадебная съёмка');
+        $response->assertSee('Выпускные альбомы');
     }
 
-    public function test_home_page_hides_unpublished_services(): void
+    public function test_home_page_hides_unpublished_categories(): void
     {
-        $service = Service::factory()->create([
+        $category = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
             'is_published' => false,
-            'title' => 'Скрытая услуга',
+            'name' => 'Скрытая категория',
         ]);
 
         $response = $this->get('/');
 
-        $response->assertDontSee('Скрытая услуга');
+        $response->assertDontSee('Скрытая категория');
+    }
+
+    public function test_home_page_hides_child_categories(): void
+    {
+        $parent = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => true,
+            'name' => 'Родитель',
+        ]);
+
+        $child = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => $parent->id,
+            'is_published' => true,
+            'name' => 'Дочерняя',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertSee('Родитель');
+        $response->assertDontSee('Дочерняя');
+    }
+
+    public function test_home_page_shows_all_services_link(): void
+    {
+        Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => true,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertSee('Все услуги');
+        $response->assertSee(route('services.index'), false);
     }
 
     public function test_home_page_shows_featured_portfolio(): void
