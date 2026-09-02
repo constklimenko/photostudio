@@ -34,20 +34,8 @@
                     @foreach ($horizontalVideos as $video)
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                             <h3 class="font-heading text-xl font-normal tracking-wide text-white mb-4">{{ $video->title }}</h3>
-                            <div class="aspect-video rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-@if ($video->is_upload)
-                                     <video class="w-full h-full" controls playsinline preload="metadata">
-                                         <source src="{{ $video->source_url }}" type="video/mp4">
-                                     </video>
-                                @else
-                                    <iframe src="{{ $video->embed_url }}"
-                                            title="{{ $video->title }}"
-                                            class="w-full h-full"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen
-                                            loading="lazy">
-                                    </iframe>
-                                @endif
+                            <div class="relative aspect-video rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
+                                <x-site.video-player :video="$video" />
                             </div>
                         </div>
                     @endforeach
@@ -64,20 +52,8 @@
                     @foreach ($verticalVideos as $video)
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
                             <h3 class="font-heading text-base font-normal tracking-wide text-white mb-3 text-center truncate">{{ $video->title }}</h3>
-                            <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-@if ($video->is_upload)
-                                     <video class="w-full h-full object-cover" controls playsinline preload="metadata">
-                                         <source src="{{ $video->source_url }}" type="video/mp4">
-                                     </video>
-                                @else
-                                    <iframe src="{{ $video->embed_url }}"
-                                            title="{{ $video->title }}"
-                                            class="w-full h-full"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen
-                                            loading="lazy">
-                                    </iframe>
-                                @endif
+                            <div class="relative {{ $video->isRotated() ? 'aspect-video' : 'aspect-[9/16]' }} rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
+                                <x-site.video-player :video="$video" />
                             </div>
                         </div>
                     @endforeach

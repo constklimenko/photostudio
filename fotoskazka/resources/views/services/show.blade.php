@@ -126,6 +126,12 @@
             </section>
         @endif
 
+        @if ($service->show_album_photos && $service->featuredAlbum)
+            <section class="mt-16" data-aos="fade-up">
+                <x-site.album-photos :album="$service->featuredAlbum" />
+            </section>
+        @endif
+
         <x-site.videos :videos="$service->videos" title="Видео" />
 
 

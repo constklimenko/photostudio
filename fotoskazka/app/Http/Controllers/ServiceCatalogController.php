@@ -24,11 +24,11 @@ class ServiceCatalogController extends Controller
             ->where('is_published', true)
             ->whereNull('parent_id')
             ->orderBy('sort_order')
-            ->with(['cover', 'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover'])])
+            ->with(['cover', 'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'parent'])])
             ->with(['services' => function ($query) {
                 $query->where('is_published', true)
                     ->orderBy('sort_order')
-                    ->with(['cover', 'items']);
+                    ->with(['cover', 'items.icon', 'category']);
             }])
             ->get(['id', 'parent_id', 'cover_media_id', 'name', 'slug', 'description', 'price_from']);
 
@@ -36,8 +36,8 @@ class ServiceCatalogController extends Controller
             ->where('is_published', true)
             ->whereNull('category_id')
             ->orderBy('sort_order')
-            ->with(['cover', 'items'])
-            ->get(['id', 'cover_media_id', 'title', 'slug', 'short_description', 'price_from', 'price_note']);
+            ->with(['cover', 'items.icon', 'category'])
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id', 'short_description', 'price_from', 'price_note']);
 
         return view('services.index', compact('page', 'categories', 'servicesWithoutCategory'));
     }
@@ -59,13 +59,37 @@ class ServiceCatalogController extends Controller
     {
         $page = $this->pageContent->get('services');
 
-        $service->load(['cover', 'category', 'items', 'videos', 'albums' => fn ($query) => $query->where('is_published', true)->with(['cover', 'videos'])]);
+        $service->load([
+            'cover',
+            'category',
+            'items.icon',
+            'videos',
+            'albums' => function ($query) use ($service) {
+                $query->where('is_published', true);
+
+                if ($service->show_album_photos && $service->featured_album_id) {
+                    $query->whereKeyNot($service->featured_album_id);
+                }
+
+                $query->with(['cover', 'videos']);
+            },
+        ]);
+
+        if ($service->show_album_photos && $service->featured_album_id) {
+            $service->load([
+                'featuredAlbum' => fn ($query) => $query->where('is_published', true),
+            ]);
+
+            if ($service->featuredAlbum) {
+                $service->featuredAlbum->load('photos.media');
+            }
+        }
 
         $serviceList = Service::query()
             ->where('is_published', true)
             ->whereKeyNot($service->id)
             ->orderBy('sort_order')
-            ->with('cover')
+            ->with(['cover', 'category'])
             ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id']);
 
         return view('services.show', compact('page', 'service', 'serviceList'));

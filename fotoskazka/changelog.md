@@ -1,5 +1,230 @@
 # Changelog
 
+## 2026-09-01 — Вращение видео на ±90°, управление звуком и запрет скачивания
+
+### Добавлено
+- **Миграция `add_has_sound_to_videos_table`**: поле `videos.has_sound`
+  (BOOLEAN, default true) — «С сайта звук должен звучать».
+- **app/Models/Video.php**: `has_sound` в fillable + cast boolean.
+- **VideoForm** (Filament): Toggle «С сайта звук должен звучать»; при
+  выключении видео на страницах сайта воспроизводится без звука (muted).
+- **VideosTable**: бейдж «Звук» (IconColumn boolean).
+- **resources/views/components/site/video-player.blade.php**: при
+  `has_sound = false` на `<video>` добавляется атрибут `muted` (для повёрнутых
+  и обычных загруженных видео; звук включается/выключается только в админке,
+  кнопки в плеере нет).
+- **VideoController::index()** и **VideoFactory**: `has_sound` в выборку/дефолт.
+- **Миграция `replace_rotate_90_with_rotation_in_videos_table`**: вместо булева
+  `videos.rotate_90` введено поле `videos.rotation` (INT, default 0): `0` — без
+  поворота, `90` — по часовой, `-90` — против часовой. Backfill: `rotate_90 = true`
+  → `rotation = 90` (видео id 5 стало `rotation = 90`). Обратная миграция
+  восстанавливает `rotate_90` из `rotation = 90`.
+- **app/Models/Video.php**: `rotation` в fillable + cast integer; метод `isRotated()`
+  (`rotation !== 0`); `source_url` указывает на прокси-роут `video.stream`.
+- **VideoForm** (Filament): вместо Toggle — Select «Поворот» (Без поворота /
+  90° по часовой / 90° против часовой).
+- **VideosTable**: бейдж поворота (— / 90° / -90°).
+- **resources/views/components/site/video-player.blade.php**: в `x-site.video-player`
+  поддержан поворот и на `-90°` (CSS `rotate(-90deg)`); для повёрнутых видео —
+  кастомный плеер (Play/Pause, прогресс-бар, таймкод) без нативных контролов.
+- **Контейнеры**: у повёрнутых видео — `aspect-video`, у неповёрнутых
+  вертикальных — `aspect-[9/16]` (home, раздел video, блок `x-site.videos`).
+- **VideoController::index()** и **VideoFactory**: инфраструктура переведена
+  на `rotation`.
+
+### Тесты
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: тесты поворота
+  переведены на `rotation`; добавлен тест поворота против часовой
+  (`rotate(-90deg)`), проверка, что `data-video-player` не рендерится при 0,
+  а также muted-рендер при `has_sound = false` и его отсутствие при включённом звуке.
+- **tests/Feature/Filament/VideoResourceTest.php**: create/update через форму
+  с `rotation` (±90) и `has_sound`.
+- Итого 588 тестов — все пройдены (предыдущий прогон 586).
+
+### Документация
+- Обновлён `database.md` (поле `videos.rotation` и `videos.has_sound`, значения, поведение).
+- Обновлён `architecture.md` (роут `video.stream`, раздел «Плеер видео:
+  поворот ±90° и запрет скачивания», компонент `video-player`).
+
+## 2026-09-01 — Показ альбома всеми фото на странице услуги
+
+### Добавлено
+- **Миграция `add_featured_album_fields_to_services_table`**: поля
+  `services.show_album_photos` (boolean, default false) и
+  `services.featured_album_id` (nullable, FK → `albums.id`, ON DELETE SET NULL).
+- **app/Models/Service.php**: `show_album_photos`, `featured_album_id`
+  в fillable + casts; связь `featuredAlbum()` (BelongsTo → `albums`).
+- **ServiceForm** (Filament, раздел «Примеры работ»):
+  - Toggle «Показать первый альбом блоком с фото»;
+  - Select «Альбом для отображения блоком» (всегда видим, позволяет очистить
+    выбор даже при выключенном toggle).
+- **resources/views/components/site/album-photos.blade.php** — переиспользуемый
+  компонент: сетка фото альбома + lightbox + JS (ранее дублировался во
+  встроенном виде на странице альбома).
+- **resources/views/portfolio/show.blade.php** — блок фото/lightbox заменён
+  на `<x-site.album-photos :album="$album" />`.
+- **resources/views/services/show.blade.php** — при `show_album_photos` +
+  выбранном альбоме ниже секции «Примеры работ» выводится блок всех фото
+  выбранного альбома (заголовок — название альбома) тем же компонентом.
+- **ServiceCatalogController::showService()**:
+  - при `show_album_photos = true` выбранный альбом исключается из списка
+    карточек альбомов-примеров (карточки остаются, если ≥ 1);
+  - грузит `featuredAlbum` (только опубликованный) + `photos.media`;
+  - при выключенном toggle выбранный альбом остаётся обычной карточкой.
+- **ServiceFactory**: дефолт `show_album_photos => false`.
+
+### Тесты
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** (+5): блок
+  всех фото выбранного альбома, остальные альбомы карточками до сетки,
+  toggle-off (альбом карточкой, lightbox скрыт), неопубликованный
+  featured-альбом не показывается.
+- **tests/Feature/Filament/ServiceFeaturedAlbumTest.php** (4): поля формы
+  редактирования, сохранение услуги с featured-альбомом, очистка выбора
+  (toggle off), сохранение при создании.
+- Итого 578 тестов / 1527 утверждений — все пройдены.
+
+### Документация
+- Обновлён `database.md` (поля `services.*`, FK, индексы, описание поведения).
+- Обновлён `architecture.md` (компонент `album-photos`, раздел про показ
+  альбома всеми фото на странице услуги).
+
+## 2026-09-01 — Поворот фотографий и изменение title в админке
+
+### Добавлено
+- **app/Actions/Media/RotateMedia.php** — поворот оригинала изображения
+  по часовой стрелке на 90/180/270° через GD:
+  - читает оригинал с любого диска (включая Яндекс.Диск) через Laravel Filesystem;
+  - перезаписывает повёрнутый оригинал на том же диске (`disk`/`file_path` не меняются);
+  - обновляет метаданные `width`/`height`/`file_size`;
+  - очищает display/lightbox-кэш и пересобирает WebP-thumbnail + image-cache
+    через `MediaProcessor::process(force: true)` — идемпотентно (`ImageCacheService::forget`);
+  - сбои логируются с контекстом и не приводят к потере данных (запись Media
+    остаётся пригодной для повторной обработки);
+  - поддерживаются JPEG/PNG/WebP; некратные 90° углы, отсутствие файла
+    и неподдерживаемые форматы возвращают `false`.
+- **PhotosRelationManager** (страница редактирования альбома):
+  - действие «Повернуть» — модалка с выбором угла (90° по часовой,
+    180°, 90° против часовой), вызывает `RotateMedia` для media фотографии
+    и показывает success/error-уведомление;
+  - действие «Редактировать» — модалка теперь также позволяет изменять
+    **title** фотографии (`media.title`) вместе с подписью и порядком.
+
+### Тесты
+- **tests/Feature/Actions/RotateMediaTest.php** (9): поворот на 90/180/270°,
+  смена размеров оригинала/thumbnail/кэша, поворот на удалённом диске,
+  некратный угол, нулевой угол, отсутствие файла, неподдерживаемый формат,
+  сбой записи (оригинал и запись не изменяются).
+- **tests/Feature/Filament/AlbumPhotosRelationManagerTest.php** (4): доступность
+  действия «Повернуть», фактический поворот фото из альбома, изменение
+  title/подписи/порядка через «Редактировать», сохранение title при
+  изменении только подписи.
+- Итого 570 тестов / 1492 утверждений — все пройдены.
+
+### Документация
+- Обновлён `architecture.md` (поворот фото в разделе Media Storage).
+
+## 2026-09-01 — C1.1: связь Parent с клиентским альбомом
+
+### Добавлено
+- **Миграция `create_album_user_table`** — pivot `album_user` для many-to-many
+  связи пользователей и альбомов:
+  - `album_id` (FK → `albums.id`, ON DELETE CASCADE), `user_id`
+    (FK → `users.id`, ON DELETE CASCADE), составной первичный ключ
+    `(album_id, user_id)`; при удалении Album или User запись pivot удаляется
+    автоматически
+- **app/Models/Album.php**: связь `users()` (belongsToMany через `album_user`)
+- **app/Models/User.php**: связь `albums()` (belongsToMany через `album_user`)
+
+### Бизнес-правило
+Связь `album_user` используется для назначения конкретного клиентского альбома
+(`type = client`) пользователю `parent`. Parent не получает доступ к альбому
+только потому, что тот находится в его проекте — требуется явная запись pivot.
+
+### Тесты
+- **tests/Feature/Models/AlbumUserTest.php** (7): User может быть связан с Album,
+  Album может иметь пользователей, User может иметь albums, удаление Album
+  удаляет pivot, удаление User удаляет pivot, один пользователь связан с
+  несколькими альбомами, один альбом технически может иметь нескольких
+  пользователей
+
+### Не реализовано (границы задачи)
+Policies, кабинет, комментарии, статусы проектов, интерфейс назначения
+пользователя, изменение `projects`, новая система ролей — вне рамок C1.1.
+
+### Документация
+- **database.md**: добавлена таблица `album_user`, связи в ER-диаграмме
+  (USERS ⟷ ALBUMS через ALBUM_USER)
+- **architecture.md**: pivot `album_user` в списке pivot-таблиц (7 → 8)
+
+### Проверка
+- `php artisan test`: полный тестовый набор прошёл (см. Final report)
+- Pint: см. Final report
+
+## 2026-09-01 — Главная: блок «Наши услуги» — категории вместо услуг
+
+### Изменено
+- **app/Http/Controllers/HomeController.php**: вместо выборки всех опубликованных
+  услуг теперь загружаются корневые категории услуг (`type = service`,
+  `parent_id IS NULL`, `is_published`, `sort_order`) с обложкой
+- **resources/views/home.blade.php**: блок «Наши услуги» отображает карточки
+  категорий (обложка, название, описание, цена «от», кнопка «Подробнее»)
+  вместо карточек услуг; добавлена кнопка «Все услуги» со ссылкой на
+  `route('services.index')` внизу блока
+
+### Тесты
+- **tests/Feature/Http/Controllers/HomeControllerTest.php**:
+  - `test_home_page_shows_services` → `test_home_page_shows_service_categories` —
+    на главной отображается корневая категория услуг
+  - `test_home_page_hides_unpublished_services` → `test_home_page_hides_unpublished_categories` —
+    неопубликованная категория скрыта
+  - добавлен `test_home_page_hides_child_categories` — дочерние категории
+    не отображаются в корневом блоке
+  - добавлен `test_home_page_shows_all_services_link` — кнопка «Все услуги»
+    ведёт на `route('services.index')`
+
+### Проверка
+- HomeController + ServiceCatalogController тесты: 51/51 passed
+- Pint: clean
+
+## 2026-09-01 — B11 «Иерархический каталог услуг»: итоговый аудит и закрытие
+
+### Аудит (без переписывания)
+- Проверена функциональность иерархии `categories` (self-referencing `parent_id`),
+  неограниченной глубины, полей категории, `ServiceCatalogResolver` / `ServiceCatalogController`,
+  URL `/services/{path}`, breadcrumbs-компонента `<x-site.breadcrumbs>`, дерева в Filament,
+  защиты от циклов и удаления категорий с детьми/услугами.
+- Миграции этапа на месте: `add_hierarchy_fields_to_categories_table`,
+  `create_category_video_table`, `create_category_service_item_table`.
+
+### Исправлено (оптимизация запросов, N+1)
+- **`ServiceCatalogController::index()`**:
+  - дочерние категории грузятся с `parent` (устранена ленивая загрузка родителя
+    при `$child->catalogPath()` на карточках подкатегорий);
+  - услуги в категориях грузятся как `cover, items.icon, category`;
+  - `servicesWithoutCategory` грузится как `cover, items.icon, category`;
+    в `get([...])` добавлен столбец `category_id` (нужен для eager load `category`).
+- **`ServiceCatalogController::showService()`**:
+  - основные данные услуги грузятся с `items.icon` (список ServiceItems в шаблоне
+    обращается к `$item->icon`);
+  - список «Другие услуги» (`serviceList`) дополнен связью `category`
+    (устранена ленивая загрузка при `catalogPath()` каждого элемента).
+
+### Тесты (добавлено +3)
+- **`tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php`** — глубина 3:
+  - `test_three_level_parent_page_hides_grandchild_services` — страница родителя не
+    показывает услуги вложенных категорий;
+  - `test_three_level_category_page_renders_full_breadcrumb` — полные breadcrumbs
+    категории 3-го уровня;
+  - `test_three_level_service_renders_full_breadcrumb` — полные breadcrumbs услуги
+    на 3-м уровне вложенности.
+
+### Документация
+- **roadmap.md**: B11 отмечен как выполненный; следующий этап — «Этап 5. Кабинеты клиентов».
+
+### Проверка
+- Полный тестовый набор: 548/548 passed, 1383 assertions (+3 теста к этапу)
+- Pint: clean
+
 ## 2026-08-29 — Категории: автогенерация slug
 
 ### Изменено

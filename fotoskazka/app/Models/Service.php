@@ -16,7 +16,17 @@ class Service extends Model
         'category_id', 'cover_media_id', 'title', 'slug',
         'short_description', 'description', 'examples_title', 'price_from', 'price_note',
         'is_published', 'sort_order', 'seo_title', 'seo_description',
+        'show_album_photos', 'featured_album_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_published' => 'boolean',
+            'show_album_photos' => 'boolean',
+            'price_from' => 'decimal:2',
+        ];
+    }
 
     public function category(): BelongsTo
     {
@@ -26,6 +36,11 @@ class Service extends Model
     public function cover(): BelongsTo
     {
         return $this->belongsTo(Media::class, 'cover_media_id');
+    }
+
+    public function featuredAlbum(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'featured_album_id');
     }
 
     public function inquiries(): HasMany

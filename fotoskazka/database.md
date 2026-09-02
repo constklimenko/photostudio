@@ -52,6 +52,10 @@ erDiagram
 
     USERS ||--o{ PROJECTS : owns
 
+    USERS }o--o{ ALBUMS : accessed_via
+    ALBUM_USER }o--|| ALBUMS
+    ALBUM_USER }o--|| USERS
+
     CATEGORIES ||--o{ SERVICES : categorizes
     CATEGORIES ||--o{ POSTS : categorizes
     CATEGORIES }o--o{ CATEGORIES : parent_child
@@ -168,6 +172,43 @@ Foreign keys:
 user_id -> users.id ON DELETE CASCADE
 role_id -> roles.id ON DELETE CASCADE
 ```
+
+---
+
+## album_user
+
+Pivot для many-to-many связи пользователей (`parent`) и клиентских альбомов.
+
+```sql
+album_id BIGINT UNSIGNED
+user_id BIGINT UNSIGNED
+
+PRIMARY KEY(album_id, user_id)
+```
+
+Foreign keys:
+
+```sql
+album_id -> albums.id ON DELETE CASCADE
+user_id -> users.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(user_id)
+```
+
+Связь используется для назначения конкретного клиентского альбома пользователю
+`parent`. Parent получает доступ только к явно назначенным альбомам — не ко всем
+альбомам своего проекта.
+
+Методы моделей:
+
+| Модель | Метод   | Связь                                    |
+|--------|---------|------------------------------------------|
+| Album  | `users()` | Пользователи, которым назначен альбом (BelongsToMany через `album_user`) |
+| User   | `albums()` | Клиентские альбомы, назначенные пользователю (BelongsToMany через `album_user`) |
 
 ---
 
@@ -592,6 +633,12 @@ short_description TEXT NULL
 
 description LONGTEXT NULL
 
+examples_title VARCHAR(255) NULL
+
+show_album_photos BOOLEAN DEFAULT FALSE
+
+featured_album_id BIGINT NULL
+
 price_from DECIMAL(10,2) NULL
 
 price_note TEXT NULL
@@ -612,6 +659,7 @@ Foreign keys:
 ```sql
 category_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
+featured_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -621,7 +669,21 @@ UNIQUE(slug)
 INDEX(category_id)
 INDEX(is_published)
 INDEX(sort_order)
+INDEX(featured_album_id)
 ```
+
+Поля показа альбома блоком:
+
+| Поле              | Назначение                                                                   |
+|-------------------|------------------------------------------------------------------------------|
+| show_album_photos | Переключатель: показывать выбранный альбом на странице услуги как сетку фото |
+| featured_album_id | Альбом, который отображается всеми фото вместо карточки                      |
+
+При `show_album_photos = true` выбранный альбом исключается из списка
+альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
+с lightbox (как на странице альбома). Если список карточек остаётся непустым
+(осталось ≥ 1 альбом), он рендерится перед сеткой. Настройка доступна только
+для услуги (категории не затрагиваются).
 
 ---
 
@@ -1140,6 +1202,10 @@ file_path VARCHAR(1000) NULL
 
 type VARCHAR(10) DEFAULT 'horizontal'
 
+rotation INT DEFAULT 0
+
+has_sound BOOLEAN DEFAULT TRUE
+
 sort_order INT DEFAULT 0
 
 is_active BOOLEAN DEFAULT TRUE
@@ -1156,6 +1222,22 @@ updated_at TIMESTAMP
 | ---------- | ----------------------------------- |
 | horizontal | Горизонтальное видео                |
 | vertical   | Вертикальное видео (9:16, Reels)    |
+
+Поле `rotation` задаёт визуальный поворот загруженного видео на страницах сайта:
+
+| rotation | Поворот                      |
+| -------- | ---------------------------- |
+| 0        | Без поворота (по умолчанию)  |
+| 90       | На 90° по часовой стрелке    |
+| -90      | На 90° против часовой        |
+
+Поворот применяется только к загруженным файлам (CSS-transform в компоненте
+`x-site.video-player`), файл на диске не изменяется; прямые ссылки
+`/video/{id}/stream` отдают файл без поворота.
+
+Флаг `has_sound` управляет звуком на сайте: при `false` видео воспроизводится
+без звука (атрибут `muted`). Включается/выключается только в админке, кнопки
+в плеере нет. По умолчанию звук включён (`TRUE`).
 
 Видео может быть как ссылкой (YouTube, Vimeo, Rutube, VK Video), так и загруженным файлом (MP4, WebM, OGG, MOV, AVI).
 При наличии `file_path` приоритет отдаётся загруженному файлу. URL автоматически конвертируется в embed-ссылку.

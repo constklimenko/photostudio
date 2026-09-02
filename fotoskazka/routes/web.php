@@ -27,6 +27,7 @@ Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(f
 });
 
 Route::get('/video', [VideoController::class, 'index'])->name('video.index');
+Route::get('/video/{video}/stream', [VideoController::class, 'stream'])->name('video.stream');
 
 Route::get('/media/{media}/original', [MediaController::class, 'original'])
     ->name('media.original');

@@ -37,21 +37,21 @@
 
 <x-site.social-links variant="section" />
 
-@if ($services->isNotEmpty())
+@if ($homeCategories->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['services']->home_title ?? 'Наши услуги' }}</h2>
             <p class="mt-3 text-gray-400 text-center">{{ $homeSections['services']->home_subtitle ?? 'Выберите подходящий формат съёмки' }}</p>
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                @foreach ($services as $service)
-                    <a href="{{ route('services.show', $service->catalogPath()) }}"
+                @foreach ($homeCategories as $category)
+                    <a href="{{ route('services.show', $category->catalogPath()) }}"
                        class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                        data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-@if ($service->cover)
+@if ($category->cover)
                              <div class="aspect-[4/3] bg-gray-100">
-                                 <img src="{{ $service->cover->getThumbnailUrl() }}"
-                                      alt="{{ $service->title }}"
+                                 <img src="{{ $category->cover->getThumbnailUrl() }}"
+                                      alt="{{ $category->name }}"
                                       class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                              </div>
                         @else
@@ -62,16 +62,26 @@
                             </div>
                         @endif
                         <div class="p-5">
-                            <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $service->title }}</h3>
-                            @if ($service->short_description)
-                                <p class="mt-2 text-sm text-gray-400 line-clamp-2">{{ $service->short_description }}</p>
+                            <h3 class="font-heading font-semibold tracking-wide text-white group-hover:text-[#d4af37] transition">{{ $category->name }}</h3>
+                            @if (filled(strip_tags((string) $category->description)))
+                                <p class="mt-2 text-sm text-gray-400 line-clamp-2">{{ Str::limit(strip_tags((string) $category->description), 120) }}</p>
                             @endif
-                            @if ($service->price_from)
-                                <p class="mt-3 font-medium text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
-                            @endif
+                            <div class="mt-3 flex items-center justify-between">
+                                @if ($category->price_from)
+                                    <span class="text-sm font-medium text-[#d4af37]">от {{ number_format($category->price_from, 0, ',', ' ') }} ₽</span>
+                                @endif
+                                <span class="text-sm text-[#d4af37] font-semibold uppercase tracking-wider group-hover:opacity-70 transition">Подробнее</span>
+                            </div>
                         </div>
                     </a>
                 @endforeach
+            </div>
+
+            <div class="mt-12 text-center">
+                <a href="{{ route('services.index') }}"
+                   class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                    Все услуги
+                </a>
             </div>
         </div>
     </section>
@@ -118,21 +128,9 @@
             @if ($horizontalVideos->isNotEmpty())
                 <div class="mt-12 max-w-5xl mx-auto space-y-10">
                     @foreach ($horizontalVideos as $video)
-                        <div class="aspect-[4/3] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
+                        <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
                              data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            @if ($video->is_upload)
-                                <video class="w-full h-full" controls playsinline preload="metadata">
-                                    <source src="{{ $video->source_url }}" type="video/mp4">
-                                </video>
-                            @else
-                                <iframe src="{{ $video->embed_url }}"
-                                        title="{{ $video->title }}"
-                                        class="w-full h-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowfullscreen
-                                        loading="lazy">
-                                </iframe>
-                            @endif
+                            <x-site.video-player :video="$video" />
                         </div>
                     @endforeach
                 </div>
@@ -142,20 +140,8 @@
                 <div class="mt-12 video-slider" data-video-slider data-aos="fade-up">
                     @foreach ($verticalVideos as $video)
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            <div class="aspect-[9/16] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-                                @if ($video->is_upload)
-                                    <video class="w-full h-full object-cover" controls playsinline preload="metadata">
-                                        <source src="{{ $video->source_url }}" type="video/mp4">
-                                    </video>
-                                @else
-                                    <iframe src="{{ $video->embed_url }}"
-                                            title="{{ $video->title }}"
-                                            class="w-full h-full"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowfullscreen
-                                            loading="lazy">
-                                    </iframe>
-                                @endif
+                            <div class="relative {{ $video->isRotated() ? 'aspect-video' : 'aspect-[9/16]' }} rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
+                                <x-site.video-player :video="$video" />
                             </div>
                         </div>
                     @endforeach

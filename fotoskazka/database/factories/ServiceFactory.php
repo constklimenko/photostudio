@@ -17,6 +17,7 @@ class ServiceFactory extends Factory
             'short_description' => fake()->paragraph(),
             'description' => fake()->randomHtml(),
             'price_from' => fake()->randomFloat(2, 1000, 100000),
+            'show_album_photos' => false,
             'is_published' => true,
             'sort_order' => fake()->numberBetween(0, 100),
         ];

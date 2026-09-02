@@ -117,6 +117,17 @@ class ServiceForm
                             ->preload()
                             ->searchable()
                             ->columnSpanFull(),
+                        Toggle::make('show_album_photos')
+                            ->label('Показать первый альбом блоком с фото')
+                            ->helperText('Отобразить выбранный альбом как сетку фотографий вместо карточки')
+                            ->live(),
+                        Select::make('featured_album_id')
+                            ->label('Альбом для отображения блоком')
+                            ->relationship('featuredAlbum', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->columnSpanFull(),
                     ]),
                 Section::make('Видео')
                     ->schema([

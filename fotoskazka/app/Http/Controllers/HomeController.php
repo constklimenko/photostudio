@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Album;
+use App\Models\Category;
 use App\Models\FaqItem;
 use App\Models\Inquiry;
 use App\Models\Post;
@@ -21,11 +22,13 @@ class HomeController extends Controller
 
         $homeSections = $pageContent->getHomeSections();
 
-        $services = Service::query()
+        $homeCategories = Category::query()
+            ->where('type', 'service')
+            ->where('parent_id', null)
             ->where('is_published', true)
             ->orderBy('sort_order')
             ->with('cover')
-            ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id', 'short_description', 'price_from']);
+            ->get(['id', 'cover_media_id', 'name', 'slug', 'description', 'price_from', 'sort_order']);
 
         $featuredWorks = Album::query()
             ->where('type', 'portfolio')
@@ -79,7 +82,7 @@ class HomeController extends Controller
         return view('home', compact(
             'page',
             'homeSections',
-            'services',
+            'homeCategories',
             'featuredWorks',
             'testimonials',
             'latestPosts',

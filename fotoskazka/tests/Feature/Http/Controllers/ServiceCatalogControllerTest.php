@@ -6,6 +6,7 @@ use App\Models\Album;
 use App\Models\Category;
 use App\Models\Media;
 use App\Models\Page;
+use App\Models\Photo;
 use App\Models\Service;
 use App\Models\ServiceItem;
 use App\Models\Video;
@@ -178,6 +179,155 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Альбом образец');
         $response->assertSee('Видео процесса');
         $response->assertSee('Оставить заявку');
+    }
+
+    public function test_service_page_shows_featured_album_photos_block(): void
+    {
+        $album = Album::factory()->create(['is_published' => true, 'title' => 'Галерея примеров']);
+
+        $media1 = Media::factory()->create(['file_path' => 'albums/photo-1.jpg']);
+        $media2 = Media::factory()->create(['file_path' => 'albums/photo-2.jpg']);
+
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media1->id, 'caption' => 'Фото один', 'sort_order' => 1]);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media2->id, 'sort_order' => 2]);
+
+        $this->classic->albums()->attach($album->id);
+        $this->classic->update(['show_album_photos' => true, 'featured_album_id' => $album->id]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSee('Галерея примеров');
+        $response->assertSee(route('media.lightbox', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.display', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.lightbox', ['media' => $media2->id]), false);
+        $response->assertSee('data-caption="Фото один"', false);
+        $response->assertSee('lightboxCaption', false);
+        $response->assertDontSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_service_page_shows_remaining_albums_as_cards_before_photos(): void
+    {
+        $featured = Album::factory()->create(['is_published' => true, 'title' => 'Альбом-блок']);
+        $other = Album::factory()->create(['is_published' => true, 'title' => 'Обычный пример']);
+
+        $media = Media::factory()->create(['file_path' => 'albums/featured.jpg']);
+        Photo::factory()->create(['album_id' => $featured->id, 'media_id' => $media->id]);
+
+        $this->classic->albums()->attach([$featured->id, $other->id]);
+        $this->classic->update(['show_album_photos' => true, 'featured_album_id' => $featured->id]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertSeeInOrder(['Примеры работ', 'Обычный пример', 'Альбом-блок']);
+        $response->assertSee(route('portfolio.show', $other->slug), false);
+        $response->assertDontSee(route('portfolio.show', $featured->slug), false);
+    }
+
+    public function test_service_page_hides_featured_album_photos_when_toggle_off(): void
+    {
+        $album = Album::factory()->create(['is_published' => true, 'title' => 'Обычный пример']);
+
+        $media = Media::factory()->create(['file_path' => 'albums/hidden.jpg']);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $this->classic->albums()->attach($album->id);
+        $this->classic->update(['show_album_photos' => false, 'featured_album_id' => $album->id]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee(route('media.lightbox', ['media' => $media->id]), false);
+        $response->assertSee('Обычный пример');
+        $response->assertSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_service_page_does_not_show_unpublished_featured_album(): void
+    {
+        $album = Album::factory()->create(['is_published' => false, 'title' => 'Черновик']);
+
+        $media = Media::factory()->create(['file_path' => 'albums/draft.jpg']);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $this->classic->albums()->attach($album->id);
+        $this->classic->update(['show_album_photos' => true, 'featured_album_id' => $album->id]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee(route('media.lightbox', ['media' => $media->id]), false);
+        $response->assertDontSee('Черновик');
+    }
+
+    public function test_three_level_parent_page_hides_grandchild_services(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Стандарт');
+    }
+
+    public function test_three_level_category_page_renders_full_breadcrumb(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ', 'Классика']);
+        $response->assertSee('Стандарт');
+    }
+
+    public function test_three_level_service_renders_full_breadcrumb(): void
+    {
+        $classicCategory = Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'klassika',
+            'parent_id' => $this->schools->id,
+            'is_published' => true,
+            'name' => 'Классика',
+        ]);
+
+        Service::factory()->create([
+            'category_id' => $classicCategory->id,
+            'slug' => 'standart',
+            'is_published' => true,
+            'title' => 'Стандарт',
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika/standart');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Главная', 'Услуги', 'Выпускные альбомы', 'Для школ', 'Классика', 'Стандарт']);
+        $response->assertSee('Стандарт');
     }
 
     public function test_service_page_renders_full_breadcrumb(): void

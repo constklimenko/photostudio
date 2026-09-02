@@ -30,6 +30,20 @@ class VideoForm
                             ])
                             ->default('horizontal')
                             ->label('Формат'),
+                        Select::make('rotation')
+                            ->default(0)
+                            ->options([
+                                0 => 'Без поворота',
+                                90 => '90° по часовой',
+                                -90 => '90° против часовой',
+                            ])
+                            ->label('Поворот')
+                            ->helperText('Применяется к загруженному файлу: вертикальный клип будет отображаться горизонтально')
+                            ->live(),
+                        Toggle::make('has_sound')
+                            ->default(true)
+                            ->label('С сайта звук должен звучать')
+                            ->helperText('При выключении видео на страницах сайта воспроизводится без звука (muted)'),
                         TextInput::make('url')
                             ->nullable()
                             ->maxLength(1000)

@@ -12,13 +12,15 @@ class Video extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'url', 'file_path', 'type', 'sort_order', 'is_active', 'show_on_home'];
+    protected $fillable = ['title', 'url', 'file_path', 'type', 'rotation', 'has_sound', 'sort_order', 'is_active', 'show_on_home'];
 
     protected function casts(): array
     {
         return [
             'is_active' => 'boolean',
             'show_on_home' => 'boolean',
+            'has_sound' => 'boolean',
+            'rotation' => 'integer',
             'sort_order' => 'integer',
         ];
     }
@@ -91,10 +93,15 @@ class Video extends Model
         return ! is_null($this->file_path);
     }
 
+    public function isRotated(): bool
+    {
+        return (int) $this->rotation !== 0;
+    }
+
     public function getSourceUrlAttribute(): ?string
     {
         if ($this->file_path) {
-            return Storage::disk($this->getDefaultDisk())->url($this->file_path);
+            return route('video.stream', $this->id);
         }
 
         return $this->url;
