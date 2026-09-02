@@ -35,13 +35,14 @@
 ### Тесты
 - **tests/Feature/Http/Controllers/VideoControllerTest.php**: тесты поворота
   переведены на `rotation`; добавлен тест поворота против часовой
-  (`rotate(-90deg)`), проверка, что `data-video-player` не рендерится при 0.
+  (`rotate(-90deg)`), проверка, что `data-video-player` не рендерится при 0,
+  а также muted-рендер при `has_sound = false` и его отсутствие при включённом звуке.
 - **tests/Feature/Filament/VideoResourceTest.php**: create/update через форму
-  с `rotation` (±90).
-- Итого 586 тестов — все пройдены (предыдущий прогон 585).
+  с `rotation` (±90) и `has_sound`.
+- Итого 588 тестов — все пройдены (предыдущий прогон 586).
 
 ### Документация
-- Обновлён `database.md` (поле `videos.rotation`, значения, поведение).
+- Обновлён `database.md` (поле `videos.rotation` и `videos.has_sound`, значения, поведение).
 - Обновлён `architecture.md` (роут `video.stream`, раздел «Плеер видео:
   поворот ±90° и запрет скачивания», компонент `video-player`).
 

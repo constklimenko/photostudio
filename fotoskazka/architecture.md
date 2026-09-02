@@ -724,6 +724,9 @@ storage/app/public/
   `Cache-Control: private, no-store` + `Content-Disposition: inline`;
   на `<video>` — `controlsList="nodownload noremoteplayback"`,
   `disablepictureinpicture`, `oncontextmenu="return false"`, `preload="none"`.
+- **Звук управляется только в админке** через поле `Video.has_sound`:
+  при `false` на `<video>` добавляется атрибут `muted` (и повёрнутых, и обычных
+  загруженных видео); кнопки в кастомном плеере нет.
 
 ### Кэш производных изображений (display / lightbox)
 

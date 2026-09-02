@@ -163,7 +163,116 @@ class VideoControllerTest extends TestCase
         $response->assertHeader('Content-Disposition', 'inline; filename="clip.mp4"');
         $response->assertHeaderContains('Cache-Control', 'no-store');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('Accept-Ranges', 'bytes');
+        $response->assertHeader('Content-Length', '19');
         $this->assertStringContainsString('fake-binary-content', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_single_byte_range(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=2-5']);
+
+        $response->assertStatus(206);
+        $response->assertHeader('Content-Range', 'bytes 2-5/10');
+        $response->assertHeader('Content-Length', '4');
+        $this->assertSame('2345', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_open_ended_range(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=7-']);
+
+        $response->assertStatus(206);
+        $response->assertHeader('Content-Range', 'bytes 7-9/10');
+        $this->assertSame('789', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_suffix_range(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=-4']);
+
+        $response->assertStatus(206);
+        $response->assertHeader('Content-Range', 'bytes 6-9/10');
+        $this->assertSame('6789', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_multiple_byte_ranges(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=2-3,7-8']);
+
+        $response->assertStatus(206);
+        $response->assertHeaderContains('Content-Type', 'multipart/byteranges');
+        $this->assertStringContainsString('bytes 2-3/10', $response->streamedContent());
+        $this->assertStringContainsString('bytes 7-8/10', $response->streamedContent());
+        $this->assertStringContainsString('23', $response->streamedContent());
+        $this->assertStringContainsString('78', $response->streamedContent());
+    }
+
+    public function test_stream_route_returns_unsatisfiable_range(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=50-60']);
+
+        $response->assertStatus(416);
+        $response->assertHeader('Content-Range', 'bytes */10');
+    }
+
+    public function test_stream_route_returns_304_on_matching_etag(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', 'fake-binary-content');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id));
+        $etag = $response->headers->get('ETag');
+        $this->assertNotEmpty($etag);
+
+        $response304 = $this->get(route('video.stream', $video->id), ['If-None-Match' => $etag]);
+
+        $response304->assertStatus(304);
     }
 
     public function test_stream_returns_404_when_video_has_no_file(): void

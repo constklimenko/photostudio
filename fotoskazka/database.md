@@ -1204,6 +1204,8 @@ type VARCHAR(10) DEFAULT 'horizontal'
 
 rotation INT DEFAULT 0
 
+has_sound BOOLEAN DEFAULT TRUE
+
 sort_order INT DEFAULT 0
 
 is_active BOOLEAN DEFAULT TRUE
@@ -1232,6 +1234,10 @@ updated_at TIMESTAMP
 Поворот применяется только к загруженным файлам (CSS-transform в компоненте
 `x-site.video-player`), файл на диске не изменяется; прямые ссылки
 `/video/{id}/stream` отдают файл без поворота.
+
+Флаг `has_sound` управляет звуком на сайте: при `false` видео воспроизводится
+без звука (атрибут `muted`). Включается/выключается только в админке, кнопки
+в плеере нет. По умолчанию звук включён (`TRUE`).
 
 Видео может быть как ссылкой (YouTube, Vimeo, Rutube, VK Video), так и загруженным файлом (MP4, WebM, OGG, MOV, AVI).
 При наличии `file_path` приоритет отдаётся загруженному файлу. URL автоматически конвертируется в embed-ссылку.
