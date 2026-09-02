@@ -161,7 +161,8 @@ class VideoControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'video/mp4');
         $response->assertHeader('Content-Disposition', 'inline; filename="clip.mp4"');
-        $response->assertHeaderContains('Cache-Control', 'no-store');
+        $response->assertHeaderContains('Cache-Control', 'private');
+        $response->assertHeaderContains('Cache-Control', 'max-age=86400');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('Accept-Ranges', 'bytes');
         $response->assertHeader('Content-Length', '19');

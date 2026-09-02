@@ -702,8 +702,20 @@ storage/app/public/
 - **Роут `GET /video/{video}/stream`** — сырой поток загруженного видео через
   `VideoController@stream` (StreamedResponse, диск `filesystems.default_media_disk`).
   Заголовки: `Content-Type: video/mp4`, `Content-Disposition: inline`,
-  `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`,
-  `Accept-Ranges: bytes`. 404 при отсутствии `file_path` или файла.
+  `Cache-Control: private, max-age=86400, immutable`, `X-Content-Type-Options: nosniff`,
+  `Accept-Ranges: bytes`, `ETag`. 404 при отсутствии `file_path`/файла.
+- **Кэширование браузером**: `private max-age` позволяет хранить видео в
+  кэше конкретного браузера (недоступно для CDN/прокси/промежуточных узлов);
+  ETag + `If-None-Match` дают дешёвую ревалидацию (304). File не перезаписывается
+  по содержимому, поэтому `immutable` оправдан.
+- **Поддержка HTTP Range (206 Partial Content)** для мгновенного старта
+  воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
+  одиночные `bytes=start-end`, открытые (`bytes=n-`), суффиксные (`bytes=-n`)
+  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`) диапазоны;
+  `If-None-Match` → `304`, неудовлетворимый диапазон → `416` с
+  `Content-Range: bytes */size`. Стрим читается локально
+  (`fopen` + `fseek`/`fread` чанками 8 КБ), между запросами полнотелого 200 и
+  сегмента 206 выставляются `Content-Length`/`Content-Range`.
 - **`Video::source_url`** указывает на `video.stream` (прокси вместо `Storage::url`),
   чтобы не публиковать реальный путь файла напрямую.
 - **Компонент `x-site.video-player`** (`resources/views/components/site/video-player.blade.php`)
@@ -721,9 +733,13 @@ storage/app/public/
   (`0` / `90` / `-90`); контейнер повёрнутого видео — `aspect-video`, неповёрнутого
   вертикального — `aspect-[9/16]`. Прямой `/video/{id}/stream` отдаёт файл без поворота.
 - **Запрет скачивания (затруднение, не 100% защита)**: прокси-роут с
-  `Cache-Control: private, no-store` + `Content-Disposition: inline`;
-  на `<video>` — `controlsList="nodownload noremoteplayback"`,
-  `disablepictureinpicture`, `oncontextmenu="return false"`, `preload="none"`.
+  `Content-Disposition: inline` и приватным кэшем; на `<video>` —
+  `controlsList="nodownload noremoteplayback"`, `disablepictureinpicture`,
+  `oncontextmenu="return false"`.
+- **Ленивая подгрузка**: `preload="auto"` — браузер сразу после загрузки
+  страницы подтягивает метаданные и часть видео (на странице не больше 3 видео),
+  поэтому воспроизведение начинается мгновенно; скачанные байты остаются в
+  браузерном кэше (см. выше) и повторное открытие не перекачивает файл.
 - **Звук управляется только в админке** через поле `Video.has_sound`:
   при `false` на `<video>` добавляется атрибут `muted` (и повёрнутых, и обычных
   загруженных видео); кнопки в кастомном плеере нет.

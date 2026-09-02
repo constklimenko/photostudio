@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-09-01 — Мгновенное воспроизведение видео: поддержка HTTP Range в потоке
+
+### Исправлено
+- **app/Http/Controllers/VideoController.php** — `stream()` теперь поддерживает
+  HTTP Range-запросы, из-за отсутствия которых браузер ждал весь файл (~41 МБ)
+  до начала воспроизведения:
+  - одиночные диапазоны `bytes=start-end`, открытые `bytes=n-`, суффиксные
+    `bytes=-n`, множественные `bytes=a-b,c-d` → `206 Partial Content`;
+  - множественные диапазоны отдаются как `multipart/byteranges`;
+  - неудовлетворимый диапазон → `416` + `Content-Range: bytes */size`;
+  - `If-None-Match` (ETag) → `304 Not Modified`;
+  - полнотелый запрос без Range → `200` с `Content-Length`;
+  - тело стримится локально (`fopen` + `fseek`/`fread`, чанки 8 КБ);
+  - защитные заголовки (`Cache-Control: private, no-store`, `X-Content-Type-Options:
+    nosniff`, `Content-Disposition: inline`, `Accept-Ranges: bytes`) сохранены.
+
+### Тесты
+- **tests/Feature/Http/Controllers/VideoControllerTest.php** (+8): полнотелый
+  200 с `Content-Length`, одиночный `206` с корректным слайсом и `Content-Range`,
+  открытый и суффиксный диапазоны, множественный `206 multipart/byteranges`,
+  416 на неудовлетворимый диапазон, 304 по `If-None-Match`.
+- Итого 594 теста — все пройдены (предыдущий прогон 588).
+
+### Документация
+- Обновлён `architecture.md` (раздел поддержки Range в `video.stream`).
+
 ## 2026-09-01 — Вращение видео на ±90°, управление звуком и запрет скачивания
 
 ### Добавлено
