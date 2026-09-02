@@ -351,7 +351,7 @@ class ServiceCatalogControllerTest extends TestCase
 
         $response = $this->get('/services/vypusknye-albomy');
 
-        $response->assertSee('covers/album-cover.jpg', false);
+        $response->assertSee(route('media.display', ['media' => $media->id]), false);
         $response->assertSee('alt="Выпускные альбомы"', false);
     }
 

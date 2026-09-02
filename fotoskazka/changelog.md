@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-03 — Исправление устаревшего теста обложки категории
+
+### Исправлено
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** —
+  `test_category_page_shows_cover_image` проверял оригинальный путь
+  `covers/album-cover.jpg`, тогда как страница категории рендерит обложку через
+  display-кэш (`getDisplayUrl()` → `/media/{id}/display`). Тест переведён на
+  современный паттерн (как в `PortfolioControllerTest`): проверяется
+  `route('media.display', ...)` + `alt`.
+
+### Проверка
+- Полный тестовый набор: 600/600 passed (ранее падал 1 тест)
+
+---
+
 ## 2026-09-02 — Прикрепление альбомов к категориям
 
 Дублированы возможности услуг для категорий каталога (`type = service`): прикрепление
