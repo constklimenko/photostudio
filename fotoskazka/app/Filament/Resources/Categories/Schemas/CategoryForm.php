@@ -126,6 +126,32 @@ class CategoryForm
                             ])
                             ->columnSpanFull(),
                     ]),
+                Section::make('Примеры работ')
+                    ->schema([
+                        TextInput::make('examples_title')
+                            ->maxLength(255)
+                            ->nullable()
+                            ->placeholder('Примеры работ')
+                            ->columnSpanFull(),
+                        Select::make('albums')
+                            ->multiple()
+                            ->relationship('albums', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->columnSpanFull(),
+                        Toggle::make('show_album_photos')
+                            ->label('Показать первый альбом блоком с фото')
+                            ->helperText('Отобразить выбранный альбом как сетку фотографий вместо карточки')
+                            ->live()
+                            ->columnSpanFull(),
+                        Select::make('featured_album_id')
+                            ->label('Альбом для отображения блоком')
+                            ->relationship('featuredAlbum', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Видео')
                     ->schema([
                         Select::make('videos')

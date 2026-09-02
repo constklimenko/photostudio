@@ -241,6 +241,36 @@ INDEX(sort_order)
 
 ---
 
+## category_album
+
+Pivot для many-to-many связи категорий услуг и альбомов-примеров.
+
+```sql
+category_id BIGINT UNSIGNED
+album_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, album_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+album_id -> albums.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(album_id)
+```
+
+Связь используется для прикрепления альбомов-примеров к категории каталога услуг
+(аналогично `album_service`). Управляется в `CategoryForm`, отображается на
+публичной странице категории `/services/...` как сетка карточек.
+
+---
+
 ## album_service
 
 Pivot для many-to-many связи услуг и альбомов-примеров.
@@ -439,12 +469,15 @@ type ENUM(
     'post'
 )
 description TEXT NULL
+examples_title VARCHAR(255) NULL
 price_from DECIMAL(10,2) NULL
 price_note TEXT NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
 sort_order INT DEFAULT 0
+show_album_photos BOOLEAN DEFAULT FALSE
+featured_album_id BIGINT NULL
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -455,6 +488,7 @@ updated_at TIMESTAMP
 ```sql
 parent_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
+featured_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
@@ -468,6 +502,9 @@ cover_media_id -> media.id ON DELETE SET NULL
 | `cover()`   | Обложка категории (BelongsTo → media)                        |
 | `services()`| Услуги, непосредственно принадлежащие категории (HasMany)    |
 | `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
+| `videos()`  | Видео, прикреплённые к категории (BelongsToMany)             |
+| `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
+| `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
 | `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
 | `descendants()` | Все потомки в глубину любых уровней                       |
 | `path(true)` | Полный путь от корня до самой категории                     |
@@ -475,6 +512,19 @@ cover_media_id -> media.id ON DELETE SET NULL
 Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
 запрещено выбирать категорию в качестве собственного родителя и делать
 потомка родителем предка (`A → B → C → A`).
+
+Поля показа альбома блоком (аналогично услугам):
+
+| Поле              | Назначение                                                                |
+|-------------------|---------------------------------------------------------------------------|
+| examples_title    | Заголовок секции альбомов-примеров (фоллбэк: «Примеры работ»)             |
+| show_album_photos | Переключатель: показывать выбранный альбом на странице категории как сетку фото |
+| featured_album_id | Альбом, который отображается всеми фото вместо карточки                   |
+
+При `show_album_photos = true` выбранный альбом исключается из списка
+альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
+с lightbox (как на странице услуги). Если список карточек остаётся непустым
+(осталось ≥ 1 альбом), он рендерится перед сеткой.
 
 Indexes:
 
@@ -485,6 +535,7 @@ INDEX(sort_order)
 INDEX(parent_id)
 INDEX(cover_media_id)
 INDEX(is_published)
+INDEX(featured_album_id)
 ```
 
 ---

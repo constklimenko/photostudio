@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-09-02 — Прикрепление альбомов к категориям
+
+Дублированы возможности услуг для категорий каталога (`type = service`): прикрепление
+альбомов-примеров и вывод выбранного альбома блоком с фото.
+
+### Добавлено
+- **Миграция** `2026_09_02_175143_create_category_album_table` — pivot `category_album`
+  (many-to-many категории ↔ альбомы, `CASCADE` с обеих сторон).
+- **Миграция** `2026_09_02_175149_add_featured_album_fields_to_categories_table` —
+  в `categories` добавлены `show_album_photos` (boolean, default false)
+  и `featured_album_id` (nullable FK → `albums`, `ON DELETE SET NULL`).
+- **Миграция** `2026_09_02_190253_add_examples_title_to_categories_table` —
+  в `categories` добавлен настраиваемый заголовок `examples_title` (nullable).
+- **app/Models/Category.php** — отношения `albums()` (BelongsToMany через
+  `category_album`) и `featuredAlbum()` (BelongsTo); `$fillable` и `$casts`
+  дополнены новыми полями.
+- **app/Models/Album.php** — обратное отношение `categories()` (BelongsToMany).
+- **app/Filament/Resources/Categories/Schemas/CategoryForm.php** — раздел
+  «Примеры работ»: TextInput `examples_title`, multi-select `albums`, Toggle
+  `show_album_photos` «Показать первый альбом блоком с фото», Select
+  `featured_album_id`.
+- **app/Http/Controllers/ServiceCatalogController.php** — `showCategory()` грузит
+  альбомы категории и (при включённом переключателе) `featuredAlbum` с `photos.media`,
+  исключая выбранный альбом из карточек (как у услуги).
+- **resources/views/services/category.blade.php** — секция «Примеры работ»
+  (сетка карточек альбомов, заголовок `examples_title` с фоллбэком «Примеры работ»)
+  и блок фото выбранного альбома через `<x-site.album-photos>`.
+
+### Документация
+- Обновлены `database.md` (таблица `category_album`, новые поля категорий, связи)
+  и `architecture.md` (раздел альбома на странице категории).
+
+### Тесты
+- `ServiceCatalogControllerTest` — 32/33 проходят; падение
+  `test_category_page_shows_cover_image` — известное независящее падение среды
+  Media/Storage (не связано с этой задачей).
+
+---
 ## 2026-09-02 — Запрет включения звука, когда звук отключён в админке
 
 ### Изменено

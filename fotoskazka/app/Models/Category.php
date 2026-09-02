@@ -20,18 +20,22 @@ class Category extends Model
         'slug',
         'type',
         'description',
+        'examples_title',
         'price_from',
         'price_note',
         'seo_title',
         'seo_description',
         'is_published',
         'sort_order',
+        'show_album_photos',
+        'featured_album_id',
     ];
 
     protected function casts(): array
     {
         return [
             'is_published' => 'boolean',
+            'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
         ];
     }
@@ -72,6 +76,16 @@ class Category extends Model
         return $this->belongsToMany(ServiceItem::class, 'category_service_item')
             ->withPivot('is_included', 'sort_order')
             ->orderByPivot('sort_order');
+    }
+
+    public function albums(): BelongsToMany
+    {
+        return $this->belongsToMany(Album::class, 'category_album');
+    }
+
+    public function featuredAlbum(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'featured_album_id');
     }
 
     /**
