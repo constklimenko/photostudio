@@ -367,6 +367,7 @@ class VideoControllerTest extends TestCase
 
         $response->assertSee('<video', false);
         $response->assertSee(' muted', false);
+        $response->assertSee('data-video-forbid-sound', false);
     }
 
     public function test_index_does_not_render_muted_when_has_sound_enabled(): void
@@ -386,5 +387,6 @@ class VideoControllerTest extends TestCase
 
         $response->assertSee('<video', false);
         $response->assertDontSee(' muted', false);
+        $response->assertDontSee('data-video-forbid-sound', false);
     }
 }

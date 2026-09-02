@@ -60,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.querySelectorAll('video[data-video-forbid-sound]').forEach((video) => {
+        const enforceMuted = () => {
+            if (!video.muted) video.muted = true;
+        };
+
+        video.muted = true;
+        video.addEventListener('volumechange', enforceMuted);
+        video.addEventListener('play', enforceMuted);
+        video.addEventListener('loadedmetadata', enforceMuted);
+    });
+
     document.querySelectorAll('[data-video-player]').forEach((player) => {
         const video = player.querySelector('video');
         if (!video) return;

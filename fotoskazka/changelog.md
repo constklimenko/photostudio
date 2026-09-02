@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-09-02 — Запрет включения звука, когда звук отключён в админке
+
+### Изменено
+- **resources/views/components/site/video-player.blade.php**: при `has_sound = false`
+  на загруженных видео (и повёрнутых, и обычных) на `<video>` теперь добавляется
+  атрибут `data-video-forbid-sound` (вместе с `muted`). У обычных (неповёрнутых)
+  видео в `controlsList` добавлен `noplaybackrate`.
+- **resources/js/app.js**: для всех `video[data-video-forbid-sound]` принудительно
+  устанавливается `muted = true`, а слушатели `volumechange`/`play`/`loadedmetadata`
+  заново приглушают видео — пользователь физически не может включить звук через
+  нативные контролы: кнопка mute/громкость не дают эффекта.
+- **app/Models/Video.php**: `embed_url` теперь учитывает `has_sound`. Когда звук
+  отключён, в URL встраиваемого плеера добавляется параметр приглушения:
+  - YouTube → `?mute=1`;
+  - Vimeo / Rutube → `?muted=1`;
+  - VK (`video_ext.php`) → `&muted=1`.
+
+Такое поведение распространяется на все типы плеера: кастомный (повёрнутые),
+нативный (неповёрнутые) и встраиваемые (YouTube/Vimeo/Rutube/VK).
+
+### Тесты
+- **tests/Unit/Models/VideoModelTest.php** (+6): muted-параметры в embed_url
+  при `has_sound = false` для YouTube/Vimeo/Rutube/VK и их отсутствие при
+  `has_sound = true`.
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: тесты muted-рендера
+  дополнены проверкой наличия/отсутствия `data-video-forbid-sound`.
+- Итого тесты прошли, кроме предшествующего независящего падения
+  `ServiceCatalogControllerTest::test_category_page_shows_cover_image` (среда
+  Media/Storage, не связано с этой задачей).
+
+### Документация
+- Обновлён `architecture.md`.
+
 ## 2026-09-01 — Ленивая подгрузка видео и кэширование браузером
 
 ### Добавлено
