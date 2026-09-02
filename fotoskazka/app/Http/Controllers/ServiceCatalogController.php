@@ -88,7 +88,8 @@ class ServiceCatalogController extends Controller
         $serviceList = Service::query()
             ->where('is_published', true)
             ->whereKeyNot($service->id)
-            ->orderBy('sort_order')
+            ->inRandomOrder()
+            ->limit(3)
             ->with(['cover', 'category'])
             ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id']);
 
