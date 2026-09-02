@@ -22,7 +22,7 @@
 
         @if ($service->cover)
             <div class="aspect-[16/9] bg-gray-100 rounded-xl overflow-hidden mb-10 shadow-lg shadow-black/30">
-                <img src="{{ $service->cover->getUrl() }}"
+                <img src="{{ $service->cover->getDisplayUrl() }}"
                      alt="{{ $service->title }}"
                      class="w-full h-full object-cover">
             </div>
