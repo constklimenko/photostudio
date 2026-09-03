@@ -4,6 +4,7 @@
     $rotation = (int) $video->rotation;
     $rotateTransform = match ($rotation) {
         90 => 'rotate(90deg)',
+        180 => 'rotate(180deg)',
         -90 => 'rotate(-90deg)',
         default => null,
     };
