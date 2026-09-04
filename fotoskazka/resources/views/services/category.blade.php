@@ -73,6 +73,17 @@
                 </ul>
             </div>
         @endif
+
+        @if ($category->ctaAlbum && $category->cta_button_text)
+            <section class="py-12" data-aos="fade-up">
+                <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <a href="{{ route('portfolio.show', $category->ctaAlbum->slug) }}"
+                       class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                        {{ $category->cta_button_text }}
+                    </a>
+                </div>
+            </section>
+        @endif
     </div>
 </section>
 
@@ -204,6 +215,8 @@
         </div>
     </section>
 @endif
+
+
 
 <section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">

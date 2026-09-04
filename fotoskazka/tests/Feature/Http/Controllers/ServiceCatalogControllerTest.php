@@ -536,4 +536,54 @@ class ServiceCatalogControllerTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_service_page_shows_cta_button_when_configured(): void
+    {
+        $ctaAlbum = Album::factory()->create(['is_published' => true, 'title' => 'Варианты обложек']);
+        $this->classic->update(['cta_album_id' => $ctaAlbum->id, 'cta_button_text' => 'Посмотреть варианты обложек']);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSee('Посмотреть варианты обложек');
+        $response->assertSee(route('portfolio.show', $ctaAlbum->slug), false);
+    }
+
+    public function test_service_page_hides_cta_button_when_not_configured(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Посмотреть варианты обложек');
+    }
+
+    public function test_service_page_hides_cta_button_when_only_text_set(): void
+    {
+        $this->classic->update(['cta_album_id' => null, 'cta_button_text' => 'Некий текст']);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Некий текст');
+    }
+
+    public function test_category_page_shows_cta_button_when_configured(): void
+    {
+        $ctaAlbum = Album::factory()->create(['is_published' => true, 'title' => 'Обложки школ']);
+        $this->schools->update(['cta_album_id' => $ctaAlbum->id, 'cta_button_text' => 'Посмотреть варианты']);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertSee('Посмотреть варианты');
+        $response->assertSee(route('portfolio.show', $ctaAlbum->slug), false);
+    }
+
+    public function test_category_page_hides_cta_button_when_not_configured(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Посмотреть варианты');
+    }
 }

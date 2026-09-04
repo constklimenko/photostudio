@@ -479,6 +479,10 @@ sort_order INT DEFAULT 0
 show_album_photos BOOLEAN DEFAULT FALSE
 featured_album_id BIGINT NULL
 
+cta_album_id BIGINT NULL
+
+cta_button_text VARCHAR(255) NULL
+
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
@@ -489,6 +493,7 @@ updated_at TIMESTAMP
 parent_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
+cta_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
@@ -505,6 +510,7 @@ featured_album_id -> albums.id ON DELETE SET NULL
 | `videos()`  | Видео, прикреплённые к категории (BelongsToMany)             |
 | `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
 | `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
+| `ctaAlbum()` | Альбом, на который ведёт кнопка CTA (BelongsTo → album) |
 | `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
 | `descendants()` | Все потомки в глубину любых уровней                       |
 | `path(true)` | Полный путь от корня до самой категории                     |
@@ -521,6 +527,13 @@ featured_album_id -> albums.id ON DELETE SET NULL
 | show_album_photos | Переключатель: показывать выбранный альбом на странице категории как сетку фото |
 | featured_album_id | Альбом, который отображается всеми фото вместо карточки                   |
 
+Поля CTA-кнопки (кнопка ссылается на альбом портфолио):
+
+| Поле              | Назначение                                                                |
+|-------------------|---------------------------------------------------------------------------|
+| cta_album_id      | Альбом, на который ведёт кнопка (BelongsTo → albums)                     |
+| cta_button_text   | Текст кнопки (например, «Посмотреть варианты обложек»)                   |
+
 При `show_album_photos = true` выбранный альбом исключается из списка
 альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
 с lightbox (как на странице услуги). Если список карточек остаётся непустым
@@ -536,6 +549,7 @@ INDEX(parent_id)
 INDEX(cover_media_id)
 INDEX(is_published)
 INDEX(featured_album_id)
+INDEX(cta_album_id)
 ```
 
 ---
@@ -690,6 +704,10 @@ show_album_photos BOOLEAN DEFAULT FALSE
 
 featured_album_id BIGINT NULL
 
+cta_album_id BIGINT NULL
+
+cta_button_text VARCHAR(255) NULL
+
 price_from DECIMAL(10,2) NULL
 
 price_note TEXT NULL
@@ -711,6 +729,7 @@ Foreign keys:
 category_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
+cta_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -721,6 +740,7 @@ INDEX(category_id)
 INDEX(is_published)
 INDEX(sort_order)
 INDEX(featured_album_id)
+INDEX(cta_album_id)
 ```
 
 Поля показа альбома блоком:

@@ -81,6 +81,15 @@
             </div>
         @endif
 
+        @if ($service->ctaAlbum && $service->cta_button_text)
+            <div class="mt-12 text-center">
+                <a href="{{ route('portfolio.show', $service->ctaAlbum->slug) }}"
+                   class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                    {{ $service->cta_button_text }}
+                </a>
+            </div>
+        @endif
+
         @if ($service->albums->isNotEmpty())
             <section class="mt-16" data-aos="fade-up">
                 <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">{{ $service->examples_title ?: 'Примеры работ' }}</h2>
@@ -133,7 +142,6 @@
         @endif
 
         <x-site.videos :videos="$service->videos" title="Видео" />
-
 
     </div>
 </section>

@@ -64,6 +64,7 @@ class ServiceCatalogController extends Controller
             'category',
             'items.icon',
             'videos',
+            'ctaAlbum',
             'albums' => function ($query) use ($service) {
                 $query->where('is_published', true);
 
@@ -107,6 +108,7 @@ class ServiceCatalogController extends Controller
             'services' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'items']),
             'videos',
             'items.icon',
+            'ctaAlbum',
             'albums' => function ($query) use ($category) {
                 $query->where('is_published', true);
 

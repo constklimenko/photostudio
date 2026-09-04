@@ -29,6 +29,8 @@ class Category extends Model
         'sort_order',
         'show_album_photos',
         'featured_album_id',
+        'cta_album_id',
+        'cta_button_text',
     ];
 
     protected function casts(): array
@@ -86,6 +88,11 @@ class Category extends Model
     public function featuredAlbum(): BelongsTo
     {
         return $this->belongsTo(Album::class, 'featured_album_id');
+    }
+
+    public function ctaAlbum(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'cta_album_id');
     }
 
     /**

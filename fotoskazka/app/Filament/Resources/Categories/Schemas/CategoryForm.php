@@ -161,6 +161,20 @@ class CategoryForm
                             ->searchable()
                             ->columnSpanFull(),
                     ]),
+                Section::make('Кнопка CTA')
+                    ->schema([
+                        Select::make('cta_album_id')
+                            ->label('Альбом для кнопки')
+                            ->relationship('ctaAlbum', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->nullable(),
+                        TextInput::make('cta_button_text')
+                            ->label('Текст кнопки')
+                            ->maxLength(255)
+                            ->nullable()
+                            ->placeholder('Посмотреть варианты обложек'),
+                    ]),
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')

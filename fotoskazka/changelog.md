@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-04 — Кнопка CTA на страницах услуг и категорий
+
+### Добавлено
+- **Миграция `add_cta_button_fields_to_services_and_categories_table`** — добавлены
+  в `services` и `categories`: `cta_album_id` (nullable FK → `albums`, ON DELETE SET NULL)
+  и `cta_button_text` (nullable VARCHAR(255)).
+- **app/Models/Service.php** — связь `ctaAlbum()` (BelongsTo → Album); `cta_album_id`,
+  `cta_button_text` в `$fillable`.
+- **app/Models/Category.php** — связь `ctaAlbum()` (BelongsTo → Album); `cta_album_id`,
+  `cta_button_text` в `$fillable`.
+- **ServiceForm** (Filament) — секция «Кнопка CTA»: Select альбома и TextInput текста кнопки.
+- **CategoryForm** (Filament) — аналогичная секция «Кнопка CTA».
+- **ServiceCatalogController** — eager loading `ctaAlbum` (опубликованный) на страницах
+  услуги и категории.
+- **resources/views/services/show.blade.php** — золотая кнопка перед формой заявки
+  (при заполненных `cta_album_id` + `cta_button_text`).
+- **resources/views/services/category.blade.php** — аналогичная кнопка перед формой заявки.
+
+### Документация
+- Обновлён `database.md` (поля, FK, индексы, описание CTA-кнопки для categories и services).
+- Обновлён `changelog.md`.
+
+---
+
 ## 2026-09-03 — Исправление устаревшего теста обложки категории
 
 ### Исправлено
