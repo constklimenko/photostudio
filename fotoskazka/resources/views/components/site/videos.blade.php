@@ -28,9 +28,6 @@
         @endif
 
         @if ($verticalVideos->isNotEmpty())
-            @if ($horizontalVideos->isNotEmpty())
-                <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center mt-16 mb-12">Вертикальные видео</h2>
-            @endif
             <div class="video-slider" data-video-slider>
                 @foreach ($verticalVideos as $video)
                     <div>
