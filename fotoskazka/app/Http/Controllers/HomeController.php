@@ -69,7 +69,7 @@ class HomeController extends Controller
             ->where('is_active', true)
             ->where('show_on_home', true)
             ->orderBy('sort_order')
-            ->get(['id', 'title', 'url', 'file_path', 'type']);
+            ->get(['id', 'title', 'url', 'file_path', 'type', 'rotation', 'has_sound', 'sort_order']);
 
         $heroAlbum = Album::query()
             ->where('type', 'homepage')

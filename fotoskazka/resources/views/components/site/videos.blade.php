@@ -17,7 +17,7 @@
                 @foreach ($horizontalVideos as $video)
                     <div>
                         <h3 class="font-heading text-xl font-normal tracking-wide text-white mb-4">
-                            {{ $video->pivot->caption ?: $video->title }}
+                            {{ $video->pivot?->caption ?: $video->title }}
                         </h3>
                         <div class="relative aspect-video rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
                             <x-site.video-player :video="$video" />
@@ -32,7 +32,7 @@
                 @foreach ($verticalVideos as $video)
                     <div>
                         <h3 class="font-heading text-base font-normal tracking-wide text-white mb-3 text-center truncate">
-                            {{ $video->pivot->caption ?: $video->title }}
+                            {{ $video->pivot?->caption ?: $video->title }}
                         </h3>
                         <div class="relative {{ $video->isRotated() ? 'aspect-video' : 'aspect-[9/16]' }} rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
                             <x-site.video-player :video="$video" />

@@ -115,38 +115,12 @@
 @endif
 
 @if ($videos->isNotEmpty())
-    @php
-        $horizontalVideos = $videos->where('type', 'horizontal');
-        $verticalVideos = $videos->where('type', 'vertical');
-    @endphp
-
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Видеогалерея</h2>
             <p class="mt-3 text-gray-400 text-center">Смотрите наши работы в движении</p>
 
-            @if ($horizontalVideos->isNotEmpty())
-                <div class="mt-12 max-w-5xl mx-auto space-y-10">
-                    @foreach ($horizontalVideos as $video)
-                        <div class="relative aspect-[4/3] rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30"
-                             data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            <x-site.video-player :video="$video" />
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-
-            @if ($verticalVideos->isNotEmpty())
-                <div class="mt-12 video-slider" data-video-slider data-aos="fade-up">
-                    @foreach ($verticalVideos as $video)
-                        <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-                            <div class="relative {{ $video->isRotated() ? 'aspect-video' : 'aspect-[9/16]' }} rounded-xl overflow-hidden bg-black shadow-lg shadow-black/30">
-                                <x-site.video-player :video="$video" />
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
+            <x-site.videos :videos="$videos" />
         </div>
     </section>
 @endif
