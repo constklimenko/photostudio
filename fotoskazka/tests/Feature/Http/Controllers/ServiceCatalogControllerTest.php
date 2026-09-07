@@ -96,7 +96,7 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Для школ');
         $response->assertSee('/services/vypusknye-albomy/dlya-shkol');
-        $response->assertSee('covers/schools-cover.jpg', false);
+        $response->assertSee(route('media.display', ['media' => $media->id]), false);
         $response->assertSee('alt="Для школ"', false);
         $response->assertSee('Подробнее');
     }

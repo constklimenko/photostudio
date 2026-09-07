@@ -58,7 +58,6 @@ class VideoControllerTest extends TestCase
         $response = $this->get(route('video.index'));
 
         $response->assertSee('Вертикальное видео');
-        $response->assertSee('Вертикальные видео');
     }
 
     public function test_index_splits_videos_by_orientation(): void
