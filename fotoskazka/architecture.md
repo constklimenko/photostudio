@@ -613,6 +613,37 @@ Filament-UX (`MediaTable`, `EditMedia`):
 - Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
 - Используется существующая система ролей; новая ACL не вводится.
 
+### Policy для альбомов (C1.3)
+
+`app/Policies/AlbumPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Album» (нет опоры на скрытие ссылок в UI):
+
+- `viewAny(User $user): bool` — разрешён только `admin` / `photographer`;
+  не используется как источник бизнес-правил (без контекста проекта корректно
+  не реализуемо для client/class_manager/parent);
+- `view(User $user, Album $album): bool`:
+  - `admin` / `photographer` — полный доступ ко всем альбомам (приоритет);
+  - `client` — только к альбомам проектов, которыми владеет:
+    `album.project.client_id === user->id` (pivot `client → album` не создаётся,
+    источник права — `User → Project.client_id → Album.project_id`);
+    тип альбома не ограничен;
+  - `class_manager` — только к `client`-альбомам своего проекта:
+    `album.type === 'client'` И `album.project.manager_id === user->id`;
+    типы `project`/`portfolio`/прочие и чужие проекты недоступны;
+  - `parent` — только к назначенному альбому через `album_user`
+    (`album.type === 'client'` И связь существует); остальные альбомы проекта,
+    типы `project`/`portfolio` и альбомы без связи недоступны;
+  - пользователь без роли и гость — доступа нет.
+- Крайние случаи: альбом без `project` недоступен `client`/`class_manager`,
+  но доступен `parent` при наличии `album_user` и типе `client`.
+- Комбинирование ролей: `admin`/`photographer` доминируют; для остальных доступ
+  разрешается, если совпадает хотя бы одно применимое правило
+  (`client` ИЛИ `class_manager` ИЛИ `parent`) — ветки не обрывают проверку.
+- N+1: `client`/`class_manager` читают `album.project` (в массовых проверках
+  вызывающий код подготавливает eager loading `project`); `parent` — точечный
+  запрос `exists()` через существующую связь `album->users()`.
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+
 ### Защита системных ролей
 
 - Поле `roles.is_system` (boolean, default true)
