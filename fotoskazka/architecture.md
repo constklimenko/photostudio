@@ -644,6 +644,25 @@ Filament-UX (`MediaTable`, `EditMedia`):
   запрос `exists()` через существующую связь `album->users()`.
 - Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
 
+### Policy для фотографий (C1.4)
+
+`app/Policies/PhotoPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Photo» (нет опоры на скрытие ссылок в UI):
+
+- `view(User $user, Photo $photo): bool` — единственный метод (без избыточных
+  `viewAny` и прочих — не используются существующей функциональностью);
+- правило полностью делегировано `AlbumPolicy`: `$user->can('view', $photo->album)`;
+- **матрица ролей в PhotoPolicy не дублируется** — отдельные правила
+  `client → photo`, `parent → photo`, `class_manager → photo` не создаются.
+  Доступ к фото наследуется от доступа к альбому:
+  `Project → Album → Photo`. Если пользователь не имеет доступа к Album,
+  он не имеет доступа ни к одной фотографии этого Album;
+- N+1: PhotoPolicy не выполняет собственных запросов — решение целиком
+  принимает `AlbumPolicy` (её требования к eager loading `album.project`
+  для client/class_manager в массовых проверках см. выше). Вызывающий код
+  должен корректно подготавливать связь `photo->album` (и `album->project`);
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+
 ### Защита системных ролей
 
 - Поле `roles.is_system` (boolean, default true)

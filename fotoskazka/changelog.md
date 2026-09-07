@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-09-07 — C1.4: PhotoPolicy — доступ к фотографиям через AlbumPolicy
+
+### Добавлено
+- **app/Policies/PhotoPolicy.php** — единственный источник решения «может ли
+  пользователь просматривать Photo»:
+  - `view(User $user, Photo $photo): bool` — единственный метод (без избыточных
+    `viewAny` и прочих — не используются существующей функциональностью;
+    кабинет/контроллеры/UI не реализуются в рамках задачи);
+  - правило полностью делегировано `AlbumPolicy`: `$user->can('view', $photo->album)`;
+  - **отсутствует дублирование матрицы ролей** — отдельные правила
+    `client → photo`, `parent → photo`, `class_manager → photo` не создавались.
+    Иерархия доступа: `Project → Album → Photo`;
+  - N+1: PhotoPolicy не выполняет собственных запросов — решение целиком
+    в `AlbumPolicy`. Массовые проверки требуют корректного eager loading
+    связей `photo->album` (+ `album->project` для client/class_manager)
+    со стороны вызывающего кода (задокументировано в `AlbumPolicy`);
+  - Policy подключена стандартным автодискавери Laravel
+    (`App\Policies\{Model}Policy`).
+
+### Тесты
+- **tests/Feature/Policies/PhotoPolicyTest.php** (17 тестов, 49 утверждений) —
+  полная матрица доступа и особые случаи:
+  - `admin`/`photographer` → любое фото (включая `project`/`portfolio`/orphan-альбомы);
+  - `client` A/B — только фото своих проектов, любых типов альбомов; без проекта — нет;
+  - `class_manager` A/B — только фото `client`-альбомов своего проекта
+    (проект- и portfolio-типы и чужие проекты запрещены); без проекта — нет;
+  - `parent` — только фото назначенного `client`-альбома (другой клиентский,
+    project/portfolio/homepage/service даже при назначении — нет);
+  - пользователь без роли, гость — нет;
+  - комбинирование ролей: `client`+`class_manager`, `client`+`admin`;
+  - **IDOR-тест**: User A / Photo A→Album A и User B / Photo B→Album B —
+    User A не получает Photo B даже при знании её ID (и симметрично для User B);
+  - авто-дискавери Policy.
+
+### Не реализовано (границы задачи)
+Загрузка/удаление фотографий, комментарии, UI, клиентский кабинет, контроллеры
+и маршруты — вне рамок C1.4. Публичные страницы не изменялись.
+
+### Документация
+- **architecture.md**: раздел «Система ролей и доступа» дополнен подразделом
+  «Policy для фотографий (C1.4)» — делегирование в `AlbumPolicy`, отсутствие
+  дублирования матрицы ролей, подход к N+1.
+
+### Проверка
+- **tests/Feature/Policies/PhotoPolicyTest.php**: 17 tests, 49 assertions — passed
+- Полный набор: 697/698 passed (1 предсуществующая ошибка
+  `MediaReuseSafetyTest::test_deleting_album_keeps_media` — Livewire
+  "mountedActions on null", не связана с задачей; см. C1.3)
+- Pint: clean для новых файлов (app/Policies, tests/Feature/Policies)
+
 ## 2026-09-07 — C1.3: AlbumPolicy — разграничение доступа к альбомам
 
 ### Добавлено

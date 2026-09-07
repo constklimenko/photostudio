@@ -660,7 +660,7 @@ A → B → C → A
 * Этап 4 (B) — Media Storage (B1–B10 завершены)
 * B11 — Иерархический каталог услуг (аудит и закрытие завершены)
 * C1 — разграничение доступа к проектам и альбомам: C1.1 (pivot `album_user`),
-  C1.2 (`ProjectPolicy`), C1.3 (`AlbumPolicy`)
+  C1.2 (`ProjectPolicy`), C1.3 (`AlbumPolicy`), C1.4 (`PhotoPolicy`)
 
 ## Текущий этап
 
@@ -668,4 +668,4 @@ A → B → C → A
 
 После завершения Media Storage переходим к клиентским галереям и доступу пользователей
 к проектам и альбомам. Фундамент доступа заложен (C1.1 `album_user`, C1.2 `ProjectPolicy`,
-C1.3 `AlbumPolicy`); далее — кабинет, галереи и UI на базе этих Policy.
+C1.3 `AlbumPolicy`, C1.4 `PhotoPolicy`); далее — кабинет, галереи и UI на базе этих Policy.
