@@ -595,6 +595,24 @@ Filament-UX (`MediaTable`, `EditMedia`):
 - `User::canAccessPanel()` проверяет `status === 'active'` и `hasRole('admin')`
 - `User` содержит методы: `isAdmin()`, `hasRole()`, `hasAnyRole()`, `hasAllRoles()`
 
+### Policy для проектов (C1.2)
+
+`app/Policies/ProjectPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Project» (нет опоры на скрытие ссылок в UI):
+
+- `view(User $user, Project $project): bool`:
+  - `admin` / `photographer` — полный доступ ко всем проектам (приоритет);
+  - `client` — только при `project.client_id === user->id`;
+  - `class_manager` — только при `project.manager_id === user->id`;
+  - `parent` — доступа нет, даже если в проекте есть альбом, назначенный родителю
+    (`album_user` — отдельный канал доступа к альбому, не к проекту);
+  - пользователь без роли и гость — доступа нет.
+- Комбинирование ролей: `admin`/`photographer` доминируют; для остальных доступ
+  разрешается, если совпадает хотя бы одно применимое правило (`client` ИЛИ
+  `class_manager`).
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+- Используется существующая система ролей; новая ACL не вводится.
+
 ### Защита системных ролей
 
 - Поле `roles.is_system` (boolean, default true)
