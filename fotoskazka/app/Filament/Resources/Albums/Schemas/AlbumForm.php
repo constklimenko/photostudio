@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Albums\Schemas;
 
 use App\Models\Album;
+use App\Models\Media;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -74,6 +75,7 @@ class AlbumForm
                             ->label('Проект'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
+                            ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
                             ->preload()
                             ->nullable()
                             ->label('Обложка'),

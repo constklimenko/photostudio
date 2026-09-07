@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use App\Models\Media;
 use App\Models\Page;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
@@ -67,6 +68,7 @@ class PageForm
                             ->label('Подзаголовок'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
+                            ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
                             ->preload()
                             ->nullable()
                             ->label('Обложка'),

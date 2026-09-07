@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Posts\Schemas;
 
+use App\Models\Media;
 use App\Models\Post;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -58,6 +59,7 @@ class PostForm
                             ->nullable(),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
+                            ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
                             ->preload()
                             ->nullable()
                             ->label('Обложка'),

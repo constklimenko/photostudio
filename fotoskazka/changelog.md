@@ -1,5 +1,59 @@
 # Changelog
 
+## 2026-09-07 — C1.3: AlbumPolicy — разграничение доступа к альбомам
+
+### Добавлено
+- **app/Policies/AlbumPolicy.php** — доменное правило доступа к `Album` (единственный
+  источник решения «может ли пользователь просматривать Album»):
+  - `viewAny(User $user): bool` — позволяет только `admin`/`photographer`;
+    не используется как источник бизнес-правил (без контекста проекта корректно
+    не реализуемо для client/class_manager/parent);
+  - `view(User $user, Album $album): bool` — главное правило:
+    - `admin` и `photographer` — полный доступ ко всем альбомам (приоритет ролей);
+    - `client` — только к альбомам проектов, которыми владеет:
+      `album.project.client_id === user->id` (pivot `client → album` не создавался,
+      источник права — `User → Project.client_id → Album.project_id`), тип альбома
+      не ограничен;
+    - `class_manager` — только к `client`-альбомам своего проекта:
+      `album.type === 'client'` И `album.project.manager_id === user->id`;
+      на `project`/`portfolio`/прочие типы и чужие проекты доступ не распространяется;
+    - `parent` — только к назначенному альбому через `album_user`
+      И `album.type === 'client'`; остальные альбомы проекта, `project`/`portfolio`
+      типы и альбомы без связи недоступны;
+    - пользователь без роли и гость — доступа нет;
+    - при нескольких ролях правила комбинируются предсказуемо: `admin`/`photographer`
+      доминируют; для остальных доступ разрешён, если совпадает хотя бы одно из
+      применимых правил (`client` ИЛИ `class_manager` ИЛИ `parent`) — без
+      преждевременного `return` в ветках;
+    - крайние случаи: альбом без `project` недоступен `client`/`class_manager`,
+      но доступен `parent` при связи `album_user` и типе `client`;
+    - Policy подключена стандартным автодискавери Laravel (`App\Policies\{Model}Policy`).
+  - N+1: для проверки `client`/`class_manager` используется связь `album->project`
+    (в массовых проверках вызывающий код подготавливает eager loading `project`);
+    для `parent` — точечный запрос через существующую связь `album->users()`
+    (`exists()`), без загрузки коллекции.
+
+### Тесты
+- **tests/Feature/Policies/AlbumPolicyTest.php** (18 тестов, 48 утверждений) — матрица
+  доступа и особые случаи: admin/photographer → любой альбом; client A/B — только проекты
+  A/B (pivot нет); class_manager A/B — только `client`-альбомы своего проекта
+  (проект- и portfolio-типы запрещены); parent — только назначенный `client`-альбом
+  (другой клиентский, project/portfolio/homepage/service даже при назначении — нет);
+  альбом без `project`; client/class_manager без проекта; parent без `album_user`;
+  пользователь без роли; гость; client + class_manager; client + admin;
+  `viewAny` для ролей; авто-дискавери Policy.
+
+### Не реализовано (границы задачи)
+PhotoPolicy, кабинет, контроллеры, маршруты, комментарии, статусы, UI — вне рамок C1.3.
+Публичные страницы не изменялись.
+
+### Проверка
+- Полный тестовый набор: 640 тестов, 639 passed + 1 предсуществующая ошибка
+  `MediaReuseSafetyTest::test_deleting_album_keeps_media` (Livewire "mountedActions on null",
+  не связана с задачей; Filament AlbumResourceTest — 10/10 passed);
+  18 новых тестов / 48 утверждений — passed
+- Pint: clean (app/Policies, tests/Feature/Policies)
+
 ## 2026-09-07 — C1.2: ProjectPolicy — правила доступа к проектам
 
 ### Добавлено
@@ -1118,6 +1172,16 @@ Policies, кабинет, комментарии, статусы проекто�
   - LRU-обрезка кэша переведена на best-effort: сбой листинга диска не роняет
     уже сгенерированный вариант
 
+### Исправлено
+- **TypeError на страницах редактирования** (`/admin/{albums,services,posts,pages}/…/edit`):
+  `Select::isOptionDisabled(): Argument #2 ($label) must be string, null given`.
+  Причина: Media с `title = NULL` (артефакт отладочного tinker-запуска) ломал
+  Select обложки, читающий `media.title` всех записей
+  - Все четыре формы с выбором обложки получили
+    `getOptionLabelFromRecordUsing()` — записи без заголовка отображаются как
+    «Медиа #id», падение исключено независимо от данных
+  - Данные исправлены: существующим Media с пустым заголовком проставлен title
+
 ### Диагностировано на сервере (воркер супервизора)
 - Симптом «Папка [ppp] не найдена» при существующей папке: воркер, запущенный до
   деплоя пагинации, держал старые классы в памяти и видел только первые ~20
@@ -1131,8 +1195,8 @@ Policies, кабинет, комментарии, статусы проекто�
   Требуется выровнять владельца/права (см. задачу пользователю)
 
 ### Статистика
-- Тесты: 383 проходят (+2)
-- Assertions: 754
+- Тесты: 384 проходят (+3 за день)
+- Assertions: 755
 - Pint: clean
 
 ## 2026-08-22 — Импорт с Яндекс.Диска: пагинация листинга и асинхронный импорт
