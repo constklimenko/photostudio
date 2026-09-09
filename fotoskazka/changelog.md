@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-09-07 — Админка: добавление существующего медиа из другого альбома
+
+### Добавлено
+- **app/Filament/Resources/Albums/RelationManagers/PhotosRelationManager.php** —
+  новое header-действие **«Добавить из альбома»** (иконка `heroicon-o-plus-circle`):
+  - выбор **альбома-источника** через `Select` с поиском (текущий альбом
+    исключён из списка);
+  - выбор **фотографий** через `CheckboxList` (3 колонки), наполняемый
+    динамически после выбора альбома-источника (live/reactive);
+  - **дедупликация**: из выбора исключаются медиа, уже присутствующие
+    в текущем альбоме (сравнение по `media_id`);
+  - создание записей `Photo` для выбранных медиа с
+    `sort_order` = `max(sort_order) + 1..n` (добавление в конец);
+  - уведомление об успехе/пустом выборе;
+  - повторное использование одного и того же `Media` в нескольких альбомах
+    через несколько строк `photos` (структура БД не менялась).
+
+### Изменено
+- В структуру БД изменения не вносились — переиспользование реализовано
+  средствами существующей схемы (`albums → photos → media`).
+
+### Тесты
+- **tests/Feature/Filament/AlbumPhotosRelationManagerTest.php** — добавлены
+  тесты на новое действие:
+  - `test_add_from_album_action_is_available`;
+  - `test_add_from_album_creates_photos_from_source_album` (добавление новой
+    фотографии с `sort_order` после максимума);
+  - `test_add_from_album_action_with_empty_media_selection_does_not_add_photos`;
+  - `test_add_from_album_action_skips_media_already_in_target_album` (дедупликация).
+
 ## 2026-09-07 — C1.4: PhotoPolicy — доступ к фотографиям через AlbumPolicy
 
 ### Добавлено
