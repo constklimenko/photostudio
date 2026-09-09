@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-09-09 — C1.6 — Финальный security-аудит доступа
+
+### Цель
+
+Финальная проверка модели доступа C1 (без добавления новой функциональности).
+Проверена фактическая матрица доступа против ожидаемой:
+
+```text
+client          → свои Project → все Albums → все Photos
+parent          → назначенный Album → Photos этого Album
+class_manager   → свой Project → Albums type=client → Photos
+photographer    → все
+admin           → все
+```
+
+### Аудит
+
+- **Project access** — `ProjectPolicy::view` реализует матрицу ролей
+  (admin/photographer → все; client → `client_id`; class_manager → `manager_id`;
+  parent → нет). Покрыто `ProjectPolicyTest` (свой/чужой проект, проект без
+  client, проект без manager, комбинации ролей). **PASS**
+- **Album access** — `AlbumPolicy::view` (admin/photographer → все; client →
+  `project.client_id`; class_manager → `client`-альбомы своего проекта; parent →
+  назначенный через `album_user` `client`-альбом). Покрыто `AlbumPolicyTest`
+  (свой/чужой client-album, project album, album без project, parent без
+  `album_user`, parent с несколькими `album_user`, client проекта, manager
+  другого проекта). **PASS**
+- **Photo access** — `PhotoPolicy::view` делегирует в `AlbumPolicy`
+  (наследование Project → Album → Photo). Покрыто `PhotoPolicyTest`. **PASS**
+- **IDOR** — отдельные HTTP-эндпоинты `/client/projects/{id}` и
+  `/client/albums/{id}` и `/media/photo/{id}` **не существуют**
+  (`CabinetController` — заглушка этапа 5). Единственная точка прямого доступа
+  по ID — роуты `MediaController` (`/media/{id}/original|download|display|lightbox`),
+  защищены шлюзом `MediaAccessService` (C1.5): приватная Media → гость `404`,
+  чужой пользователь `403`. Покрыто `MediaAccessAuthorizationTest`. **PASS**
+- **HTTP endpoints** — публичные контроллеры (`PortfolioController`,
+  `HomeController`, `ServiceCatalogController`, `BlogController`) отдают только
+  опубликованный публичный контент (`type = portfolio`/публичные), приватные
+  альбомы/фото не отдаются. **PASS**
+- **Mass queries** — `Model::all()` в приложении отсутствует; выборки
+  фильтруются на уровне Query Builder (`where('type', ...)`,
+  `where('is_published', true)`). Клиентских массовых выборок пока нет
+  (кабинет не реализован — этап 5 roadmap). **PASS**
+- **Отсутствие утечек** — `CabinetController` возвращает только `$user->name`;
+  названия/ссылки/URL/счётчики чужих проектов и альбомов в ответы не попадают.
+  **PASS**
+
+### Итог
+
+Проблем в модели доступа C1 не обнаружено. Исправления и regression-тесты
+не требовались (дефекты C1.2–C1.5 уже исправлены в предыдущих шагах;
+покрытие тестами присутствует). Документация (`architecture.md` разделы C1.2–C1.5,
+`database.md` `album_user`) уже соответствует фактической модели доступа,
+roadmap не менялся (перенос на отдельный этап после завершения всей C1).
+
+### Проверка
+
+- `php artisan test` — **713 passed / 1843 assertions** (1 risky —
+  предсуществующий `test_three_level_category_page_renders_full_breadcrumb`,
+  не связан с задачей)
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-09 — C1.5 — Подключение Policies к реальным точкам доступа
 
 ### Аудит точек доступа
