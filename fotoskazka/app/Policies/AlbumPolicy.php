@@ -12,6 +12,21 @@ class AlbumPolicy
         return $user->hasAnyRole(['admin', 'photographer']);
     }
 
+    public function create(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
+    public function update(User $user, Album $album): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
+    public function delete(User $user, Album $album): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
     public function view(User $user, Album $album): bool
     {
         if ($user->hasAnyRole(['admin', 'photographer'])) {

@@ -7,6 +7,26 @@ use App\Models\User;
 
 class ProjectPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
+    public function update(User $user, Project $project): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
+    public function delete(User $user, Project $project): bool
+    {
+        return $user->hasAnyRole(['admin', 'photographer']);
+    }
+
     public function view(User $user, Project $project): bool
     {
         if ($user->hasAnyRole(['admin', 'photographer'])) {

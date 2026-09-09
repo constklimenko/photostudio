@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-09-09 — Исправление авторизации admin в Filament (CRUD-методы Policy + админ в тестах)
+
+### Причина
+После внедрения `AlbumPolicy`, `ProjectPolicy` и `PhotoPolicy` (C1.2–C1.4) в policy
+были только методы `view`/`viewAny`. Laravel Gate при отсутствии нужного метода
+в policy возвращает `false` (политика полностью пропускается, `before` не вызывается),
+поэтому страницы Filament (`Edit/Create/Delete`) для `Album`, `Project`, `Photo`
+отдавали **403** даже администратору. Валился тест
+`test_deleting_album_keeps_media` («Attempt to read property "mountedActions" on null»).
+
+Дополнительно: тесты не сигнализировали подлинную причину — их `setUp()` перекрывал
+`setUp()` трейта `AdminTestCase`, поэтому администратор никогда не создавался и не
+аутентифицировался (Livewire-компоненты монтировались анонимно).
+
+### Изменено
+- **app/Policies/AlbumPolicy.php** — добавлены CRUD-методы `create`, `update`,
+  `delete` (право управления: роли `admin` и `photographer`).
+- **app/Policies/ProjectPolicy.php** — добавлены `viewAny`, `create`, `update`,
+  `delete` (те же роли).
+- **app/Policies/PhotoPolicy.php** — добавлены `viewAny`, `create`, `update`,
+  `delete`; CRUD делегируется в `AlbumPolicy` через альбом фотографии
+  (`create` принимает необязательный `Album`).
+- **tests/Feature/Filament/AdminTestCase.php** — логика администратора вынесена
+  в метод `signInAsAdmin()`; `setUp()` трейта вызывает его, что позволяет
+  переопределяющим `setUp()` тестам восстанавливать аутентифицированного админа.
+- Тесты с собственным `setUp()`, перекрывающим трейт, теперь вызывают
+  `$this->signInAsAdmin()`:
+  `MediaReuseSafetyTest`, `AlbumPhotosRelationManagerTest`, `MediaDeletionTest`,
+  `MediaUploadTest`, `MediaRetryProcessingTest`.
+
+### Тесты
+- 702 tests — passed (было 701 passed / 1 error).
+
 ## 2026-09-07 — Админка: добавление существующего медиа из другого альбома
 
 ### Добавлено

@@ -17,6 +17,11 @@ trait AdminTestCase
     {
         parent::setUp();
 
+        $this->signInAsAdmin();
+    }
+
+    protected function signInAsAdmin(): void
+    {
         $this->seed(RoleSeeder::class);
 
         $this->admin = User::factory()->create(['status' => 'active']);

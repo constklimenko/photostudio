@@ -20,6 +20,8 @@ class AlbumPhotosRelationManagerTest extends TestCase
     {
         parent::setUp();
 
+        $this->signInAsAdmin();
+
         Storage::fake('public');
         Storage::fake('thumbnails');
         Storage::fake('image_cache');
