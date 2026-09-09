@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Media;
 use App\Services\ImageCacheService;
+use App\Services\MediaAccessService;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaController extends Controller
 {
-    public function original(Media $media): StreamedResponse
+    public function original(Media $media, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         $disk = Storage::disk($media->disk ?? 'public');
 
         abort_unless($media->file_path && $disk->exists($media->file_path), 404);
@@ -25,8 +28,10 @@ class MediaController extends Controller
         );
     }
 
-    public function download(Media $media): StreamedResponse
+    public function download(Media $media, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         $disk = Storage::disk($media->disk ?? 'public');
 
         abort_unless($media->file_path && $disk->exists($media->file_path), 404);
@@ -40,14 +45,31 @@ class MediaController extends Controller
         );
     }
 
-    public function display(Media $media, ImageCacheService $cache): StreamedResponse
+    public function display(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         return $this->cachedImage($media, $cache, ImageCacheService::TIER_DISPLAY);
     }
 
-    public function lightbox(Media $media, ImageCacheService $cache): StreamedResponse
+    public function lightbox(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         return $this->cachedImage($media, $cache, ImageCacheService::TIER_LIGHTBOX);
+    }
+
+    protected function authorizeView(Media $media, MediaAccessService $access): void
+    {
+        if ($access->isPublic($media)) {
+            return;
+        }
+
+        if (auth()->guest()) {
+            abort(404);
+        }
+
+        abort_unless($access->canView($media, auth()->user()), 403);
     }
 
     protected function cachedImage(Media $media, ImageCacheService $cache, string $tier): StreamedResponse
