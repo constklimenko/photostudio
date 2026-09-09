@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Schemas;
 
+use App\Enums\ProjectStatus;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -48,13 +49,8 @@ class ProjectForm
                             ]),
                         Select::make('status')
                             ->required()
-                            ->default('draft')
-                            ->options([
-                                'draft' => 'Черновик',
-                                'active' => 'Активен',
-                                'completed' => 'Завершён',
-                                'archived' => 'В архиве',
-                            ]),
+                            ->default(ProjectStatus::Draft->value)
+                            ->options(ProjectStatus::options()),
                         DatePicker::make('shooting_date'),
                     ]),
                 Section::make('Описание')

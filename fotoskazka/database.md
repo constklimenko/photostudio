@@ -818,10 +818,14 @@ contact_email VARCHAR(255) NULL
 
 status ENUM(
     'draft',
-    'active',
+    'shooting_completed',
+    'reshoot',
+    'processing',
+    'layout_approval',
+    'printing',
     'completed',
     'archived'
-)
+) DEFAULT 'draft'
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -844,6 +848,28 @@ INDEX(status)
 INDEX(shooting_date)
 INDEX(contact_phone)
 ```
+
+Статус проекта (`status`) — enum в одном месте (`App\Enums\ProjectStatus`), значение
+маппится на PHP-перечисление кастом `Project::$casts['status']`. Допустимые значения:
+
+| Ключ                | Название               |
+|---------------------|------------------------|
+| `draft`             | Подготовка             |
+| `shooting_completed`| Фотосъёмка закончена   |
+| `reshoot`           | Пересъёмка             |
+| `processing`        | Обработка фотографий   |
+| `layout_approval`   | Согласование макета     |
+| `printing`          | Отправка в печать       |
+| `completed`         | Проект завершён         |
+| `archived`          | Архив                   |
+
+`reshoot` — не строго линейное следующее состояние: после пересъёмки проект может
+вернуться к предыдущему этапу (например, снова в `processing` или `draft`).
+
+Старое значение `active` устранено миграцией `update_projects_status_enum_table`
+(2026-09-09): существующие `active` проекты переведены в `processing`. Переходы
+между статусами как полноценный workflow на этом этапе не внедрены — список
+является единым источником допустимых значений для формы/таблицы/фильтра Filament.
 
 ---
 

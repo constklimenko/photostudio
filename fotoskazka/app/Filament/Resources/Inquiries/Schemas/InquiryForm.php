@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Inquiries\Schemas;
 
+use App\Enums\ProjectStatus;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -72,6 +73,7 @@ class InquiryForm
                                     ->disabled(),
                                 TextInput::make('project.status')
                                     ->label('Статус')
+                                    ->formatStateUsing(fn ($state) => $state instanceof ProjectStatus ? $state->label() : $state)
                                     ->disabled(),
                                 TextInput::make('project.type')
                                     ->label('Тип')

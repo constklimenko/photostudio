@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Inquiry\CreateProjectFromInquiry;
+use App\Enums\ProjectStatus;
 use App\Mail\NewInquiryMail;
 use App\Models\Inquiry;
 use App\Models\NotificationSetting;
@@ -42,7 +43,7 @@ class InquiryTest extends TestCase
         $this->assertInstanceOf(Project::class, $project);
         $this->assertEquals('Test Project', $project->title);
         $this->assertEquals('individual', $project->type);
-        $this->assertEquals('draft', $project->status);
+        $this->assertEquals(ProjectStatus::Draft, $project->status);
         $this->assertEquals($inquiry->id, $project->inquiry->id);
         $this->assertEquals($inquiry->id, Inquiry::find($inquiry->id)->project_id);
     }

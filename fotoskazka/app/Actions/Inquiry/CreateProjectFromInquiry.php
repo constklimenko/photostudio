@@ -2,6 +2,7 @@
 
 namespace App\Actions\Inquiry;
 
+use App\Enums\ProjectStatus;
 use App\Models\Inquiry;
 use App\Models\Project;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class CreateProjectFromInquiry
                 'client_id' => $data['client_id'] ?? $inquiry->user_id,
                 'manager_id' => $data['manager_id'] ?? null,
                 'shooting_date' => $data['shooting_date'] ?? $inquiry->shooting_date,
-                'status' => 'draft',
+                'status' => ProjectStatus::Draft,
                 'contact_name' => $inquiry->name,
                 'contact_phone' => $inquiry->phone,
                 'contact_email' => $inquiry->email,

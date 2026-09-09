@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-09-09 — C2.1 — Финализация статусов проекта
+
+### Цель
+
+Создать единое представление допустимых бизнес-статусов `Project` перед разработкой
+личного кабинета (подэтап C2.1 roadmap), устранить устаревшее значение `active`
+и перевести админку на русские названия статусов.
+
+### Добавлено
+
+- **app/Enums/ProjectStatus.php** (новый) — единый источник допустимых статусов
+  (BackedEnum): `draft`, `shooting_completed`, `reshoot`, `processing`,
+  `layout_approval`, `printing`, `completed`, `archived`.
+  - `label()` — русское название (Подготовка, Фотосъёмка закончена, Пересъёмка,
+    Обработка фотографий, Согласование макета, Отправка в печать, Проект завершён,
+    Архив);
+  - `color()` — цвет бейджа Filament;
+  - `options()` — единый список `[value => label]` для формы/таблицы/фильтра.
+
+### Изменено
+
+- **app/Models/Project.php** — `status` в `$casts` → `ProjectStatus::class`;
+  заполняемые поля не менялись.
+- **database/factories/ProjectFactory.php** — статус генерируется из
+  `ProjectStatus::cases()` (убрано устаревшее `active`).
+- **app/Actions/Inquiry/CreateProjectFromInquiry.php** — статус по умолчанию
+  `ProjectStatus::Draft` вместо строки `'draft'`.
+- **app/Filament/Resources/Projects/Schemas/ProjectForm.php** — Select статуса
+  переведён на `ProjectStatus::options()`; дефолт `ProjectStatus::Draft->value`.
+- **app/Filament/Resources/Projects/Tables/ProjectsTable.php** — бейдж статуса:
+  русское название через `label()`, цвет через `color()`; фильтр статуса — на
+  `ProjectStatus::options()`.
+- **app/Filament/Resources/Inquiries/Schemas/InquiryForm.php** — отображение
+  `project.status` переведено на русское название через `label()`.
+
+### Миграция
+
+- **database/migrations/2026_09_09_072522_update_projects_status_enum_table.php**
+  (новая):
+  - расширяет `ENUM('projects.status')` до 8 значений; старое `active` убрано;
+  - существующие проекты `status = 'active'` переводятся в `processing`
+    (ближайший этап активной работы; в фактических данных таких записей нет —
+    конверсия выполнена безопасно);
+  - `down()` восстанавливает старый enum (`draft/active/completed/archived`),
+    переводя новые статусы обратно в `active`;
+  - миграция работает и на MySQL (`ALTER TABLE ... MODIFY`), и на SQLite
+    (пересборка таблицы с заменой `CHECK`-ограничения и конверсией данных
+    на лету), чтобы тестовый набор на SQLite оставался зелёным.
+
+### Прочее
+
+- Полноценный workflow переходов между статусами не внедрялся (вне рамок C2.1);
+  `reshoot` не является строго линейным следующим состоянием — после пересъёмки
+  проект может вернуться к предыдущему этапу.
+- Личный кабинет, галереи и комментарии не затрагивались.
+
+### Документация
+
+- **database.md**: таблица `projects` — новый enum `status` + таблица допустимых
+  значений и примечание о `reshoot` и устранении `active`.
+- **architecture.md**: новый подраздел «Статусы проекта (C2.1)» в разделе ролей/доступа.
+
+### Тесты
+
+- **tests/Unit/Enums/ProjectStatusTest.php** (новый, 12 тестов) — состав `cases()`,
+  отсутствие `active`, русские названия, `options()`, цвета.
+- **tests/Feature/Models/ProjectModelTest.php** (новый, 4 теста) — каст в enum,
+  дефолт `draft`, строка в БД, поддержка всех 8 статусов.
+- **tests/Feature/InquiryTest.php** — проверка статуса при создании проекта из
+  заявки переведена на `ProjectStatus::Draft`.
+
+### Проверка
+
+- `php artisan test` — **729 passed / 1877 assertions** (1 risky — предсуществующий
+  `test_three_level_category_page_renders_full_breadcrumb`, не связан с задачей)
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-09 — C1.6 — Финальный security-аудит доступа
 
 ### Цель
