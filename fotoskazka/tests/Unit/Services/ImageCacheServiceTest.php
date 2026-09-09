@@ -20,13 +20,13 @@ class ImageCacheServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->tempCacheDir = sys_get_temp_dir() . '/imgcache-test-' . uniqid('', true);
+        $this->tempCacheDir = sys_get_temp_dir().'/imgcache-test-'.uniqid('', true);
         mkdir($this->tempCacheDir, 0755, true);
 
         config(['filesystems.disks.image_cache.root' => $this->tempCacheDir]);
         app('filesystem')->forgetDisk('image_cache');
-        mkdir($this->tempCacheDir . '/display', 0755, true);
-        mkdir($this->tempCacheDir . '/lightbox', 0755, true);
+        mkdir($this->tempCacheDir.'/display', 0755, true);
+        mkdir($this->tempCacheDir.'/lightbox', 0755, true);
 
         $this->service = new ImageCacheService;
         Storage::fake('public');
@@ -147,7 +147,7 @@ class ImageCacheServiceTest extends TestCase
         $media = $this->createImageMedia('images/photo.jpg');
         $path = $this->service->relativePath($media, ImageCacheService::TIER_DISPLAY);
 
-        file_put_contents($this->tempCacheDir . '/' . $path, 'cached-data');
+        file_put_contents($this->tempCacheDir.'/'.$path, 'cached-data');
 
         $this->assertTrue($this->service->isCached($media, ImageCacheService::TIER_DISPLAY));
     }
@@ -157,7 +157,7 @@ class ImageCacheServiceTest extends TestCase
         $media = $this->createImageMedia('images/photo.jpg');
         $path = $this->service->relativePath($media, ImageCacheService::TIER_DISPLAY);
 
-        file_put_contents($this->tempCacheDir . '/' . $path, 'cached-data');
+        file_put_contents($this->tempCacheDir.'/'.$path, 'cached-data');
 
         $result = $this->service->ensureCached($media, ImageCacheService::TIER_DISPLAY);
 
@@ -171,7 +171,7 @@ class ImageCacheServiceTest extends TestCase
         $result = $this->service->ensureCached($media, ImageCacheService::TIER_DISPLAY);
 
         $this->assertNotNull($result);
-        $this->assertFileExists($this->tempCacheDir . '/' . $result);
+        $this->assertFileExists($this->tempCacheDir.'/'.$result);
     }
 
     public function test_ensure_cached_returns_null_for_non_image(): void
@@ -197,12 +197,12 @@ class ImageCacheServiceTest extends TestCase
         config(['filesystems.image_cache.max_size_mb' => 100]);
 
         $path = 'display/small.png';
-        file_put_contents($this->tempCacheDir . '/' . $path, str_repeat('a', 1024));
+        file_put_contents($this->tempCacheDir.'/'.$path, str_repeat('a', 1024));
 
         $freed = $this->service->purgeToLimit();
 
         $this->assertSame(0, $freed);
-        $this->assertFileExists($this->tempCacheDir . '/' . $path);
+        $this->assertFileExists($this->tempCacheDir.'/'.$path);
     }
 
     public function test_purge_returns_zero_when_cache_empty(): void
@@ -218,20 +218,20 @@ class ImageCacheServiceTest extends TestCase
     {
         config(['filesystems.image_cache.max_size_mb' => 0.7]);
 
-        file_put_contents($this->tempCacheDir . '/display/old1.png', str_repeat('a', 600 * 1024));
-        touch($this->tempCacheDir . '/display/old1.png', time() - 300);
+        file_put_contents($this->tempCacheDir.'/display/old1.png', str_repeat('a', 600 * 1024));
+        touch($this->tempCacheDir.'/display/old1.png', time() - 300);
 
-        file_put_contents($this->tempCacheDir . '/display/old2.png', str_repeat('a', 600 * 1024));
-        touch($this->tempCacheDir . '/display/old2.png', time() - 200);
+        file_put_contents($this->tempCacheDir.'/display/old2.png', str_repeat('a', 600 * 1024));
+        touch($this->tempCacheDir.'/display/old2.png', time() - 200);
 
-        file_put_contents($this->tempCacheDir . '/display/new.png', str_repeat('b', 100 * 1024));
-        touch($this->tempCacheDir . '/display/new.png', time());
+        file_put_contents($this->tempCacheDir.'/display/new.png', str_repeat('b', 100 * 1024));
+        touch($this->tempCacheDir.'/display/new.png', time());
 
         $freed = $this->service->purgeToLimit();
 
         $this->assertGreaterThan(0, $freed);
-        $this->assertFileDoesNotExist($this->tempCacheDir . '/display/old1.png');
-        $this->assertFileExists($this->tempCacheDir . '/display/new.png');
+        $this->assertFileDoesNotExist($this->tempCacheDir.'/display/old1.png');
+        $this->assertFileExists($this->tempCacheDir.'/display/new.png');
     }
 
     public function test_warm_cached_generates_and_purges(): void
@@ -248,7 +248,7 @@ class ImageCacheServiceTest extends TestCase
 
             $this->assertTrue($result);
             $path = $this->service->relativePath($media, ImageCacheService::TIER_DISPLAY);
-            $this->assertFileExists($this->tempCacheDir . '/' . $path);
+            $this->assertFileExists($this->tempCacheDir.'/'.$path);
         } finally {
             @unlink($tempFile);
         }
@@ -332,16 +332,16 @@ class ImageCacheServiceTest extends TestCase
 
     public function test_total_size_sums_file_sizes(): void
     {
-        file_put_contents($this->tempCacheDir . '/display/a.png', str_repeat('a', 100));
-        file_put_contents($this->tempCacheDir . '/lightbox/b.png', str_repeat('b', 200));
+        file_put_contents($this->tempCacheDir.'/display/a.png', str_repeat('a', 100));
+        file_put_contents($this->tempCacheDir.'/lightbox/b.png', str_repeat('b', 200));
 
         $this->assertSame(300, $this->service->totalSize());
     }
 
     public function test_clear_removes_all_content(): void
     {
-        file_put_contents($this->tempCacheDir . '/display/a.png', 'data');
-        file_put_contents($this->tempCacheDir . '/lightbox/b.png', 'data');
+        file_put_contents($this->tempCacheDir.'/display/a.png', 'data');
+        file_put_contents($this->tempCacheDir.'/lightbox/b.png', 'data');
 
         $this->service->clear();
 
