@@ -1,5 +1,80 @@
 # Changelog
 
+## 2026-09-10 — C2.2 — Слой данных личного кабинета
+
+### Цель
+
+Создать слой получения данных для личного кабинета (`CabinetService`),
+на который лягут последующие подэтапы C2.3–C2.6 (dashboard, список проектов,
+страница проекта, галерея альбома). `CabinetController` остаётся тонким,
+без ветвлений по ролям внутри контроллера.
+
+### Добавлено
+
+- **app/Services/CabinetService.php** (новый) — единственная точка выборки данных
+  кабинета, с роль-ориентированными запросами и eager loading без N+1:
+  - `getProjectsForUser(User)` — проекты для dashboard/списка: клиент — свои
+    (`projects.client_id`), class_manager — свой (`projects.manager_id`),
+    admin/photographer — все, parent и пользователи без роли — пусто.
+  - `getProjectForUser(User, int $projectId)` — проект по ID с теми же фильтрами
+    (IDOR-защита: чужой/недоступный проект → null).
+  - `getAlbumsForUser(User)` — альбомы для dashboard родителя: admin/photographer —
+    все `client`-альбомы; client — альбомы своих проектов; class_manager —
+    `client`-альбомы своего проекта; parent — только назначенные через `album_user`
+    `client`-альбомы; без роли — пусто.
+  - `getAlbumForUser(User, int $albumId)` — альбом по ID с теми же фильтрами.
+  - `getPhotosForAlbum(User, int $albumId)` — фото альбома (с `media`) только после
+    подтверждения доступа к альбому.
+  - `Project`-запросы дополняются `withCount`: `albums_count`,
+    `client_albums_count`, `photos_count` (подзапросом, без N+1).
+  - Eager loading: `project`, `cover`, `users` для альбомов; `albums` с сортировкой
+    для проектов; `media` для фото.
+  - Критичное правило фильтрации закрытия: если у пользователя нет ни одной
+    применимой роли — запрос получает `where 1 = 0` (пустая выборка), а не
+    «без ограничений».
+
+### Изменено
+
+- **app/Http/Controllers/CabinetController.php** — внедрён `CabinetService` (DI);
+  `index()` отдаёт данные в зависимости от роли: parent → `albums`, остальные →
+  `projects`. Логика выборки переехала из контроллера в сервис.
+- **resources/views/cabinet/index.blade.php** — заглушка заменена на рендер
+  dashboard: для parent — карточки назначенных альбомов (обложка, название,
+  проект, описание); для клиента/class_manager/admin — карточки проектов
+  (название, статус, дата съёмки, счётчики альбомов и фото, список альбомов).
+  UI галереи намеренно не создавался (рамки C2.2).
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) остаются единственным
+  источником правил авторизации; query layer не дублирует бизнес-логику Policy.
+- Схема БД не изменялась.
+
+### Тесты
+
+- **tests/Feature/Services/CabinetServiceTest.php** (новый, 30 тестов):
+  - admin/photographer — полный доступ (все проекты, проект по ID, фото альбома);
+  - client — только свои проекты, все типы альбомов своих проектов, отсутствие
+    чужих и orphan-альбомов; IDOR: чужой проект/альбом → null;
+  - class_manager — только свой проект и его `client`-альбомы; чужие проекты,
+    альбомы типа `project`/прочие — недоступны; IDOR → null;
+  - parent — проектов не видит, только назначенные `client`-альбомы (в т.ч. без
+    проекта), не-`client` альбомы недоступны даже при `album_user`; IDOR → null;
+  - пользователь без роли — пустая выборка;
+  - комбинированные роли: client+class_manager, client+admin;
+  - eager loading: сортировка альбомов проекта, связи `project`/`cover`/`users`,
+    счётчики `albums_count`/`client_albums_count`/`photos_count`.
+
+### Проверка
+
+- `php artisan test` — **759 passed / 1932 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+# Changelog
+
 ## 2026-09-09 — C2.1 — Финализация статусов проекта
 
 ### Цель

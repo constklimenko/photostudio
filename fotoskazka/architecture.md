@@ -733,9 +733,48 @@ retoucher, assistant, manager, designer и т.д.
 ### Пользовательский кабинет
 
 - Маршрут: `GET /cabinet` (middleware `auth`)
-- Контроллер: `CabinetController@index`
+- Контроллер: `CabinetController@index` (тонкий, DI `CabinetService`)
 - Защищён middleware `auth`
-- Временно выводит приветствие пользователя
+
+#### Слой данных кабинета — C2.2 (`app/Services/CabinetService.php`)
+
+Единственная точка выборки данных личного кабинета. Логика запросов вынесена из
+контроллера; политики (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) остаются
+единственным источником правил авторизации, а query layer только сужает выборку
+на уровне БД под права роли:
+
+| Роль          | Проекты                                        | Альбомы                                   |
+|---------------|------------------------------------------------|-------------------------------------------|
+| `client`      | `projects.client_id = user.id`                 | все альбомы своих проектов                |
+| `class_manager` | `projects.manager_id = user.id`              | только `client`-альбомы своего проекта    |
+| `parent`      | не получает Project (пусто)                    | только назначенные через `album_user` `client`-альбомы |
+| `photographer`/`admin` | полный доступ                          | все `client`-альбомы (для `getAlbums*`)    |
+
+Методы:
+
+- `getProjectsForUser(User)` / `getProjectForUser(User, id)` — список/dashboard
+  и страница проекта; IDOR-защита, чужой проект → `null`;
+- `getAlbumsForUser(User)` / `getAlbumForUser(User, id)` — dashboard родителя
+  (вокруг альбомов, не Project) и галерея к моменту C2.6;
+- `getPhotosForAlbum(User, id)` — фото альбома с `media`, только после проверки
+  доступа к альбому.
+
+Гарантии выборки:
+
+- eager loading `project`/`cover`/`users` (альбом), `albums` + `withCount`
+  (`albums_count`, `client_albums_count`, `photos_count`) для проектов,
+  `media` для фото — без N+1;
+- счётчик фото — подзапросом на уровне SQL (не перебор коллекций);
+- закрытие выборки: если у пользователя нет ни одной применимой роли,
+  добавляется `where 1 = 0` (пустой результат), а не «без ограничений».
+
+Dashboard (`resources/views/cabinet/index.blade.php`):
+
+- `parent` — карточки назначенных альбомов (обложка, название, проект, описание);
+- `client` / `class_manager` / `admin` / `photographer` — карточки проектов
+  (название, статус, дата съёмки, счётчики альбомов/фото, первые альбомы).
+
+UI галереи на C2.2 намеренно не создавался.
 
 ### Аутентификация
 
