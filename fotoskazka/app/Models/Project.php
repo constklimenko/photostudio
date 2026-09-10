@@ -21,6 +21,7 @@ class Project extends Model
 
     protected $casts = [
         'status' => ProjectStatus::class,
+        'shooting_date' => 'date',
     ];
 
     public function client(): BelongsTo

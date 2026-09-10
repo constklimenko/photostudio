@@ -81,8 +81,10 @@ class InquiryTest extends TestCase
         $this->assertDatabaseHas('projects', [
             'id' => $project->id,
             'title' => 'Transactional Project',
-            'shooting_date' => '2026-09-15',
         ]);
+
+        $this->assertTrue($project->shooting_date instanceof \DateTimeInterface);
+        $this->assertSame('2026-09-15', $project->shooting_date->format('Y-m-d'));
 
         $this->assertDatabaseHas('inquiries', [
             'id' => $inquiry->id,

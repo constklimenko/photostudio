@@ -387,7 +387,7 @@ class CabinetServiceTest extends TestCase
         $admin = $this->userWithRole('admin');
 
         $project = Project::factory()->create();
-        $albumA = Album::factory()->create(['project_id' => $project->id]);
+        $albumA = Album::factory()->create(['project_id' => $project->id, 'type' => 'project']);
         $albumB = Album::factory()->create(['project_id' => $project->id, 'type' => 'client']);
         Photo::factory()->count(3)->create(['album_id' => $albumA->id]);
         Photo::factory()->count(2)->create(['album_id' => $albumB->id]);
