@@ -114,6 +114,8 @@
     </section>
 @endif
 
+<x-site.ar-teaser />
+
 @if ($videos->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

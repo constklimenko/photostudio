@@ -47,6 +47,17 @@ class HomeControllerTest extends TestCase
         $response->assertSee('ФОТОСКАЗКА УФА');
     }
 
+    public function test_home_page_renders_ar_teaser(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
+            ->assertSee('оживающие фотографии')
+            ->assertSee('ar-teaser')
+            ->assertSee('images/ar-teaser.jpg');
+    }
+
     public function test_home_page_shows_page_title_from_database(): void
     {
         Page::factory()->create([
