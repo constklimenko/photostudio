@@ -177,10 +177,17 @@ resources/views/
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
 ├── cabinet/
-│   └── index.blade.php         # Личный кабинет (заглушка)
+│   ├── index.blade.php         # Dashboard кабинета (client/class_manager — проекты, parent — назначенные альбомы)
+│   ├── projects.blade.php      # Список проектов (client / class_manager)
+│   ├── project.blade.php       # Страница проекта + карточки альбомов со ссылкой на галерею (C2.5)
+│   └── album.blade.php         # Галерея альбома (сетка + lightbox + пагинация) (C2.6)
 └── auth/
     └── login.blade.php         # Страница входа
 ```
+
+`<x-site.album-photos>` принимает `$album` и опциональный `$photos` (пагинированная
+коллекция фото; по умолчанию берёт `$album->photos`) — переиспользуется публичной
+страницей альбома, страницами услуг/категорий и галереей кабинета.
 
 ## Маршруты
 
@@ -202,6 +209,8 @@ resources/views/
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
 | GET | `/cabinet/projects` | `CabinetController@projects` | `auth` |
+| GET | `/cabinet/projects/{project}` | `CabinetController@show` | `auth` |
+| GET | `/cabinet/albums/{album}` | `CabinetController@showAlbum` (галерея; `AlbumPolicy::view`) | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
 | POST | `/login` | `Auth\LoginController@store` | `guest` |
 | POST | `/logout` | `Auth\LoginController@destroy` | `auth` |
@@ -756,9 +765,12 @@ retoucher, assistant, manager, designer и т.д.
 - `getProjectsForUser(User)` / `getProjectForUser(User, id)` — список/dashboard
   и страница проекта; IDOR-защита, чужой проект → `null`;
 - `getAlbumsForUser(User)` / `getAlbumForUser(User, id)` — dashboard родителя
-  (вокруг альбомов, не Project) и галерея к моменту C2.6;
-- `getPhotosForAlbum(User, id)` — фото альбома с `media`, только после проверки
-  доступа к альбому.
+  (вокруг альбомов, не Project);
+- `getPhotosForAlbum(User, id, perPage=24)` — фото альбома с `media`, только после
+  проверки доступа к альбому; пагинированный результат (`LengthAwarePaginator`);
+- `paginateAlbumPhotos(Album, perPage=24)` — пагинация фото уже авторизованного
+  альбома (используется галереей C2.6 после `AlbumPolicy::view`; без повторной
+  проверки доступа и без N+1).
 
 Гарантии выборки:
 

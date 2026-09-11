@@ -1,5 +1,89 @@
 # Changelog
 
+## 2026-09-11 — C2.6 — Галерея альбома в личном кабинете
+
+### Цель
+
+Реализовать страницу клиентской галереи альбома `/cabinet/albums/{album}`
+с доступом через `AlbumPolicy::view` (защита от IDOR для всех ролей),
+пагинацией при большом числе фото и выдачей media через существующую систему
+Media Storage (`MediaController` / `ImageCacheService`).
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/albums/{album}` (middleware
+  `auth`, имя `cabinet.album`). Не конфликтует с публичными `media.*` и
+  `portfolio.*` маршрутами.
+- **app/Http/Controllers/CabinetController.php** — метод `showAlbum()`:
+  `Gate::authorize('view', $album)` (AlbumPolicy) → `CabinetService::paginateAlbumPhotos()`.
+  Пользователь не может вытащить фото чужого альбома, подменив ID в URL — 403.
+- **app/Services/CabinetService.php** — `getPhotosForAlbum()` переведён на
+  пагинацию (`LengthAwarePaginator`, 24 фото/страница, `with('media')`);
+  добавлен `paginateAlbumPhotos(Album, int $perPage)` для уже авторизованного
+  альбома (без повторного запроса доступа и без N+1).
+- **resources/views/cabinet/album.blade.php** (новый) — страница галереи:
+  заголовок альбома, название проекта, описание, счётчик фото, сетка+lightbox
+  через переиспользуемый `<x-site.album-photos>` (превью через
+  `getDisplayUrl()`, оригинал через `getUrl()`/`getLightboxUrl()`), пагинация
+  через стандартный Tailwind-пейджер, пустое состояние.
+- **resources/views/components/site/album-photos.blade.php** — добавлен
+  опциональный параметр `photos` (пагинированная коллекция) с сохранением
+  прежнего поведения (`$album->photos` по умолчанию).
+- **resources/views/cabinet/project.blade.php** — карточки альбомов теперь
+  ссылаются на `cabinet.album` вместо «Открыть →»-заглушки `href="#"`.
+- **resources/views/cabinet/index.blade.php** — карточки назначенных альбомов
+  parent ведут на `cabinet.album`.
+
+### Доступ (через AlbumPolicy, без изменений политики)
+
+- client — альбомы собственных projects (любой тип);
+- class_manager — только `type = client` альбомы собственного project;
+- parent — только назначенные через `album_user` альбомы `type = client`;
+- photographer/admin — полный доступ;
+- Media выдаётся только через существующий Media Storage: для приватных
+  типов альбомов (`client`, `project`) `MediaController` дополнительно
+  проверяет `MediaAccessService::canView` (гость → 404, чужой → 403).
+  Второе хранилище изображений не создаётся, фото в публичную директорию
+  не копируются.
+
+### Не реализовывалось
+
+Комментарии (C2.8) и выбор фотографий — вне рамок задачи, согласно roadmap.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetAlbumShowTest.php** (новый, 27 тестов):
+  - авторизация: гость → redirect на `/login`;
+  - client: видит галерею своего альбома (любой тип), превью/lightbox/original
+    URL через Media Storage; чужой альбом → 403; не видит медиа чужого альбома;
+    пустое состояние; remote-медиа использует `media.original` route;
+  - class_manager: `type = client` собственного проекта — доступно; `type =
+    project` своего проекта и client чужих менеджеров → 403;
+  - parent: назначенный `client`-альбом (в т.ч. без проекта) — доступно;
+    неназначенный и назначенный не-client → 403;
+  - photographer/admin: полный доступ;
+  - без роли → 403; комбинированные роли (client+admin) — полный доступ;
+  - IDOR: client A ↔ client B, manager A ↔ manager B, parent A ↔ parent B —
+    взаимная изоляция;
+  - пагинация: 60 фото → 2-я страница; 3 фото → пагинации нет;
+  - навигация: назад на проект (client) / на кабинет (parent);
+  - N+1: число SQL-запросов ограничено при сетке из 10 фото.
+
+### Не менялось
+
+- Policies (`AlbumPolicy`, `PhotoPolicy`) — без изменений; `PhotoPolicy::view`
+  продолжает делегировать `AlbumPolicy`.
+- Схема БД, миграции — без изменений.
+- Media Storage / `MediaController` / `MediaAccessService` — без изменений.
+
+### Проверка
+
+- `php artisan test` — **867 passed / 2183 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-11 — C2.5 — Страница проекта в личном кабинете
 
 ### Цель

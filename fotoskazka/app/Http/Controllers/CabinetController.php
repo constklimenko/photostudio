@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Album;
 use App\Models\Project;
 use App\Services\CabinetService;
 use Illuminate\Support\Facades\Gate;
@@ -55,5 +56,14 @@ class CabinetController extends Controller
             : $project->albums;
 
         return view('cabinet.project', compact('user', 'project', 'albums'));
+    }
+
+    public function showAlbum(Album $album)
+    {
+        Gate::authorize('view', $album);
+
+        $photos = $this->cabinet->paginateAlbumPhotos($album);
+
+        return view('cabinet.album', compact('album', 'photos'));
     }
 }

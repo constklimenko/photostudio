@@ -1,6 +1,12 @@
-@if ($album->photos->isNotEmpty())
+@props(['album', 'photos' => null])
+
+@php
+    $galleryPhotos = $photos ?? $album->photos;
+@endphp
+
+@if ($galleryPhotos->isNotEmpty())
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="portfolioGrid">
-        @foreach ($album->photos as $photo)
+        @foreach ($galleryPhotos as $photo)
             <a href="{{ $photo->media->getLightboxUrl() }}"
                class="rounded-xl overflow-hidden bg-[#1a1a1a] block cursor-pointer group lightbox-trigger shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                data-index="{{ $loop->index }}"

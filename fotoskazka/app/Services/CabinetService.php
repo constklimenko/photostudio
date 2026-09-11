@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class CabinetService
 {
@@ -51,19 +52,24 @@ class CabinetService
         return $query->first();
     }
 
-    public function getPhotosForAlbum(User $user, int $albumId): Collection
+    public function getPhotosForAlbum(User $user, int $albumId, int $perPage = 24): LengthAwarePaginator
     {
         $album = $this->getAlbumForUser($user, $albumId);
 
         if (! $album) {
-            return new Collection;
+            return Photo::query()->whereRaw('1 = 0')->paginate($perPage);
         }
 
+        return $this->paginateAlbumPhotos($album, $perPage);
+    }
+
+    public function paginateAlbumPhotos(Album $album, int $perPage = 24): LengthAwarePaginator
+    {
         return Photo::query()
             ->where('album_id', $album->id)
             ->with('media')
             ->orderBy('sort_order')
-            ->get();
+            ->paginate($perPage);
     }
 
     private function baseProjectQuery(): Builder

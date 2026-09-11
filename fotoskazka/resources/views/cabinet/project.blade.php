@@ -63,11 +63,11 @@
             <h2 class="font-heading text-xl font-normal tracking-wide text-white">Альбомы</h2>
             <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach($albums as $album)
-                    <div class="bg-[#111111] rounded-xl overflow-hidden border border-[#1a1a1a]">
+                    <a href="{{ route('cabinet.album', $album) }}" class="bg-[#111111] rounded-xl overflow-hidden border border-[#1a1a1a] hover:border-[#d4af37]/40 transition group">
                         @if($album->cover)
                             <img src="{{ $album->cover->getThumbnailUrl() }}"
                                  alt="{{ $album->cover->alt_text }}"
-                                 class="w-full h-48 object-cover"
+                                 class="w-full h-48 object-cover group-hover:scale-105 transition duration-500"
                                  loading="lazy">
                         @else
                             <div class="w-full h-48 bg-[#1a1a1a] flex items-center justify-center">
@@ -85,10 +85,10 @@
                                 <span class="text-sm text-gray-500">
                                     {{ $album->photos_count }} {{ Str::plural('фото', $album->photos_count) }}
                                 </span>
-                                <span class="text-sm text-amber-400">Открыть →</span>
+                                <span class="text-sm text-amber-400 group-hover:text-amber-300 transition-colors">Открыть →</span>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 @endforeach
             </div>
         @endif

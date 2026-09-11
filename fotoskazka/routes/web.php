@@ -50,6 +50,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/cabinet/projects/{project}', [CabinetController::class, 'show'])
         ->name('cabinet.project');
+
+    Route::get('/cabinet/albums/{album}', [CabinetController::class, 'showAlbum'])
+        ->name('cabinet.album');
 });
 
 require __DIR__.'/auth.php';

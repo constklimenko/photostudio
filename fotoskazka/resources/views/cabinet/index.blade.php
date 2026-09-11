@@ -38,11 +38,11 @@
                 <p class="mt-2 text-sm text-gray-500">Доступно {{ $albums->count() }} {{ Str::plural('альбом', $albums->count()) }}</p>
                 <div class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($albums as $album)
-                        <div class="bg-[#111111] rounded-xl overflow-hidden border border-[#1a1a1a]">
+                        <a href="{{ route('cabinet.album', $album) }}" class="bg-[#111111] rounded-xl overflow-hidden border border-[#1a1a1a] hover:border-[#d4af37]/40 transition group">
                             @if($album->cover)
                                 <img src="{{ $album->cover->getThumbnailUrl() }}"
                                      alt="{{ $album->cover->alt_text }}"
-                                     class="w-full h-48 object-cover"
+                                     class="w-full h-48 object-cover group-hover:scale-105 transition duration-500"
                                      loading="lazy">
                             @else
                                 <div class="w-full h-48 bg-[#1a1a1a] flex items-center justify-center">
@@ -59,8 +59,9 @@
                                 @if($album->description)
                                     <p class="mt-2 text-sm text-gray-400 line-clamp-2">{{ $album->description }}</p>
                                 @endif
+                                <div class="mt-3 text-sm text-amber-400 group-hover:text-amber-300 transition-colors">Открыть →</div>
                             </div>
-                        </div>
+                        </a>
                     @endforeach
                 </div>
             @endif
