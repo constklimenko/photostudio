@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-09-11 — C2.5 — Страница проекта в личном кабинете
+
+### Цель
+
+Реализовать страницу проекта `/cabinet/projects/{project}` внутри личного
+кабинета с проверкой доступа через `ProjectPolicy::view` (защита от IDOR)
+и роль-зависимым набором альбомов.
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/projects/{project}` (middleware
+  `auth`, имя `cabinet.project`).
+- **app/Http/Controllers/CabinetController.php** — метод `show()`:
+  `Gate::authorize('view', $project)` → `CabinetService::getProjectForUser()`
+  (IDOR-защита) → фильтрация альбомов: class_manager видит только
+  `type = client`, прочие — все.
+- **resources/views/cabinet/project.blade.php** (новый) — страница проекта:
+  название, статус с бейджем, дата съёмки, описание, счётчик альбомов;
+  сетка альбомов (обложка, название, описание, число фото, ссылка на будущую
+  галерею «Открыть →»), пустое состояние; у project-albums cover тянутся
+  через `albums.cover` (eager loading).
+- **app/Services/CabinetService.php** — в `baseProjectQuery()` к загрузке
+  `albums` добавлены `withCount('photos')` и `albums.cover` (без N+1).
+- **resources/views/cabinet/projects.blade.php** — карточки проектов теперь
+  ведут на `cabinet.project` вместо `href="#"`.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetProjectShowTest.php** (новый, 24 теста):
+  - авторизация: гость → redirect на `/login`;
+  - client: видит собственный проект (инфо, статус, описание, дата съёмки,
+    счётчики, обложка, все альбомы любых типов); чужой проект → 403;
+  - class_manager: видит собственный проект, только `type = client` альбомы;
+    чужой проект → 403;
+  - parent: доступ к проекту запрещён (403);
+  - photographer/admin: полный доступ ко всем проектам и типам альбомов;
+  - IDOR: client A ↔ client B, manager A ↔ manager B — взаимная изоляция;
+    отсутствие чужих альбомов на странице проекта;
+  - N+1: число SQL-запросов ограничено;
+  - статус через `ProjectStatus::label()`; ссылка «Открыть →» для галереи;
+  - список проектов ведёт на страницу проекта.
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) — без изменений.
+- Схема БД — без изменений.
+- Содержимое галереи (C2.6) — не реализовывалось.
+
+### Проверка
+
+- `php artisan test` — **840 passed / 2132 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-11 — C2.4 — Список проектов
 
 ### Цель

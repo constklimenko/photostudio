@@ -47,7 +47,7 @@
             <p class="mb-6 text-sm text-gray-500">{{ $projects->count() }} {{ Str::plural('проект', $projects->count()) }}</p>
             <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach($projects as $project)
-                    <a href="#"
+                    <a href="{{ route('cabinet.project', $project) }}"
                        class="block bg-[#111111] rounded-xl p-6 border border-[#1a1a1a] hover:border-[#2a2a2a] transition-colors">
                         <h3 class="font-heading text-lg font-medium text-white">{{ $project->title }}</h3>
 

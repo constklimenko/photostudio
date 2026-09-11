@@ -803,6 +803,8 @@ A → B → C → A
 * C2.3 — dashboard личного кабинета (client / class_manager / parent /
   photographer / admin)
 * C2.4 — список проектов (client / class_manager; parent не видит проекты)
+* C2.5 — страница проекта в личном кабинете (детали + альбомы в рамках прав C1;
+  client — все альбомы, class_manager — client-альбомы, parent — запрещён)
 
 ## Текущий этап
 

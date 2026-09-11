@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
 use App\Services\CabinetService;
+use Illuminate\Support\Facades\Gate;
 
 class CabinetController extends Controller
 {
@@ -34,5 +36,24 @@ class CabinetController extends Controller
         );
 
         return view('cabinet.projects', compact('user', 'projects'));
+    }
+
+    public function show(Project $project)
+    {
+        Gate::authorize('view', $project);
+
+        $user = auth()->user();
+
+        $project = $this->cabinet->getProjectForUser($user, $project->id);
+
+        if (! $project) {
+            abort(404);
+        }
+
+        $albums = $user->hasRole('class_manager')
+            ? $project->albums->where('type', 'client')
+            : $project->albums;
+
+        return view('cabinet.project', compact('user', 'project', 'albums'));
     }
 }

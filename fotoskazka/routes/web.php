@@ -47,6 +47,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/cabinet/projects', [CabinetController::class, 'projects'])
         ->name('cabinet.projects');
+
+    Route::get('/cabinet/projects/{project}', [CabinetController::class, 'show'])
+        ->name('cabinet.project');
 });
 
 require __DIR__.'/auth.php';

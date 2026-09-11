@@ -71,8 +71,10 @@ class CabinetService
         return Project::query()
             ->with([
                 'albums' => function ($q) {
-                    $q->orderBy('sort_order');
+                    $q->orderBy('sort_order')
+                        ->withCount('photos');
                 },
+                'albums.cover',
             ])
             ->withCount('albums as albums_count')
             ->withCount([
