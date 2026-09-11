@@ -1,3 +1,18 @@
+@props([
+    'title' => null,
+    'accent' => null,
+    'subtitle' => null,
+    'footer' => null,
+    'media' => null,
+])
+
+@php
+    $resolvedTitle = $title ?: 'Скоро в&nbsp;Фотосказке&nbsp;—';
+    $resolvedAccent = $accent ?: 'оживающие фотографии';
+    $resolvedSubtitle = $subtitle ?: 'Обычные снимки превратятся в&nbsp;живые воспоминания: фото оживёт, сохранив атмосферу мгновения.';
+    $resolvedFooter = $footer ?: 'Следите за&nbsp;новостями&nbsp;— подробности скоро появятся на&nbsp;сайте.';
+@endphp
+
 <section class="ar-teaser relative overflow-hidden py-24" data-aos="fade-up" data-aos-delay="50">
     <div class="ar-teaser__bg absolute inset-0"></div>
 
@@ -10,26 +25,36 @@
         </span>
 
         <h2 class="mt-6 font-heading text-3xl sm:text-4xl lg:text-5xl font-normal leading-snug text-white max-w-4xl mx-auto">
-            Скоро в&nbsp;Фотосказке&nbsp;—<br>
-            <span class="text-[#d4af37]">оживающие фотографии</span>
+            {!! $resolvedTitle !!}<br>
+            <span class="text-[#d4af37]">{!! $resolvedAccent !!}</span>
         </h2>
 
         <p class="mt-5 max-w-2xl mx-auto text-base sm:text-lg text-gray-400 leading-relaxed">
-            Обычные снимки превратятся в&nbsp;живые воспоминания: фото оживёт, сохранив атмосферу мгновения.
+            {!! $resolvedSubtitle !!}
         </p>
 
         <p class="mt-3 text-sm text-gray-500">
-            Следите за&nbsp;новостями&nbsp;— подробности скоро появятся на&nbsp;сайте.
+            {!! $resolvedFooter !!}
         </p>
 
         <div class="relative mt-12 max-w-4xl mx-auto aspect-[4/3] sm:aspect-[16/10] lg:aspect-video rounded-2xl overflow-hidden bg-[#111111] ring-1 ring-white/10 shadow-2xl shadow-black/40">
-            <img
-                src="{{ asset('images/ar-teaser.jpg') }}"
-                alt="Фотография, которая скоро оживёт в дополненной реальности Фотосказки"
-                loading="lazy"
-                decoding="async"
-                class="h-full w-full object-cover"
-            >
+            @if ($media)
+                <img
+                    src="{{ $media->getDisplayUrl() ?: $media->getUrl() }}"
+                    alt="{{ $media->alt_text ?: 'Фотография, которая скоро оживёт в дополненной реальности Фотосказки' }}"
+                    loading="lazy"
+                    decoding="async"
+                    class="h-full w-full object-cover"
+                >
+            @else
+                <img
+                    src="{{ asset('images/ar-teaser.jpg') }}"
+                    alt="Фотография, которая скоро оживёт в дополненной реальности Фотосказки"
+                    loading="lazy"
+                    decoding="async"
+                    class="h-full w-full object-cover"
+                >
+            @endif
 
             <div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/50 via-transparent to-black/20"></div>
             <div class="ar-teaser__glow absolute -right-14 -top-14 w-56 h-56 rounded-full pointer-events-none" aria-hidden="true"></div>

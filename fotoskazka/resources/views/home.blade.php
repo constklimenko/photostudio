@@ -114,7 +114,15 @@
     </section>
 @endif
 
-<x-site.ar-teaser />
+@if ($arTeaser['enabled'])
+    <x-site.ar-teaser
+        :title="$arTeaser['title']"
+        :accent="$arTeaser['accent']"
+        :subtitle="$arTeaser['subtitle']"
+        :footer="$arTeaser['footer']"
+        :media="$arTeaser['media']"
+    />
+@endif
 
 @if ($videos->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">

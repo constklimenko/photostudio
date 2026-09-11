@@ -1,5 +1,89 @@
 # Changelog
 
+## 2026-09-11 — AR-тизер: акцент заголовка и нижняя строка
+
+### Добавлено
+
+- **database/migrations/2026_09_11_084636_add_ar_teaser_accent_and_footer_to_pages_table.php** —
+  2 поля в таблицу `pages`:
+  - `ar_teaser_accent` (string, nullable) — золотая строка под заголовком;
+  - `ar_teaser_footer` (string, nullable) — строка «Следите за новостями».
+- **app/Models/Page** — поля добавлены в `$fillable`.
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — поля «Акцент
+  заголовка» и «Нижняя строка» в секции «Оживающие фотографии».
+- **app/Http/Controllers/HomeController** — `$arTeaser` дополнен ключами
+  `accent` и `footer`.
+- **resources/views/components/site/ar-teaser.blade.php** — пропсы `$accent`
+  и `$footer` с fallback на дефолтные значения.
+
+### Тесты
+
+- `test_ar_teaser_title_and_subtitle_from_database` — включает проверку
+  accent и footer.
+- `test_ar_teaser_accent_and_footer_defaults_when_null` — дефолты при NULL.
+
+### Проверка
+
+- `php artisan test --filter=HomeControllerTest` — 30 passed / 71 assertions.
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — AR-тизер: управление из CMS (Filament)
+
+### Цель
+
+Сделать основные параметры секции «Оживающие фотографии» на главной странице
+управляемыми из админки Filament. Секция является частью контента страницы
+`home`, поэтому управление находится в Контент → Страницы → Главная.
+
+### Добавлено
+
+- **database/migrations/2026_09_11_081548_add_ar_teaser_fields_to_pages_table.php** (новая) —
+  4 поля в таблицу `pages`:
+  - `ar_teaser_enabled` (boolean, default true);
+  - `ar_teaser_title` (string, nullable);
+  - `ar_teaser_subtitle` (text, nullable);
+  - `ar_teaser_media_id` (FK → media, nullable, nullOnDelete).
+- **app/Models/Page** — добавлены `ar_teaser_*` в `$fillable`, каст
+  `ar_teaser_enabled` → boolean, связь `arTeaserMedia()`.
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — секция
+  «Оживающие фотографии» с toggle, TextInput, Textarea и Select media.
+- **resources/views/components/site/ar-teaser.blade.php** — компонент
+  принимает пропсы `$title`, `$subtitle`, `$media` с fallback на дефолтные
+  значения. Изображение из Media или статический `images/ar-teaser.jpg`.
+
+### Изменено
+
+- **app/Http/Controllers/HomeController** — собирает массив `$arTeaser` из
+  полей страницы `home` и передаёт в view.
+- **resources/views/home.blade.php** — секция AR рендерится условно
+  (`$arTeaser['enabled']`) с прокидыванием данных в компонент.
+
+### Кэш
+
+Инвалидация через существующий `PageObserver::saved` — при сохранении
+страницы `home` автоматически очищается `page_content_home`. Отдельный
+механизм кэширования не добавлялся.
+
+### Тесты
+
+- `test_home_page_renders_ar_teaser` — существующий тест (дефолтные значения).
+- `test_ar_teaser_hidden_when_disabled` — секция скрыта при `ar_teaser_enabled = false`.
+- `test_ar_teaser_title_and_subtitle_from_database` — заголовок и описание из БД.
+- `test_ar_teaser_image_from_selected_media` — изображение из выбранного Media.
+- `test_ar_teaser_without_media_shows_fallback` — fallback на статическое фото.
+- `test_ar_teaser_default_values_when_fields_null` — дефолты при NULL.
+- `test_ar_teaser_page_saved_clears_cache` — инвалидация кэша при изменении.
+
+### Проверка
+
+- `php artisan test --filter=HomeControllerTest` — 29 passed / 66 assertions.
+- `php artisan test --filter=PageResourceTest --filter=PageObserverTest` — 4 passed.
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-11 — AR-тизер на главной странице (маркетинговый блок)
 
 ### Цель

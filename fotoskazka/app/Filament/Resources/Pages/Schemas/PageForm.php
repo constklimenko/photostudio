@@ -110,6 +110,41 @@ class PageForm
                             ->label('Привязанные альбомы'),
                     ]),
 
+                Section::make('Оживающие фотографии')
+                    ->schema([
+                        Toggle::make('ar_teaser_enabled')
+                            ->label('Показывать секцию')
+                            ->live(true),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('ar_teaser_title')
+                                    ->maxLength(255)
+                                    ->label('Заголовок')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                Select::make('ar_teaser_media_id')
+                                    ->relationship('arTeaserMedia', 'title')
+                                    ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
+                                    ->preload()
+                                    ->nullable()
+                                    ->label('Изображение')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                TextInput::make('ar_teaser_accent')
+                                    ->maxLength(255)
+                                    ->label('Акцент заголовка')
+                                    ->helperText('Золотая строка под заголовком')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                Textarea::make('ar_teaser_subtitle')
+                                    ->label('Описание')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled'))
+                                    ->columnSpanFull(),
+                                TextInput::make('ar_teaser_footer')
+                                    ->maxLength(255)
+                                    ->label('Нижняя строка')
+                                    ->helperText('Текст под описанием')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                            ]),
+                    ]),
+
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')
