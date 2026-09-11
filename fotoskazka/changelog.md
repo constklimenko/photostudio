@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-09-11 — C2.4 — Список проектов
+
+### Цель
+
+Реализовать отдельную страницу списка проектов `/cabinet/projects` для client
+и class_manager с проверкой доступа через `ProjectPolicy::view` (защита от IDOR).
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/projects` (middleware `auth`);
+  обёрнут в `Route::middleware('auth')->group()` вместе с `GET /cabinet`.
+- **app/Http/Controllers/CabinetController.php** — метод `projects()`:
+  получает проекты через `CabinetService::getProjectsForUser()`, фильтрует
+  через `$user->can('view', $project)` (ProjectPolicy::view).
+- **resources/views/cabinet/projects.blade.php** (новый) — страница списка
+  проектов: заголовок (роль-зависимый), обратная ссылка на dashboard, карточки
+  проектов (название, статус с бейджем, дата съёмки, счётчики альбомов/фото),
+  пустое состояние.
+- **resources/views/cabinet/index.blade.php** — добавлена ссылка «Все проекты»
+  на `cabinet.projects` в заголовке для client/class_manager/admin/photographer.
+  Для parent ссылка не показывается.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetProjectsTest.php** (новый, 26 тестов):
+  - авторизация: гость → redirect на `/login`; авторизованный — `200`;
+  - client: видит свои проекты и статус, не видит чужих; счётчики альбомов/фото;
+    заголовок «Мои проекты»; пустое состояние;
+  - class_manager: видит свой проект и статус, не видит чужих; счётчик только
+    `client`-альбомов; заголовок «Ваш проект»; пустое состояние;
+  - parent: не видит проекты; пустое состояние;
+  - photographer/admin: видят все проекты;
+  - IDOR: client A ↔ client B, manager A ↔ manager B, parent A ↔ parent B —
+    взаимная изоляция;
+  - N+1: число SQL-запросов ограничено и не растёт с количеством вложенных
+    сущностей;
+  - бейдж статуса: русское название через `ProjectStatus::label()`;
+  - ссылка с dashboard на projects: видна для client/class_manager, не видна
+    для parent;
+  - проекты проходят проверку `ProjectPolicy::view`;
+  - комбинированные роли: client+admin.
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) — без изменений.
+- Слой данных `CabinetService` (C2.2) — без изменений.
+- Схема БД — без изменений.
+
+### Проверка
+
+- `php artisan test` — **816 passed / 2074 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-10 — C2.3 — Dashboard личного кабинета
 
 ### Цель

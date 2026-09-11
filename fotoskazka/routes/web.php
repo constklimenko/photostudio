@@ -41,8 +41,12 @@ Route::get('/media/{media}/lightbox', [MediaController::class, 'lightbox'])
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 
-Route::get('/cabinet', [CabinetController::class, 'index'])
-    ->middleware('auth')
-    ->name('cabinet.index');
+Route::middleware('auth')->group(function () {
+    Route::get('/cabinet', [CabinetController::class, 'index'])
+        ->name('cabinet.index');
+
+    Route::get('/cabinet/projects', [CabinetController::class, 'projects'])
+        ->name('cabinet.projects');
+});
 
 require __DIR__.'/auth.php';

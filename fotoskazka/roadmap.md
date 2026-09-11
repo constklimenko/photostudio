@@ -802,6 +802,7 @@ A → B → C → A
 * C2.2 — слой данных личного кабинета (`CabinetService`)
 * C2.3 — dashboard личного кабинета (client / class_manager / parent /
   photographer / admin)
+* C2.4 — список проектов (client / class_manager; parent не видит проекты)
 
 ## Текущий этап
 

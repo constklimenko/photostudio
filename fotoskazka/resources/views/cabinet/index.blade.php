@@ -66,13 +66,18 @@
             @endif
 
         @elseif(isset($projects))
-            @if($user->hasRole('class_manager'))
-                <h2 class="font-heading text-xl font-normal tracking-wide text-white">Ваш проект</h2>
-            @elseif($user->hasAnyRole(['admin', 'photographer']))
-                <h2 class="font-heading text-xl font-normal tracking-wide text-white">Проекты</h2>
-            @else
-                <h2 class="font-heading text-xl font-normal tracking-wide text-white">Ваши проекты</h2>
-            @endif
+            <div class="flex items-center gap-4">
+                <h2 class="font-heading text-xl font-normal tracking-wide text-white">
+                    @if($user->hasRole('class_manager'))
+                        Ваш проект
+                    @elseif($user->hasAnyRole(['admin', 'photographer']))
+                        Проекты
+                    @else
+                        Ваши проекты
+                    @endif
+                </h2>
+                <a href="{{ route('cabinet.projects') }}" class="text-sm text-amber-400 hover:text-amber-300 transition-colors">Все проекты</a>
+            </div>
 
             @if($projects->isEmpty())
                 <div class="mt-8 bg-[#111111] rounded-xl p-10 text-center border border-[#1a1a1a]">

@@ -24,4 +24,15 @@ class CabinetController extends Controller
 
         return view('cabinet.index', compact('user', 'projects'));
     }
+
+    public function projects()
+    {
+        $user = auth()->user();
+
+        $projects = $this->cabinet->getProjectsForUser($user)->filter(
+            fn ($project) => $user->can('view', $project),
+        );
+
+        return view('cabinet.projects', compact('user', 'projects'));
+    }
 }

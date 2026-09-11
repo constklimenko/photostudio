@@ -201,6 +201,7 @@ resources/views/
 | GET | `/media/{media}/lightbox` | `MediaController@lightbox` | PNG ≤1600px из кэша |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
+| GET | `/cabinet/projects` | `CabinetController@projects` | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
 | POST | `/login` | `Auth\LoginController@store` | `guest` |
 | POST | `/logout` | `Auth\LoginController@destroy` | `auth` |
@@ -797,6 +798,26 @@ retoucher, assistant, manager, designer и т.д.
   Каст добавлен на C2.3.
 
 UI галереи на C2.3 намеренно не создавался (рамки подэтапа: dashboard + список).
+
+#### Список проектов — C2.4
+
+Маршрут `GET /cabinet/projects` защищён middleware `auth`. Контроллер
+(`CabinetController::projects`) получает проекты через `CabinetService`
+и фильтрует через `ProjectPolicy::view` (защита от IDOR):
+
+| Роль          | Заголовок      | Содержимое                                                      |
+|---------------|----------------|-----------------------------------------------------------------|
+| `client`      | «Мои проекты»  | карточки своих проектов: название, статус (бейдж), дата, счётчики |
+| `class_manager` | «Ваш проект» | собственный проект + статус                                     |
+| `parent`      | пусто          | «Нет доступных проектов» (projects не видит)                     |
+| `photographer`/`admin` | «Мои проекты» | все проекты платформы                                   |
+
+`resources/views/cabinet/projects.blade.php` — отдельная страница списка проектов
+с карточками (название, статус, дата съёмки, счётчики альбомов/фото).
+Ссылка на страницу проекта (`href="#"`) — заготовка для C2.5.
+
+Dashboard (`cabinet/index.blade.php`) для client/class_manager/admin/photographer
+содержит ссылку «Все проекты» на `cabinet.projects`. Для parent ссылка не показывается.
 
 ### Аутентификация
 
