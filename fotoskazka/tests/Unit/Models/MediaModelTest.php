@@ -46,17 +46,17 @@ class MediaModelTest extends TestCase
         );
     }
 
-    public function test_get_url_returns_storage_url_for_local_disk(): void
+    public function test_get_url_returns_proxy_route_for_local_disk(): void
     {
         $media = Media::query()->create([
             'disk' => 'public',
             'file_path' => 'images/test.jpg',
         ]);
 
-        $url = $media->getUrl();
-
-        $this->assertNotNull($url);
-        $this->assertStringContainsString('images/test.jpg', $url);
+        $this->assertSame(
+            route('media.original', ['media' => $media->getKey()]),
+            $media->getUrl(),
+        );
     }
 
     public function test_get_thumbnail_url_falls_back_to_url_when_no_thumbnail_path(): void
@@ -70,7 +70,7 @@ class MediaModelTest extends TestCase
         $this->assertSame($media->getUrl(), $media->getThumbnailUrl());
     }
 
-    public function test_get_thumbnail_url_returns_thumbnail_path_when_set(): void
+    public function test_get_thumbnail_url_returns_thumbnail_route_when_set(): void
     {
         $media = Media::query()->create([
             'disk' => 'public',
@@ -78,10 +78,33 @@ class MediaModelTest extends TestCase
             'thumbnail_path' => 'images/test_thumb.webp',
         ]);
 
-        $url = $media->getThumbnailUrl();
+        $this->assertSame(
+            route('media.thumbnail', ['media' => $media->getKey()]),
+            $media->getThumbnailUrl(),
+        );
+    }
 
-        $this->assertNotNull($url);
-        $this->assertStringContainsString('images/test_thumb.webp', $url);
+    public function test_get_url_never_returns_raw_storage_path(): void
+    {
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'images/test.jpg',
+            'thumbnail_path' => 'images/test_thumb.webp',
+        ]);
+
+        $this->assertStringNotContainsString('/storage/', $media->getUrl());
+        $this->assertStringNotContainsString('/storage/', $media->getThumbnailUrl());
+    }
+
+    public function test_get_thumbnail_url_returns_null_when_no_file_path(): void
+    {
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => '',
+        ]);
+
+        $this->assertNull($media->getUrl());
+        $this->assertNull($media->getThumbnailUrl());
     }
 
     public function test_get_display_url_returns_null_for_non_image(): void

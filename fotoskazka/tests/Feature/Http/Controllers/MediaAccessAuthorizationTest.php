@@ -86,6 +86,36 @@ class MediaAccessAuthorizationTest extends TestCase
         return $media;
     }
 
+    private function mediaWithThumbnail(?string $content = null): Media
+    {
+        Storage::disk('thumbnails')->put('images/photo_thumb.webp', $content ?? 'binary-webp-thumbnail');
+
+        return Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'images/photo.jpg',
+            'thumbnail_path' => 'images/photo_thumb.webp',
+            'mime_type' => 'image/webp',
+        ]);
+    }
+
+    private function privateThumbnailMediaFor(Project $project): Media
+    {
+        $media = $this->mediaWithThumbnail();
+
+        $album = Album::factory()->create([
+            'project_id' => $project->id,
+            'type' => 'client',
+            'is_published' => true,
+        ]);
+
+        Photo::factory()->create([
+            'album_id' => $album->id,
+            'media_id' => $media->id,
+        ]);
+
+        return $media;
+    }
+
     public function test_public_media_is_served_to_guest(): void
     {
         $media = $this->publicMedia();
@@ -112,6 +142,88 @@ class MediaAccessAuthorizationTest extends TestCase
         $this->actingAs($client)
             ->get(route('media.original', ['media' => $media]))
             ->assertSuccessful();
+    }
+
+    public function test_own_class_manager_can_view_media_of_own_client_album(): void
+    {
+        $manager = $this->userWithRole('class_manager');
+        $project = Project::factory()->create(['manager_id' => $manager->id]);
+        $media = $this->privateMediaFor($project);
+
+        $this->actingAs($manager)
+            ->get(route('media.original', ['media' => $media]))
+            ->assertSuccessful();
+    }
+
+    public function test_client_cannot_view_media_of_alien_project(): void
+    {
+        $project = Project::factory()->create(['client_id' => $this->userWithRole('client')->id]);
+        $media = $this->privateMediaFor($project);
+
+        $stranger = $this->userWithRole('client');
+
+        $this->actingAs($stranger)
+            ->get(route('media.original', ['media' => $media]))
+            ->assertForbidden();
+    }
+
+    public function test_private_media_thumbnail_is_hidden_from_guest(): void
+    {
+        $project = Project::factory()->create();
+        $media = $this->privateThumbnailMediaFor($project);
+
+        $this->get(route('media.thumbnail', ['media' => $media]))
+            ->assertNotFound();
+    }
+
+    public function test_private_media_thumbnail_is_forbidden_for_foreign_client(): void
+    {
+        $project = Project::factory()->create(['client_id' => $this->userWithRole('client')->id]);
+        $media = $this->privateThumbnailMediaFor($project);
+
+        $stranger = $this->userWithRole('client');
+
+        $this->actingAs($stranger)
+            ->get(route('media.thumbnail', ['media' => $media]))
+            ->assertForbidden();
+    }
+
+    public function test_own_client_can_view_thumbnail_of_private_album(): void
+    {
+        $client = $this->userWithRole('client');
+        $project = Project::factory()->create(['client_id' => $client->id]);
+        $media = $this->privateThumbnailMediaFor($project);
+
+        $this->actingAs($client)
+            ->get(route('media.thumbnail', ['media' => $media]))
+            ->assertSuccessful();
+    }
+
+    public function test_public_media_thumbnail_is_served_to_guest(): void
+    {
+        $media = $this->mediaWithThumbnail('webp-bytes');
+
+        $this->get(route('media.thumbnail', ['media' => $media]))
+            ->assertSuccessful();
+    }
+
+    public function test_missing_thumbnail_returns_404_for_authorized_user(): void
+    {
+        $client = $this->userWithRole('client');
+        $project = Project::factory()->create(['client_id' => $client->id]);
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'images/photo.jpg',
+            'thumbnail_path' => 'images/does_not_exist_thumb.webp',
+            'mime_type' => 'image/webp',
+        ]);
+
+        $album = Album::factory()->create(['project_id' => $project->id, 'type' => 'client']);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $this->actingAs($client)
+            ->get(route('media.thumbnail', ['media' => $media]))
+            ->assertNotFound();
     }
 
     public function test_foreign_client_cannot_view_media_of_alien_private_album(): void

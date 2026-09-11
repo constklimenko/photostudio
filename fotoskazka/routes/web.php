@@ -31,6 +31,8 @@ Route::get('/video/{video}/stream', [VideoController::class, 'stream'])->name('v
 
 Route::get('/media/{media}/original', [MediaController::class, 'original'])
     ->name('media.original');
+Route::get('/media/{media}/thumbnail', [MediaController::class, 'thumbnail'])
+    ->name('media.thumbnail');
 Route::get('/media/{media}/download', [MediaController::class, 'download'])
     ->middleware('auth')
     ->name('media.download');

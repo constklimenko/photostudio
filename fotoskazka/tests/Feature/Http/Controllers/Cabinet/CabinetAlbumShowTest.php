@@ -9,11 +9,23 @@ use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CabinetAlbumShowTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('public');
+        Storage::fake('thumbnails');
+        Storage::fake('image_cache');
+        Queue::fake();
+    }
 
     private function role(string $slug): Role
     {
@@ -324,6 +336,55 @@ class CabinetAlbumShowTest extends TestCase
 
         $this->actingAs($parentA)->get(route('cabinet.album', $albumA))
             ->assertOk();
+    }
+
+    // ── Direct storage URL leak regression ──────────────────────────────
+
+    public function test_private_album_page_never_emits_direct_storage_urls(): void
+    {
+        $client = $this->userWithRole('client');
+        $album = $this->albumForClient($client, ['type' => 'client']);
+
+        $originalPath = 'images/secret_original.jpg';
+        $thumbnailPath = 'images/secret_thumb.webp';
+
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => $originalPath,
+            'thumbnail_path' => $thumbnailPath,
+        ]);
+
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $response = $this->actingAs($client)->get(route('cabinet.album', $album));
+
+        $response->assertOk();
+        $response->assertSee(route('media.original', ['media' => $media->id]));
+        $response->assertSee(route('media.display', ['media' => $media->id]));
+        $response->assertSee(route('media.lightbox', ['media' => $media->id]));
+        $response->assertDontSee('/storage/'.$originalPath, false);
+        $response->assertDontSee('/storage/thumbnails/'.$thumbnailPath, false);
+    }
+
+    public function test_private_album_cover_thumbnail_is_proxied_not_direct(): void
+    {
+        $parent = $this->userWithRole('parent');
+        $album = Album::factory()->create(['type' => 'client', 'project_id' => null]);
+
+        $cover = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'images/cover.jpg',
+            'thumbnail_path' => 'images/cover_thumb.webp',
+        ]);
+        $album->update(['cover_media_id' => $cover->id]);
+
+        $parent->albums()->attach($album->id);
+
+        $response = $this->actingAs($parent)->get(route('cabinet.index'));
+
+        $response->assertOk();
+        $response->assertSee(route('media.thumbnail', ['media' => $cover->id]));
+        $response->assertDontSee('/storage/thumbnails/images/cover_thumb.webp', false);
     }
 
     // ── Pagination ─────────────────────────────────────────────────────

@@ -28,6 +28,23 @@ class MediaController extends Controller
         );
     }
 
+    public function thumbnail(Media $media, MediaAccessService $access): StreamedResponse
+    {
+        $this->authorizeView($media, $access);
+
+        $disk = Storage::disk('thumbnails');
+
+        abort_unless($media->thumbnail_path && $disk->exists($media->thumbnail_path), 404);
+
+        return $this->stream(
+            $disk,
+            (string) $media->thumbnail_path,
+            'image/webp',
+            'inline',
+            basename((string) $media->thumbnail_path),
+        );
+    }
+
     public function download(Media $media, MediaAccessService $access): StreamedResponse
     {
         $this->authorizeView($media, $access);

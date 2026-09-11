@@ -203,6 +203,7 @@ resources/views/
 | GET | `/video` | `VideoController@index` | — |
 | GET | `/video/{video}/stream` | `VideoController@stream` | raw |
 | GET | `/media/{media}/original` | `MediaController@original` | — |
+| GET | `/media/{media}/thumbnail` | `MediaController@thumbnail` | WebP-превью из диска `thumbnails` |
 | GET | `/media/{media}/download` | `MediaController@download` | attachment |
 | GET | `/media/{media}/display` | `MediaController@display` | PNG ≤800px из кэша |
 | GET | `/media/{media}/lightbox` | `MediaController@lightbox` | PNG ≤1600px из кэша |
@@ -217,10 +218,11 @@ resources/views/
 
 ### Авторизация файлов Media (C1.5)
 
-Роуты `MediaController` (`original`, `download`, `display`, `lightbox`) служат
-универсальным механизмом отдачи файлов по `Media` ID. `Media` переиспользуется
-публичным контентом (портфолио, услуги, homepage, обложки, отзывы) и приватными
-галереями (клиентские/проектные альбомы), поэтому сам по себе владельца не знает.
+Роуты `MediaController` (`original`, `thumbnail`, `download`, `display`, `lightbox`)
+служат универсальным механизмом отдачи файлов по `Media` ID. `Media`
+переиспользуется публичным контентом (портфолио, услуги, homepage, обложки,
+отзывы) и приватными галереями (клиентские/проектные альбомы), поэтому сам по
+себе владельца не знает.
 
 Минимальное решение (без переписывания Media Storage): входной шлюз
 `app/Services/MediaAccessService.php` применяется в каждом методе контроллера
@@ -233,6 +235,15 @@ resources/views/
 - приватная Media: гость → `404`; авторизованный без права → `403`; право
   проверяется через `AlbumPolicy::view` хотя бы для одного содержащего приватного
   альбома (наследование `Project → Album → Photo` соблюдается).
+
+Дополнительно (закрытие прямых URL-утечек): аксессоры `Media::getUrl()` и
+`Media::getThumbnailUrl()` **всегда** возвращают прокси-роуты
+(`media.original` / `media.thumbnail`), а не прямые URL дисков `/storage/...`.
+Причина: диск `thumbnails` и локальный `public`-диск оригиналов находятся под
+публичным веб-корнем и отдаются веб-сервером в обход приложения; любые прямые
+`/storage/...` ссылки на приватную Media делали бы её файлы общедоступными.
+Все файлы приватных галерей поэтому доходят до клиента только через
+защищённый шлюз.
 
 Корневая причина (универсальность `Media` и переиспользование одной записи
 публичным и приватным альбомом) зафиксирована; полноценное решение с контекстом

@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-09-11 — Security: закрытие прямых `/storage/...` утечек приватной Media
+
+### Цель
+
+Аудит защиты выдачи media для клиентских галерей (цепочка
+`Media → Photo → Album → authorization`, роуты `/media/{id}/*`, IDOR,
+thumbnails и другие варианты URL). Требование: приватная Media не должна
+получаться ни по какому URL без прав на соответствующую Photo/Album.
+
+### Результат аудита
+
+**Защищено (без изменений):** все роуты `/media/{id}/*` (`original`,
+`download`, `display`, `lightbox`) гейтятся `MediaAccessService` через
+`AlbumPolicy::view` (наследование Project → Album → Photo):
+гость → 404, чужой → 403, свои client / назначенный parent / свой
+class_manager / admin / photographer → 200. Покрыто
+`MediaAccessAuthorizationTest`.
+
+**Обнаруженные утечки (исправлены):** на страницах кабинета аксессоры
+`Media::getUrl()` (локальные диски) и `Media::getThumbnailUrl()`
+формировали **прямые** URL `…/storage/{file_path}` и
+`…/storage/thumbnails/{thumbnail_path}`. Диск `thumbnails` и `public`-диск
+оригиналов лежат внутри веб-корня (`public/storage → storage/app/public`),
+поэтому эти файлы отдавались веб-сервером в обход шлюза авторизации —
+приватные обложки/оригиналы клиентских альбомов были доступны по косту
+прямой ссылки даже гостю.
+
+### Исправление (минимальное, без переписывания Media Storage)
+
+- **routes/web.php** — новый роут `GET /media/{media}/thumbnail`
+  (`media.thumbnail`), за гейтом `MediaAccessService`.
+- **app/Http/Controllers/MediaController.php** — метод `thumbnail()`:
+  `authorizeView()` → стрим WebP-превью с диска `thumbnails`;
+  отсутствие файла → 404.
+- **app/Models/Media.php**:
+  - `getUrl()` — всегда возвращает прокси-роут `media.original`
+    (ранее для локальных дисков — прямую ссылку `/storage/...`);
+  - `getThumbnailUrl()` — всегда возвращает прокси-роут `media.thumbnail`.
+- Диск хранения, пути, миграции — **не изменялись**; политики
+  (`AlbumPolicy`, `PhotoPolicy`, `MediaAccessService`) — не изменялись.
+
+### Регрессионные тесты
+
+- **tests/Feature/Http/Controllers/MediaAccessAuthorizationTest.php**:
+  thumbnail приватной Media: гость → 404, чужой client → 403, свой
+  client → 200; thumbnail публичной Media → гость 200; отсутствующий
+  thumbnail → 404; свой class_manager видит media своего client-альбома;
+  client не видит media чужого проекта (IDOR Project → Album → Media).
+- **tests/Feature/Http/Controllers/Cabinet/CabinetAlbumShowTest.php**:
+  страница приватной галереи не содержит прямых `/storage/...` ссылок
+  (оригинал/превью), обложка альбома рендерится через `media.thumbnail`,
+  а не `/storage/thumbnails/...`.
+- **tests/Unit/Models/MediaModelTest.php**: `getUrl()`/`getThumbnailUrl()`
+  больше не возвращают `/storage/...`; локальный диск → прокси-роут;
+  thumbnail-роут при заданном `thumbnail_path`; null без `file_path`.
+
+### Проверка
+
+- `php artisan test` — **878 passed / 2201 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
 ## 2026-09-11 — C2.6 — Галерея альбома в личном кабинете
 
 ### Цель

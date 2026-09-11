@@ -1395,10 +1395,12 @@ Laravel Filesystem
   повторный вызов заполняет только пустые поля и не пересоздаёт существующий thumbnail.
 - Превью всегда пишутся на диск `thumbnails` (локальный кэш), независимо от диска оригинала.
 - Путь thumbnail детерминирован: `{директория оригинала}/{имя}_thumb.webp`.
-- `Media::getUrl()` — URL оригинала через диск из `Media::disk`.
-  Для remote-дисков (конфиг `remote => true`) возвращается прокси-роут
-  `GET /media/{media}/original` — файл стримится через Laravel, публичных ссылок на Диск нет.
-- `Media::getThumbnailUrl()` — возвращает URL превью 400px через диск `thumbnails`.
+- `Media::getUrl()` — всегда прокси-роут `GET /media/{media}/original` (стримится
+  через Laravel). Прямые URL дисков не отдаются: `public`-диск и диск `thumbnails`
+  находятся в публичном веб-корне, и `/storage/...` ссылки обходили бы шлюз
+  авторизации C1.5.
+- `Media::getThumbnailUrl()` — всегда прокси-роут `GET /media/{media}/thumbnail`
+  (WebP-превью 400px с диска `thumbnails` через тот же шлюз авторизации).
 - `Media::getDisplayUrl()` / `Media::getLightboxUrl()` — прокси-роуты ленивого кэша
   производных PNG (≤800px / ≤1600px, диск `image_cache`); скачивание оригинала —
   `GET /media/{media}/download`.
