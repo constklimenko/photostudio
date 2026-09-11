@@ -17,6 +17,18 @@ use Illuminate\Support\Str;
 
 class PageForm
 {
+    private const SYSTEM_SLUGS = ['home', 'services', 'portfolio', 'blog', 'video'];
+
+    protected static function isHomePage(?callable $get): bool
+    {
+        return ($get('slug') ?? '') === 'home';
+    }
+
+    protected static function isSystemPage(?callable $get): bool
+    {
+        return in_array(($get('slug') ?? ''), self::SYSTEM_SLUGS, true);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -49,6 +61,7 @@ class PageForm
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255)
+                            ->disabled(fn (callable $get) => self::isSystemPage($get))
                             ->live(true)
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $set('_slug_manual', '1');
@@ -62,6 +75,7 @@ class PageForm
 
                 Section::make('Заголовок страницы')
                     ->columns(2)
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('subtitle')
                             ->maxLength(255)
@@ -78,6 +92,7 @@ class PageForm
                     ]),
 
                 Section::make('Главная страница')
+                    ->visible(fn (callable $get) => self::isHomePage($get))
                     ->schema([
                         Toggle::make('show_on_home')
                             ->label('Показывать блок на главной')
@@ -101,6 +116,7 @@ class PageForm
                     ]),
 
                 Section::make('Альбомы')
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         Select::make('albums')
                             ->relationship('albums', 'title')
@@ -111,6 +127,7 @@ class PageForm
                     ]),
 
                 Section::make('Оживающие фотографии')
+                    ->visible(fn (callable $get) => self::isHomePage($get))
                     ->schema([
                         Toggle::make('ar_teaser_enabled')
                             ->label('Показывать секцию')
@@ -146,6 +163,7 @@ class PageForm
                     ]),
 
                 Section::make('SEO')
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('seo_title')
                             ->maxLength(255),

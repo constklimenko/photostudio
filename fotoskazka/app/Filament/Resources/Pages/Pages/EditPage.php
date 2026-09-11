@@ -10,11 +10,17 @@ class EditPage extends EditRecord
 {
     protected static string $resource = PageResource::class;
 
+    private const SYSTEM_SLUGS = ['home', 'services', 'portfolio', 'blog', 'video'];
+
     protected function getHeaderActions(): array
     {
-        return [
-            DeleteAction::make(),
-        ];
+        $actions = [];
+
+        if (! in_array($this->record?->slug, self::SYSTEM_SLUGS, true)) {
+            $actions[] = DeleteAction::make();
+        }
+
+        return $actions;
     }
 
     protected function mutateFormDataBeforeFill(array $data): array

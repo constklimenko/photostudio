@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-09-11 — Page: контекстная административная форма
+
+### Цель
+
+Страницы `home`, `services`, `portfolio`, `blog`, `video` используют единую
+модель `Page` и единый `PageResource`, но настройки главной страницы теперь
+контекстно разделены в административной форме по системному `slug`.
+
+> Page остаётся единой моделью CMS, но административная форма контекстно
+> разделяет настройки главной страницы и обычных страниц.
+
+### Изменено
+
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — форма стала
+  контекстной:
+  - для `slug = home`: секции «Главная страница» (`show_on_home`,
+    `home_sort_order`, `home_title`, `home_subtitle`) и «Оживающие фотографии»
+    (`ar_teaser_enabled`, `ar_teaser_title`, `ar_teaser_accent`,
+    `ar_teaser_subtitle`, `ar_teaser_media_id`, `ar_teaser_footer`);
+  - для обычных страниц (`services`, `portfolio`, `blog`, `video` и др.):
+    секции «Заголовок страницы» (`subtitle`, `cover`, `content`), «Альбомы»,
+    «SEO» — без полей `home_*` и `ar_teaser_*`;
+  - общими остаются `title`, `menu_title`, `slug`;
+  - slug системных страниц (`home`, `services`, `portfolio`, `blog`, `video`)
+    заблокирован для редактирования (`disabled`);
+  - при создании новой страницы, пока slug не установлен, настройки главной
+    не показываются (условие по `slug = 'home'`).
+- **app/Filament/Resources/Pages/Tables/PagesTable.php** — в списке `/admin/pages`
+  для страницы `home` slug отображается бейджем «Главная».
+- **app/Filament/Resources/Pages/Pages/EditPage.php** — у системных страниц
+  скрыта кнопка удаления (нельзя удалить `home`, `services`, `portfolio`,
+  `blog`, `video`).
+
+### НЕ изменено
+
+- Таблица `pages` и её поля — не тронуты (никаких миграций).
+- Модель `Page`, `PageContentService`, `HomeController`, публичные URL,
+  внешний вид блока AR teaser — не изменялись.
+
+### Тесты
+
+- **tests/Feature/Filament/PageResourceTest.php** — добавлены:
+  1. `test_home_page_shows_ar_teaser_fields` — AR teaser виден у `home`;
+  2. `test_services_page_does_not_show_ar_teaser_fields`;
+  3. `test_portfolio_page_does_not_show_ar_teaser_fields`;
+  4. `test_blog_page_does_not_show_ar_teaser_fields`;
+  5. `test_video_page_does_not_show_ar_teaser_fields`;
+  6. `test_home_settings_not_shown_on_regular_pages`;
+  7. `test_regular_page_shows_common_fields`;
+  8. `test_regular_page_shows_seo_fields`;
+  9. `test_home_page_shows_home_settings`;
+  10. `test_home_page_saves_ar_teaser_settings`;
+  11. `test_regular_page_save_does_not_affect_ar_teaser`;
+  12. `test_system_page_slug_is_disabled_on_edit`.
+
+### Проверка
+
+- `php artisan test tests/Feature/Filament/PageResourceTest.php` — 21 passed.
+- `php artisan test` — 898 passed / 2258 assertions.
+- `./vendor/bin/pint` — чисто.
+
+---
+
 ## 2026-09-11 — AR-тизер: акцент заголовка и нижняя строка
 
 ### Добавлено
