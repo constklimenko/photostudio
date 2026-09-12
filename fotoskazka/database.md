@@ -1386,8 +1386,9 @@ Laravel Filesystem
     │
     ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
     │
-    └── image_cache disk (Local)     → ленивый кэш PNG: display ≤800px / lightbox ≤1600px,
-                                       лимит размера IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    └── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
+                                       lightbox (PNG ≤1600px), формат и лимит
+                                       IMAGE_CACHE_MAX_MB, вытеснение по возрасту
 ```
 
 - MediaProcessor генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
@@ -1402,7 +1403,8 @@ Laravel Filesystem
 - `Media::getThumbnailUrl()` — всегда прокси-роут `GET /media/{media}/thumbnail`
   (WebP-превью 400px с диска `thumbnails` через тот же шлюз авторизации).
 - `Media::getDisplayUrl()` / `Media::getLightboxUrl()` — прокси-роуты ленивого кэша
-  производных PNG (≤800px / ≤1600px, диск `image_cache`); скачивание оригинала —
+  производных (display — WebP ≤800px, lightbox — PNG ≤1600px, диск `image_cache`);
+  скачивание оригинала —
   `GET /media/{media}/download`.
 - `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
 - Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.

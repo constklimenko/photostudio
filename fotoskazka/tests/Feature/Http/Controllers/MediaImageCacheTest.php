@@ -26,14 +26,15 @@ class MediaImageCacheTest extends TestCase
         Queue::fake();
     }
 
-    public function test_display_generates_cached_png_on_first_request(): void
+    public function test_display_generates_cached_webp_on_first_request(): void
     {
         $media = $this->createImageMedia(1200, 800);
 
         $response = $this->get(route('media.display', ['media' => $media]));
 
         $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'image/png');
+        $response->assertHeader('Content-Type', 'image/webp');
+        $response->assertHeaderContains('Cache-Control', 'immutable');
 
         $cacheDisk = Storage::disk('image_cache');
 
@@ -41,8 +42,13 @@ class MediaImageCacheTest extends TestCase
 
         $this->assertCount(1, $cached);
         $this->assertStringStartsWith('display/', $cached[0]);
+        $this->assertStringEndsWith('.webp', $cached[0]);
 
-        $image = imagecreatefromstring($cacheDisk->get($cached[0]));
+        $bytes = $cacheDisk->get($cached[0]);
+        $this->assertStringStartsWith('RIFF', (string) $bytes);
+        $this->assertSame('WEBP', substr((string) $bytes, 8, 4));
+
+        $image = imagecreatefromstring((string) $bytes);
 
         $this->assertNotFalse($image);
         $this->assertLessThanOrEqual(800, imagesx($image));
@@ -161,13 +167,41 @@ class MediaImageCacheTest extends TestCase
         $media->refresh();
 
         $this->assertSame(
-            route('media.display', ['media' => $media->getKey()]),
+            route('media.display', ['media' => $media->getKey(), 'v' => 'webp']),
             $media->getDisplayUrl(),
         );
         $this->assertSame(
             route('media.lightbox', ['media' => $media->getKey()]),
             $media->getLightboxUrl(),
         );
+    }
+
+    public function test_display_serves_webp_for_versioned_url(): void
+    {
+        $media = $this->createImageMedia(1200, 800);
+
+        $response = $this->get(route('media.display', ['media' => $media, 'v' => 'webp']));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'image/webp');
+        $response->assertHeaderContains('Cache-Control', 'immutable');
+    }
+
+    public function test_old_png_cache_is_not_reused_by_webp_key(): void
+    {
+        $media = $this->createImageMedia(1200, 800);
+
+        $webpPath = app(ImageCacheService::class)->relativePath($media, ImageCacheService::TIER_DISPLAY);
+
+        $stalePngPath = 'display/'.pathinfo($webpPath, PATHINFO_FILENAME).'.png';
+        Storage::disk('image_cache')->put($stalePngPath, 'stale-png');
+
+        $response = $this->get(route('media.display', ['media' => $media, 'v' => 'webp']));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'image/webp');
+        $this->assertTrue(Storage::disk('image_cache')->exists($webpPath));
+        $this->assertNotSame('stale-png', Storage::disk('image_cache')->get($webpPath));
     }
 
     public function test_purge_removes_oldest_files_over_limit(): void

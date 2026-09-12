@@ -16,6 +16,7 @@
             <img src="{{ $heroCacheUrl ?: $heroOriginalUrl }}"
                  @if ($heroCacheUrl && $heroOriginalUrl) data-original="{{ $heroOriginalUrl }}" @endif
                  alt=""
+                 fetchpriority="high"
                  class="w-full h-full object-cover">
         </div>
     @endif

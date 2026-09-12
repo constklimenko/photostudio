@@ -97,7 +97,7 @@ class MediaController extends Controller
 
         $disk = Storage::disk((string) config('filesystems.image_cache.disk', 'image_cache'));
 
-        return $this->stream($disk, $path, 'image/png', 'inline', basename($path), true);
+        return $this->stream($disk, $path, $cache->mimeType($tier), 'inline', basename($path), true);
     }
 
     protected function stream(

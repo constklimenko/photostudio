@@ -205,7 +205,7 @@ resources/views/
 | GET | `/media/{media}/original` | `MediaController@original` | — |
 | GET | `/media/{media}/thumbnail` | `MediaController@thumbnail` | WebP-превью из диска `thumbnails` |
 | GET | `/media/{media}/download` | `MediaController@download` | attachment |
-| GET | `/media/{media}/display` | `MediaController@display` | PNG ≤800px из кэша |
+| GET | `/media/{media}/display` | `MediaController@display` | WebP ≤800px из кэша |
 | GET | `/media/{media}/lightbox` | `MediaController@lightbox` | PNG ≤1600px из кэша |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
@@ -982,11 +982,12 @@ storage/app/public/
   переиспользуя уже скачанный temp-файл оригинала — повторного запроса к
   Яндекс.Диску нет. Пропущенные варианты досчитываются при retry:
   `needsProcessing()` считает отсутствие любого варианта незавершённой обработкой
-- Сервис `ImageCacheService`: ленивая генерация PNG осталась как fallback
+- Сервис `ImageCacheService`: ленивая генерация осталась как fallback
   (первый запрос `media.display` / `media.lightbox`) — на случай вытеснения LRU,
   очистки командой или отставания воркера; пути детерминированы, поэтому файлы
   прогрева и fallback совпадают
-  ключ файла: `{tier}/{media_id}-{sha1(id|tier|disk|path)[0..12]}.png`; повторные
+  ключ файла: `{tier}/{media_id}-{sha1(id|tier|format|disk|path)[0..12]}.{format}`,
+  где display — WebP (800px), lightbox — PNG (1600px); повторные
   запросы отдаются с диска (`Cache-Control: immutable`)
 - Источник — оригинал с любого диска (включая Яндекс.Диск) через временную копию;
 - после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы;
@@ -1011,7 +1012,8 @@ storage/app/public/
    хранятся локально независимо от диска оригинала.
 
 2. **Производные изображения хранятся локально.** WebP-превью (400px) — на диске
-   `thumbnails`; PNG-кэш display (800px) и lightbox (1600px) — на диске `image_cache`.
+   `thumbnails`; display (WebP, ≤800px) и lightbox (PNG, ≤1600px) — на диске
+   `image_cache`.
    Публичные страницы никогда не обращаются к Яндекс.Диску напрямую.
 
 3. **ProcessMedia выполняется через Queue.** Обработка (метаданные + превью + кэш)

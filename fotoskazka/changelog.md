@@ -1,5 +1,79 @@
 # Changelog
 
+## 2026-09-12 — P0: оптимизация hero на главной
+
+### Цель
+
+Уменьшить стоимость LCP hero-блока `#hero-block` на главной (mobile):
+display-вариант теперь генерируется в WebP, hero получает `fetchpriority="high"`.
+
+### Изменено
+
+- **app/Services/ImageCacheService.php** — display-кэш переведён с PNG на WebP:
+  - добавлены константы `FORMAT_WEBP` / `FORMAT_PNG` и методы `format($tier)` /
+    `mimeType($tier)`; формат тира берётся из `filesystems.image_cache.formats`
+    (по умолчанию: display → webp, lightbox → png);
+  - `relativePath()`: расширение и хэш ключа кэша теперь включают формат —
+    старые PNG-файлы не переиспользуются, ключ детерминирован:
+    `{tier}/{media_id}-{sha1(id|tier|format|disk|path)[0..12]}.{format}`;
+  - `generateFromTempFile()`: кодирование по формату —
+    `imagewebp()` (качество `webp_quality`, по умолчанию 80) для display,
+    `imagepng()` для lightbox (без изменений);
+  - `url()`: для каждого производного не-PNG-формата в URL добавляется
+    query-параметр версии `?v={format}`, ломающий старый immutable-кэш браузеров
+    (path `/media/{id}/display` и контракт Media Storage не меняются);
+    lightbox остаётся без версии и без изменения формата.
+- **app/Http/Controllers/MediaController.php** — `cachedImage()` отдаёт
+  `Content-Type` из `ImageCacheService::mimeType($tier)` вместо жёсткого
+  `image/png`; immutable cache-политика сохранена.
+- **config/filesystems.php** — в секцию `image_cache` добавлены `formats`
+  (display → webp, lightbox → png) и `webp_quality` (`IMAGE_CACHE_WEBP_QUALITY`, 80).
+- **resources/views/home.blade.php** — основному `<img>` hero добавлен
+  `fetchpriority="high"`; `loading="lazy"` отсутствует (hero остаётся первым LCP).
+  Логика mobile/desktop (display на мобайле, оригинал на ≥768px через `data-original`)
+  не менялась.
+
+### НЕ изменено
+
+- Контракт Media Storage и защищённые proxy-роуты `/media/{id}/*`;
+- формат lightbox (PNG) и thumbnails, оригиналы и Яндекс.Диск, authorization;
+- JS-логика свапа hero (`resources/js/app.js`) — desktop/mobile поведение прежнее;
+- путь `/media/{id}/display` — меняется только query-параметр версии в URL.
+
+### Старый кэш
+
+- Новый ключ кэша (расширение + хэш с форматом) гарантирует, что старый PNG-кэш
+  display не используется после перехода на WebP;
+- URL display теперь содержит `?v=webp`, поэтому браузеры не отдают прежний
+  immutable-ответ с PNG;
+- старые PNG-файлы не удаляются автоматически (LRU-вытеснение очистит их со
+  временем); принудительная очистка — `php artisan media:prune-image-cache --all`.
+
+### Тесты
+
+- **tests/Unit/Services/ImageCacheServiceTest.php** — добавлены:
+  `test_url_keeps_lightbox_without_version_param`, `test_format_resolves_per_tier`,
+  `test_mime_type_matches_format`, `test_display_cache_is_generated_as_webp`,
+  `test_lightbox_cache_is_generated_as_png`, `test_relative_path_distinguishes_format_change`;
+  обновлён `test_url_returns_route_for_image_media` (URL с `?v=webp`).
+- **tests/Feature/Http/Controllers/MediaImageCacheTest.php** —
+  display-тест переведён на WebP (`image/webp`, `.webp`, magic `RIFF/WEBP`),
+  модель-URL ожидают `?v=webp`; добавлены `test_display_serves_webp_for_versioned_url`
+  и `test_old_png_cache_is_not_reused_by_webp_key`.
+- **tests/Unit/Models/MediaModelTest.php** — `getDisplayUrl()` ожидает `?v=webp`.
+- **tests/Feature/Http/Controllers/HomeControllerTest.php** — hero-тесты проверяют
+  версионированный display URL, `fetchpriority="high"` и отсутствие `loading=`
+  на герое; fallback на оригинал без `data-original` сохранён.
+
+### Проверка
+
+- `php artisan test` — 905/906 passed (единственный фейл
+  `MediaRegenerateThumbnailsCommandTest::test_regenerates_missing_thumbnail_file`
+  воспроизводится и на чистом `HEAD` — pre-existing, к патчу не относится);
+- `./vendor/bin/pint --test` — clean;
+- `npm run build` — собран пользователем (код фронтенда не менялся; локальный
+  прогон в окружении автора был невозможен из-за root-owned `public/build`).
+
 ## 2026-09-11 — Page: контекстная административная форма
 
 ### Цель

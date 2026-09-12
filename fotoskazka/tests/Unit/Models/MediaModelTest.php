@@ -128,7 +128,7 @@ class MediaModelTest extends TestCase
 
         $url = $media->getDisplayUrl();
 
-        $this->assertSame(route('media.display', ['media' => $media->getKey()]), $url);
+        $this->assertSame(route('media.display', ['media' => $media->getKey(), 'v' => 'webp']), $url);
     }
 
     public function test_get_lightbox_url_returns_null_for_non_image(): void

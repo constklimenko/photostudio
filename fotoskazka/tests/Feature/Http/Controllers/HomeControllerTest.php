@@ -371,8 +371,18 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
-        $response->assertSee(route('media.display', ['media' => $media->getKey()]), false);
-        $response->assertSee('data-original="'.e($media->getUrl()).'"', false);
+
+        $html = $response->getContent();
+
+        preg_match('/<section[^>]*id="hero-block".*?<\/section>/s', $html, $matches);
+
+        $hero = $matches[0] ?? '';
+
+        $this->assertNotSame('', $hero);
+        $this->assertStringContainsString(route('media.display', ['media' => $media->getKey(), 'v' => 'webp']), $hero);
+        $this->assertStringContainsString('data-original="'.e($media->getUrl()).'"', $hero);
+        $this->assertStringContainsString('fetchpriority="high"', $hero);
+        $this->assertStringNotContainsString('loading=', $hero);
     }
 
     public function test_home_hero_without_cache_falls_back_to_original(): void
@@ -400,8 +410,15 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
-        $response->assertSee($media->getUrl(), false);
-        $response->assertDontSee('data-original="'.$media->getUrl().'"', false);
+
+        preg_match('/<section[^>]*id="hero-block".*?<\/section>/s', $response->getContent(), $matches);
+
+        $hero = $matches[0] ?? '';
+
+        $this->assertNotSame('', $hero);
+        $this->assertStringContainsString($media->getUrl(), $hero);
+        $this->assertStringNotContainsString('data-original="'.$media->getUrl().'"', $hero);
+        $this->assertStringContainsString('fetchpriority="high"', $hero);
     }
 
     public function test_home_page_shows_inquiry_form(): void

@@ -99,7 +99,29 @@ class ImageCacheServiceTest extends TestCase
 
         $url = $this->service->url($media, ImageCacheService::TIER_DISPLAY);
 
-        $this->assertSame(route('media.display', ['media' => $media->getKey()]), $url);
+        $this->assertSame(route('media.display', ['media' => $media->getKey(), 'v' => 'webp']), $url);
+    }
+
+    public function test_url_keeps_lightbox_without_version_param(): void
+    {
+        $media = $this->createImageMedia('images/photo.jpg');
+
+        $url = $this->service->url($media, ImageCacheService::TIER_LIGHTBOX);
+
+        $this->assertSame(route('media.lightbox', ['media' => $media->getKey()]), $url);
+    }
+
+    public function test_format_resolves_per_tier(): void
+    {
+        $this->assertSame('webp', $this->service->format(ImageCacheService::TIER_DISPLAY));
+        $this->assertSame('png', $this->service->format(ImageCacheService::TIER_LIGHTBOX));
+        $this->assertSame('png', $this->service->format('unknown'));
+    }
+
+    public function test_mime_type_matches_format(): void
+    {
+        $this->assertSame('image/webp', $this->service->mimeType(ImageCacheService::TIER_DISPLAY));
+        $this->assertSame('image/png', $this->service->mimeType(ImageCacheService::TIER_LIGHTBOX));
     }
 
     public function test_url_returns_null_for_non_image(): void
@@ -172,6 +194,55 @@ class ImageCacheServiceTest extends TestCase
 
         $this->assertNotNull($result);
         $this->assertFileExists($this->tempCacheDir.'/'.$result);
+    }
+
+    public function test_display_cache_is_generated_as_webp(): void
+    {
+        $media = $this->createImageMedia('images/photo.jpg', 1200, 800);
+
+        $result = $this->service->ensureCached($media, ImageCacheService::TIER_DISPLAY);
+
+        $this->assertNotNull($result);
+        $this->assertStringEndsWith('.webp', $result);
+
+        $bytes = (string) file_get_contents($this->tempCacheDir.'/'.$result);
+
+        $this->assertStringStartsWith('RIFF', $bytes);
+        $this->assertSame('WEBP', substr($bytes, 8, 4));
+
+        $image = imagecreatefromstring($bytes);
+        $this->assertNotFalse($image);
+        $this->assertLessThanOrEqual(800, imagesx($image));
+    }
+
+    public function test_lightbox_cache_is_generated_as_png(): void
+    {
+        $media = $this->createImageMedia('images/photo.jpg', 1200, 800);
+
+        $result = $this->service->ensureCached($media, ImageCacheService::TIER_LIGHTBOX);
+
+        $this->assertNotNull($result);
+        $this->assertStringEndsWith('.png', $result);
+
+        $bytes = (string) file_get_contents($this->tempCacheDir.'/'.$result);
+
+        $this->assertStringContainsString('PNG', substr($bytes, 1, 3));
+        $this->assertNotFalse(imagecreatefromstring($bytes));
+    }
+
+    public function test_relative_path_distinguishes_format_change(): void
+    {
+        $media = $this->createImageMedia('images/photo.jpg');
+
+        config(['filesystems.image_cache.formats' => [ImageCacheService::TIER_DISPLAY => 'png']]);
+        $pngPath = $this->service->relativePath($media, ImageCacheService::TIER_DISPLAY);
+        $this->assertStringEndsWith('.png', $pngPath);
+
+        config(['filesystems.image_cache.formats' => [ImageCacheService::TIER_DISPLAY => 'webp']]);
+        $webpPath = $this->service->relativePath($media, ImageCacheService::TIER_DISPLAY);
+        $this->assertStringEndsWith('.webp', $webpPath);
+
+        $this->assertNotSame($pngPath, $webpPath);
     }
 
     public function test_ensure_cached_returns_null_for_non_image(): void
