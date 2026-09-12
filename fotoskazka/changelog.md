@@ -1,6 +1,71 @@
 # Changelog
 
-## 2026-09-12 — P0: оптимизация hero на главной
+## 2026-09-12 — Media: команда фоновой регенерации кэша изображений
+
+### Цель
+
+Дать оператору способ пересоздать кэш производных изображений (display — WebP
+≤800px, lightbox — PNG ≤1600px) на диске `image_cache` в фоновом режиме через
+очередь, не блокируя CLI и не трогая thumbnail/метаданные.
+
+### Добавлено
+
+- **app/Console/Commands/MediaRegenerateImageCache.php** (новый) — команда
+  `media:regenerate-image-cache`:
+  - отбирает Media `mime_type LIKE 'image/%'` с `file_path`;
+  - по умолчанию — записи без хотя бы одного кэш-варианта
+    (`ImageCacheService::isCached` по всем тирам);
+  - `--force` — все изображения; `--dry-run` — таблица плана без диспатча;
+    `--limit=N` и `--id=ID` — ограничение выборки;
+  - диспатчит по одному Job `RegenerateMediaImageCache` на запись и завершается
+    — тяжёлая работа выполняется queue worker'ом (`php artisan queue:work`).
+- **app/Jobs/RegenerateMediaImageCache.php** (новый) — queue job
+  (`mediaId`, `force`; `tries = 3`, `timeout = 180`, `backoff [30, 120]`,
+  `afterCommit`): находит Media (отсутствие записи — warning без ошибки) и
+  делегирует `MediaProcessor::regenerateImageCacheOrFail()`.
+- **app/Services/MediaProcessor.php** — добавлены
+  `regenerateImageCache(Media, bool $force)` и
+  `regenerateImageCacheOrFail(Media, bool $force)`: регенерация **только**
+  кэш-вариантов (один стрим оригинала + `warmImageCache` по всем тирам),
+  без пересоздания thumbnail и без изменения метаданных/записи. Симметрично
+  `process()`/`processOrFail()`: простой вариант логирует и возвращает `false`,
+  OrFail-вариант пробрасывает Throwable для retry очереди.
+
+### НЕ изменено
+
+- Жизненный цикл Media, `MediaObserver`, `ProcessMedia` — без изменений;
+- ленивая генерация кэша и роуты `/media/{id}/display`, `/media/{id}/lightbox`;
+- формат вариантов, лимиты и очистка (`media:prune-image-cache`);
+- `process()` и `media:regenerate-thumbnails` — не переписывались.
+
+### Документация
+
+- **README.md** — новый раздел «Медиа — перегенерация кэша производных
+  изображений (в фоне)».
+- **architecture.md** — в структуру добавлены Job и команда; новый подраздел
+  «Прогрев кэша в фоне — media:regenerate-image-cache».
+
+### Тесты
+
+- **tests/Feature/Console/MediaRegenerateImageCacheCommandTest.php** (новый):
+  диспатч job'а для Media с отсутствующими вариантами; dry-run ничего не
+  диспатчит; `--force` — все записи; без `--force` полные записи пропускаются;
+  не-изображения не отбираются; `--limit`; `--id`.
+- **tests/Feature/Jobs/RegenerateMediaImageCacheTest.php** (новый): регенерация
+  недостающих вариантов; только кэш (thumbnail и метаданные не меняются);
+  `--force` перезаписывает существующие варианты; существующий вариант без
+  `--force` сохраняется; отсутствующая/ненайденная Media — без ошибки; retry-конфиг.
+- **tests/Unit/Services/MediaProcessorTest.php** — добавлены тесты
+  `regenerateImageCache`: восстановление недостающих вариантов без изменения
+  thumbnail/метаданных; force; отсутствующий оригинал; не-изображение;
+  `regenerateImageCacheOrFail` пробрасывает storage-ошибку.
+
+### Проверка
+
+- `php artisan test` — **925/926 passed** (единственный фейл —
+  предсуществующий `MediaRegenerateThumbnailsCommandTest::test_regenerates_missing_thumbnail_file`,
+  воспроизводится и на чистом `HEAD`, к задаче не относится);
+- `./vendor/bin/pint --test` — clean.
 
 ### Цель
 

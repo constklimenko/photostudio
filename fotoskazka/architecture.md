@@ -33,6 +33,7 @@ app/
 │       ├── MakeFilamentUser.php
 │       ├── MediaCheck.php                  # Проверка целостности + orphan-файлы (B9)
 │       ├── MediaMigrateToYandex.php      # Миграция локальных оригиналов на Диск (B8)
+│       ├── MediaRegenerateImageCache.php # Прогрев кэша display/lightbox через очередь (фоновый режим)
 │       ├── MediaRegenerateThumbnails.php
 │       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
 │       └── MediaTestStorage.php          # Проверка подключения к диску
@@ -41,6 +42,7 @@ app/
 ├── Jobs/
 │   ├── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
 │   ├── ProcessMedia.php              # Очередь: обработка Media (metadata + thumbnail)
+│   ├── RegenerateMediaImageCache.php # Очередь: прогрев кэша display/lightbox (media:regenerate-image-cache)
 │   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
@@ -401,6 +403,24 @@ MediaProcessor::processOrFail(Media)
 Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
 `--force`) остался в команде; сама обработка делегирована `MediaProcessor::process(force: true)` —
 единая реализация генерации превью без дублирования GD-кода.
+
+## Прогрев кэша в фоне — media:regenerate-image-cache
+
+Команда `php artisan media:regenerate-image-cache` пересоздаёт кэш производных
+изображений (display/lightbox, диск `image_cache`) **асинхронно через очередь**:
+CLI отбирает записи и диспатчит по одному Job `RegenerateMediaImageCache`
+(3 tries, timeout 180 c, backoff [30, 120], afterCommit) на Media, после чего
+завершается; тяжёлую работу (стрим оригинала + GD) выполняет queue worker.
+
+- Отбор: `mime_type LIKE 'image/%'` c `file_path`; по умолчанию — только
+  записи без хотя бы одного кэш-варианта (`ImageCacheService::isCached`),
+  `--force` — все изображения; `--dry-run`, `--limit=N`, `--id=ID` аналогичны
+  `media:regenerate-thumbnails`.
+- Job делегирует `MediaProcessor::regenerateImageCacheOrFail()` — регенерация
+  **только** cache-вариантов через `warmImageCache` (один стрим оригинала на оба
+  тира), без пересоздания thumbnail и без изменения метаданных/записи
+  (в отличие от `process()`). Идемпотентно: повторный запуск не создаёт
+  дубликатов; сбой одного Media не прерывает остальные.
 
 ## Проверка целостности — media:check — этап B9
 

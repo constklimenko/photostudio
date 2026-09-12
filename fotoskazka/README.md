@@ -71,6 +71,47 @@ php artisan media:regenerate-thumbnails --id=123
 - Пишет WebP-превью на диск `thumbnails` (локальный кэш)
 - Обновляет `Media::thumbnail_path` (без лишних папок `thumbnails/`)
 
+### Медиа — перегенерация кэша производных изображений (в фоне)
+
+Команда `media:regenerate-image-cache` пересоздаёт кэш производных изображений
+(display — WebP ≤800px, lightbox — PNG ≤1600px) на диске `image_cache`.
+Тяжёлая работа выполняется **в фоновом режиме через очередь**: команда только
+отбирает Media и ставит по одному Job `RegenerateMediaImageCache` на запись,
+после чего сразу завершается. Регенерацию выполняет queue worker
+(`php artisan queue:work`).
+
+Кэш генерируется и лениво при обращении к URL, поэтому команда нужна для
+предварительного «прогрева» — например, после массовой загрузки фотографий,
+сбоев, изменения формата или лимитов:
+
+```bash
+# Показать, что будет поставлено в очередь, без диспатча
+php artisan media:regenerate-image-cache --dry-run
+
+# Поставить в очередь только Media без хотя бы одного варианта кэша
+php artisan media:regenerate-image-cache
+
+# Пересоздать кэш у всех изображений (включая существующие варианты)
+php artisan media:regenerate-image-cache --force
+
+# Ограничить количество записей за запуск
+php artisan media:regenerate-image-cache --limit=50
+
+# Один конкретный Media по ID
+php artisan media:regenerate-image-cache --id=123
+```
+
+**Что делает:**
+- Отбирает Media типа `image/*` с `file_path`
+- По умолчанию — только записи, у которых отсутствует хотя бы один
+  кэш-вариант (`display` и/или `lightbox`); с `--force` — все изображения
+- Диспатчит по одному Job `RegenerateMediaImageCache` на запись (retry 3×
+  с backoff, timeout 180 c) — обработка идёт асинхронно
+- Job читает оригинал через стрим с диска `Media::disk` и пересоздаёт
+  только кэш-варианты, **не трогая** метаданные и WebP-thumbnail
+  (для полной регенерации производных — `media:regenerate-thumbnails --force`)
+- Повторный запуск безопасен (идемпотентность); сбой одного Media не мешает остальным
+
 ### Медиа — миграция локальных оригиналов на Яндекс.Диск
 
 Команда `media:migrate-to-yandex` переводит локальные оригиналы изображений
