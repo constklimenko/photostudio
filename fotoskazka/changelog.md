@@ -1,5 +1,61 @@
 # Changelog
 
+## 2026-09-13 — Albums: новый тип `behind_the_scenes` («Фото со съёмок»)
+
+### Цель
+
+Добавить новый тип альбома `behind_the_scenes` («Фото со съёмок») без создания
+новой сущности или таблицы — используется существующая модель `Album` и её поле
+`type` (VARCHAR, поэтому миграции не требуется). Существующие типы полностью
+сохранены.
+
+### Изменено
+
+- **app/Filament/Resources/Albums/Schemas/AlbumForm.php** — в select «Тип альбома»
+  формы создания/редактирования добавлен вариант `behind_the_scenes` («Фото со съёмок»).
+- **app/Filament/Resources/Albums/Pages/UploadPhotos.php** — в select типа альбома
+  (массовая загрузка фото) добавлен вариант `behind_the_scenes`.
+- **app/Filament/Resources/Albums/Pages/ImportFromYandexDisk.php** — в select типа
+  альбома (импорт с Яндекс.Диска) добавлен вариант `behind_the_scenes`.
+- **app/Filament/Resources/Albums/Tables/AlbumsTable.php** — тип добавлен в
+  бейдж списка («Фото со съёмок»), цвет бейджа (gray) и фильтр по типу.
+- **database/factories/AlbumFactory.php** — `behind_the_scenes` добавлен в список
+  случайных типов фабрики.
+- **database.md** — список допустимых значений `albums.type` дополнен
+  `behind_the_scenes`.
+
+### НЕ изменено
+
+- Схема БД и миграции — без изменений (`albums.type` — VARCHAR(20), новое значение
+  не требует миграции).
+- Модель `Album`, связи, Policies, `CabinetService`, `MediaAccessService` — без
+  изменений: `behind_the_scenes` не является приватным типом (`client`/`project`),
+  поэтому поведение доступа и выдачи media не меняется.
+- Публичные контроллеры (`PortfolioController`, `HomeController` и др.) — выборки
+  по `type = portfolio` / `type = homepage` не затрагиваются.
+- Константы типов в `Album` не вводились — текущая архитектура использует строковые
+  литералы, введена только новая строка по существующему паттерну.
+
+### Тесты
+
+- **tests/Feature/Filament/AlbumResourceTest.php** — добавлены:
+  1. `test_create_form_offers_behind_the_scenes_type` — вариант доступен в форме создания;
+  2. `test_edit_form_offers_behind_the_scenes_type` — вариант доступен в форме редактирования
+     альбома `behind_the_scenes`;
+  3. `test_can_create_behind_the_scenes_album_via_form` — создание альбома через форму;
+  4. `test_can_edit_behind_the_scenes_album_via_form` — изменение типа альбома через форму;
+  5. `test_behind_the_scenes_album_is_listed_and_filtered` — бейдж «Фото со съёмок» в списке
+     и фильтрация списка по новому типу.
+
+### Проверка
+
+- `php artisan test tests/Feature/Filament/AlbumResourceTest.php` — 15 passed.
+- Смежные наборы (Import yandex, PhotosRelationManager, ServiceFeaturedAlbum,
+  AlbumPolicy, AlbumUser, ImportAlbum actions/jobs, ModelRelationships, Cabinet,
+  MediaAccessAuthorization) — без регрессий.
+
+---
+
 ## 2026-09-12 — Media: команда фоновой регенерации кэша изображений
 
 ### Цель

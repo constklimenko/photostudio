@@ -29,6 +29,7 @@ class AlbumsTable
                         'homepage' => 'Главная',
                         'service' => 'Услуга',
                         'client' => 'Клиент',
+                        'behind_the_scenes' => 'Фото со съёмок',
                         default => $state,
                     })
                     ->color(fn ($state) => match ($state) {
@@ -37,6 +38,7 @@ class AlbumsTable
                         'homepage' => 'warning',
                         'service' => 'primary',
                         'client' => 'gray',
+                        'behind_the_scenes' => 'gray',
                         default => 'gray',
                     }),
                 TextColumn::make('project.title')
@@ -65,6 +67,7 @@ class AlbumsTable
                         'homepage' => 'Главная',
                         'service' => 'Услуга',
                         'client' => 'Клиент',
+                        'behind_the_scenes' => 'Фото со съёмок',
                     ]),
                 TernaryFilter::make('is_featured'),
                 TernaryFilter::make('is_published'),

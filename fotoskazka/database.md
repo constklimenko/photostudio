@@ -914,6 +914,7 @@ seo_description TEXT NULL
 | homepage   | Слайдеры главной страницы  |
 | service    | Галереи услуг              |
 | client     | Клиентские галереи         |
+| behind_the_scenes | Фото со съёмок     |
 
 Foreign keys:
 

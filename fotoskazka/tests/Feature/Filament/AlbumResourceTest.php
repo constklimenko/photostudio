@@ -2,12 +2,17 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Resources\Albums\Pages\CreateAlbum;
+use App\Filament\Resources\Albums\Pages\EditAlbum;
+use App\Filament\Resources\Albums\Pages\ListAlbums;
 use App\Models\Album;
 use App\Models\Media;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AlbumResourceTest extends TestCase
@@ -116,5 +121,78 @@ class AlbumResourceTest extends TestCase
 
         $this->assertDatabaseHas('albums', ['type' => 'portfolio']);
         $this->assertDatabaseHas('albums', ['type' => 'project']);
+    }
+
+    public function test_create_form_offers_behind_the_scenes_type(): void
+    {
+        Livewire::test(CreateAlbum::class)
+            ->assertSchemaComponentExists(
+                'type',
+                checkComponentUsing: fn (Select $component): bool => ($component->getOptions()['behind_the_scenes'] ?? null) === 'Фото со съёмок',
+            );
+    }
+
+    public function test_edit_form_offers_behind_the_scenes_type(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+
+        $response = $this->get("/admin/albums/{$album->id}/edit");
+
+        $response->assertSuccessful();
+
+        Livewire::test(EditAlbum::class, ['record' => $album->getKey()])
+            ->assertSchemaComponentExists(
+                'type',
+                checkComponentUsing: fn (Select $component): bool => ($component->getOptions()['behind_the_scenes'] ?? null) === 'Фото со съёмок',
+            );
+    }
+
+    public function test_can_create_behind_the_scenes_album_via_form(): void
+    {
+        Livewire::test(CreateAlbum::class)
+            ->fillForm([
+                'title' => 'Behind The Scenes Album',
+                'type' => 'behind_the_scenes',
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('albums', [
+            'title' => 'Behind The Scenes Album',
+            'type' => 'behind_the_scenes',
+        ]);
+    }
+
+    public function test_can_edit_behind_the_scenes_album_via_form(): void
+    {
+        $album = Album::factory()->create(['type' => 'client']);
+
+        Livewire::test(EditAlbum::class, ['record' => $album->getKey()])
+            ->fillForm([
+                'type' => 'behind_the_scenes',
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('albums', [
+            'id' => $album->id,
+            'type' => 'behind_the_scenes',
+        ]);
+    }
+
+    public function test_behind_the_scenes_album_is_listed_and_filtered(): void
+    {
+        $behind = Album::factory()->create(['type' => 'behind_the_scenes', 'title' => 'За кадром']);
+        $portfolio = Album::factory()->create(['type' => 'portfolio', 'title' => 'Портфолио']);
+
+        $response = $this->get('/admin/albums');
+
+        $response->assertSuccessful();
+        $response->assertSee('Фото со съёмок');
+
+        Livewire::test(ListAlbums::class)
+            ->filterTable('type', 'behind_the_scenes')
+            ->assertCanSeeTableRecords([$behind])
+            ->assertCanNotSeeTableRecords([$portfolio]);
     }
 }
