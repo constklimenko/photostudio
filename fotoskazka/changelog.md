@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-09-13 — Categories: привязка альбома «Фото со съёмок» (`shooting_album_id`)
+
+### Цель
+
+Дать возможность привязать к категории услуг один альбом типа
+`behind_the_scenes` («Фото со съёмок»), аналогично привязке к `Service`.
+Альбом остаётся обычной записью `albums` и может использоваться несколькими
+категориями — unique-ограничение не вводится.
+
+### Изменено
+
+- **database/migrations/2026_09_13_100100_add_shooting_album_id_to_categories_table.php** (новая) —
+  в `categories` добавлено nullable `shooting_album_id` (FK → `albums.id`,
+  `ON DELETE SET NULL`), колонка размещена после `cta_button_text`.
+- **app/Models/Category.php** — `shooting_album_id` добавлен в `$fillable`;
+  новая связь `shootingAlbum()` (BelongsTo → albums).
+- **app/Filament/Resources/Categories/Schemas/CategoryForm.php** — новая секция
+  «Фото со съёмок» с полем «Альбом «Фото со съёмок»»:
+  - выбор nullable (можно не выбирать альбом);
+  - в опциях только альбомы `type = 'behind_the_scenes'`;
+  - по умолчанию только опубликованные альбомы (`is_published = true`);
+  - текущий альбом категории всегда присутствует в опциях при редактировании,
+    даже если его публикация была выключена после привязки.
+
+### НЕ изменено
+
+- Альбомы-примеры (`albums`), `featured_album_id`, `cta_album_id`, дерево
+  категорий и публичный каталог — без изменений.
+- Публичный сайт (страницы категорий/каталога) — блок «Фото со съёмок» вне рамок
+  задачи, отображение не добавлялось.
+- Модель `Album` и её связи — без изменений.
+
+### Тесты
+
+- **tests/Unit/Models/ModelRelationshipsTest.php** — добавлены:
+  1. `test_category_belongs_to_shooting_album`;
+  2. `test_deleting_shooting_album_sets_category_album_to_null` (ON DELETE SET NULL);
+  3. `test_multiple_categories_can_share_the_same_shooting_album` (без unique).
+- **tests/Feature/Filament/CategoryShootingAlbumTest.php** (новый, 7 тестов):
+  поле на странице редактирования; в опциях только альбомы
+  `behind_the_scenes`; в опциях только опубликованные альбомы; текущий
+  неопубликованный альбом виден при редактировании; сохранение/очистка
+  выбора; создание новой категории с выбранным альбомом.
+
+### Проверка
+
+- `php artisan test tests/Feature/Filament/CategoryShootingAlbumTest.php
+  tests/Unit/Models/ModelRelationshipsTest.php` — passed;
+- `./vendor/bin/pint --test` — clean.
+
+---
+
 ## 2026-09-13 — Services: привязка альбома «Фото со съёмок» (`shooting_album_id`)
 
 ### Цель

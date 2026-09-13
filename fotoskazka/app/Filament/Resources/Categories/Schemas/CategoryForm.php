@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class CategoryForm
@@ -150,6 +151,26 @@ class CategoryForm
                             ->preload()
                             ->searchable()
                             ->nullable()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Фото со съёмок')
+                    ->schema([
+                        Select::make('shooting_album_id')
+                            ->label('Альбом «Фото со съёмок»')
+                            ->relationship('shootingAlbum', 'title', function (Builder $query, ?Category $record): Builder {
+                                $query->where('type', 'behind_the_scenes')
+                                    ->where('is_published', true);
+
+                                if ($record?->shooting_album_id) {
+                                    $query->orWhere('id', $record->shooting_album_id);
+                                }
+
+                                return $query;
+                            })
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Без фото со съёмок')
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

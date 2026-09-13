@@ -31,6 +31,7 @@ class Category extends Model
         'featured_album_id',
         'cta_album_id',
         'cta_button_text',
+        'shooting_album_id',
     ];
 
     protected function casts(): array
@@ -93,6 +94,11 @@ class Category extends Model
     public function ctaAlbum(): BelongsTo
     {
         return $this->belongsTo(Album::class, 'cta_album_id');
+    }
+
+    public function shootingAlbum(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'shooting_album_id');
     }
 
     /**

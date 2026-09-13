@@ -269,6 +269,39 @@ class ModelRelationshipsTest extends TestCase
         $this->assertTrue($second->shootingAlbum->is($album));
     }
 
+    public function test_category_belongs_to_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $this->assertTrue($category->shootingAlbum->is($album));
+    }
+
+    public function test_deleting_shooting_album_sets_category_album_to_null(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $album->delete();
+        $category->refresh();
+
+        $this->assertNull($category->shootingAlbum);
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_id' => null,
+        ]);
+    }
+
+    public function test_multiple_categories_can_share_the_same_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $first = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+        $second = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $this->assertTrue($first->shootingAlbum->is($album));
+        $this->assertTrue($second->shootingAlbum->is($album));
+    }
+
     public function test_inquiry_belongs_to_project(): void
     {
         $project = Project::factory()->create();

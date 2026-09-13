@@ -487,6 +487,8 @@ cta_album_id BIGINT NULL
 
 cta_button_text VARCHAR(255) NULL
 
+shooting_album_id BIGINT NULL
+
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
@@ -498,6 +500,7 @@ parent_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
 cta_album_id -> albums.id ON DELETE SET NULL
+shooting_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
@@ -515,6 +518,7 @@ cta_album_id -> albums.id ON DELETE SET NULL
 | `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
 | `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
 | `ctaAlbum()` | Альбом, на который ведёт кнопка CTA (BelongsTo → album) |
+| `shootingAlbum()` | Альбом «Фото со съёмок» (BelongsTo → album) |
 | `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
 | `descendants()` | Все потомки в глубину любых уровней                       |
 | `path(true)` | Полный путь от корня до самой категории                     |
@@ -522,6 +526,12 @@ cta_album_id -> albums.id ON DELETE SET NULL
 Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
 запрещено выбирать категорию в качестве собственного родителя и делать
 потомка родителем предка (`A → B → C → A`).
+
+`shooting_album_id` — необязательная привязка одного альбома «Фото со съёмок»
+(`albums.type = 'behind_the_scenes'`) к категории. Один альбом может использоваться
+несколькими категориями (unique-ограничения нет); при удалении альбома ссылка
+обнуляется (`ON DELETE SET NULL`). Связь модели: `Category::shootingAlbum()`
+(BelongsTo → albums).
 
 Поля показа альбома блоком (аналогично услугам):
 
@@ -554,6 +564,7 @@ INDEX(cover_media_id)
 INDEX(is_published)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
+INDEX(shooting_album_id)
 ```
 
 ---
