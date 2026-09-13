@@ -143,6 +143,10 @@
 
         <x-site.videos :videos="$service->videos" title="Видео" />
 
+        @if ($service->shootingAlbum)
+            <x-site.shooting-album :album="$service->shootingAlbum" :display="$service->shooting_album_display" />
+        @endif
+
     </div>
 </section>
 

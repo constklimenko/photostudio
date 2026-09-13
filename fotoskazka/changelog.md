@@ -1,5 +1,77 @@
 # Changelog
 
+## 2026-09-13 — B12 — Блок «Фото со съёмок» на публичных страницах услуги и категории
+
+### Цель
+
+Добавить на публичные страницы Service и Category блок «Фото со съёмок»
+из привязанного альбома (`shooting_album_id`, тип `behind_the_scenes`)
+с отображением согласно настройке `shooting_album_display`:
+
+- `card` — компактная карточка альбома (обложка, название, краткое описание),
+  ведущая на страницу альбома;
+- `grid` — фотографии альбома непосредственно на странице (существующая сетка
+  с lightbox), без ссылки-карточки на альбом.
+
+Блок показывается только если альбом выбран, существует и опубликован.
+Располагается после блока видео; если видео нет — после основного контента.
+
+### Изменено
+
+- **resources/views/components/site/shooting-album.blade.php** (новый) — единый
+  переиспользуемый Blade-компонент для обоих режимов (`$album`, `$display`):
+  заголовок «Фото со съёмок»; в режиме `grid` делегирует существующему
+  `<x-site.album-photos :album="$album" />`; в режиме `card` — компактная
+  горизонтальная карточка (обложка через `media.thumbnail` либо плейсхолдер,
+  название, описание при наличии) со ссылкой на `route('portfolio.show')`.
+  Используется и страницей услуги, и страницей категории — дублирование
+  Blade-разметки не вводилось.
+- **app/Http/Controllers/ServiceCatalogController.php** — в `showService()` и
+  `showCategory()` добавлен eager load `shootingAlbum` с фильтром
+  `where('is_published', true)` (неопубликованный/удалённый альбом → связь
+  `null` → блок скрыт). Лишние данные не загружаются: для `card` грузится
+  только `cover`, для `grid` — `photos.media`.
+- **resources/views/services/show.blade.php** — блок `<x-site.shooting-album />`
+  подставлен сразу после `<x-site.videos :videos="$service->videos" title="Видео" />`;
+  при отсутствии видео — после последнего блока основного контента.
+- **resources/views/services/category.blade.php** — блок подставлен после секции
+  видео (перед формой заявки) в контейнер `max-w-3xl`.
+- **database** — применены к живой MySQL БД ранее созданные миграции
+  `2026_09_13_100200_add_shooting_album_display_to_services_table` и
+  `2026_09_13_100300_add_shooting_album_display_to_categories_table`
+  (были `Pending`; их отсутствие вызывало `Unknown column 'shooting_album_display'`
+  при сохранении категории/услуги через Filament).
+
+### НЕ изменено
+
+- Публичные страницы категории/услуги в остальных блоках (примеры работ,
+  featured-альбом, CTA, видео, форма заявки) — без изменений.
+- Модели, enum, trait `HasShootingAlbumDisplay`, формы Filament — без изменений.
+- Поведение для категорий блога (`type = post`) — не затрагивалось.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** — добавлено
+  11 тестов (страница услуги): `test_service_page_shows_shooting_album_card`,
+  `test_service_page_shows_shooting_album_grid`, блок скрыт без альбома,
+  блок скрыт для неопубликованного альбома, расположение после видео;
+  (страница категории): `test_category_page_shows_shooting_album_card`,
+  `test_category_page_shows_shooting_album_grid`, без альбома, неопубликованный
+  альбом, после видео, `test_category_page_handles_deleted_shooting_album`
+  (ON DELETE SET NULL — `shooting_album_id` обнуляется, блок скрыт).
+  В card-режиме проверяются обложка и переход на `portfolio.show`; в grid —
+  выдаются media через gallery/lightbox (`media.lightbox`/`media.display`),
+  ссылка на альбом отсутствует, описание карточки не выводится.
+- Итог по файлу — 49 passed (38 базовых + 11 новых).
+
+### Проверка
+
+- `php artisan test tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php tests/Unit/Models/ModelRelationshipsTest.php tests/Feature/Filament/ServiceShootingAlbumTest.php tests/Feature/Filament/CategoryShootingAlbumTest.php` —
+  **119 passed** (1 risky — предсуществующий, не связан с задачей);
+- `./vendor/bin/pint --test app/Http/Controllers/ServiceCatalogController.php tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php` — clean.
+
+---
+
 ## 2026-09-13 — B12 — Способ отображения альбома «Фото со съёмок» (`shooting_album_display`)
 
 ### Цель

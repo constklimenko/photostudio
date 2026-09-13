@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Category;
 use App\Models\Service;
 use App\Services\PageContentService;
@@ -74,6 +75,15 @@ class ServiceCatalogController extends Controller
 
                 $query->with(['cover', 'videos']);
             },
+            'shootingAlbum' => function ($query) use ($service) {
+                $query->where('is_published', true);
+
+                if ($service->shooting_album_display === ShootingAlbumDisplay::Grid) {
+                    $query->with('photos.media');
+                } else {
+                    $query->with('cover');
+                }
+            },
         ]);
 
         if ($service->show_album_photos && $service->featured_album_id) {
@@ -117,6 +127,15 @@ class ServiceCatalogController extends Controller
                 }
 
                 $query->with(['cover', 'videos']);
+            },
+            'shootingAlbum' => function ($query) use ($category) {
+                $query->where('is_published', true);
+
+                if ($category->shooting_album_display === ShootingAlbumDisplay::Grid) {
+                    $query->with('photos.media');
+                } else {
+                    $query->with('cover');
+                }
             },
         ]);
 

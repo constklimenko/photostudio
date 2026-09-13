@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Album;
 use App\Models\Category;
 use App\Models\Media;
@@ -257,6 +258,118 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertDontSee(route('media.lightbox', ['media' => $media->id]), false);
         $response->assertDontSee('Черновик');
+    }
+
+    public function test_service_page_shows_shooting_album_card(): void
+    {
+        $media = Media::factory()->create(['file_path' => 'albums/shooting-cover.jpg']);
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+            'description' => 'Закулисье съёмочного дня',
+            'cover_media_id' => $media->id,
+        ]);
+
+        $this->classic->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSee('Фото со съёмок');
+        $response->assertSee('Закулисье съёмочного дня');
+        $response->assertSee(route('media.thumbnail', ['media' => $media->id]), false);
+        $response->assertSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_service_page_shows_shooting_album_grid(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+            'description' => 'Закулисье съёмочного дня',
+        ]);
+
+        $media1 = Media::factory()->create(['file_path' => 'albums/shoot-1.jpg']);
+        $media2 = Media::factory()->create(['file_path' => 'albums/shoot-2.jpg']);
+
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media1->id, 'caption' => 'Кадр один', 'sort_order' => 1]);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media2->id, 'sort_order' => 2]);
+
+        $this->classic->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSee('Фото со съёмок');
+        $response->assertSee(route('media.lightbox', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.display', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.lightbox', ['media' => $media2->id]), false);
+        $response->assertSee('data-caption="Кадр один"', false);
+        $response->assertSee('lightboxCaption', false);
+        $response->assertDontSee(route('portfolio.show', $album->slug), false);
+        $response->assertDontSee('Закулисье съёмочного дня');
+    }
+
+    public function test_service_page_hides_shooting_album_block_without_album(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Фото со съёмок');
+    }
+
+    public function test_service_page_hides_shooting_album_block_for_unpublished_album(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => false,
+            'title' => 'Скрытое фото со съёмок',
+        ]);
+
+        $media = Media::factory()->create(['file_path' => 'albums/hidden-shoot.jpg']);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $this->classic->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Фото со съёмок');
+        $response->assertDontSee('Скрытое фото со съёмок');
+        $response->assertDontSee(route('media.lightbox', ['media' => $media->id]), false);
+    }
+
+    public function test_service_page_places_shooting_album_block_after_videos(): void
+    {
+        $video = Video::factory()->create(['type' => 'horizontal', 'title' => 'Видео процесса']);
+        $this->classic->videos()->attach($video->id);
+
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+        ]);
+
+        $this->classic->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol/klassika');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Видео процесса', 'Фото со съёмок']);
     }
 
     public function test_three_level_parent_page_hides_grandchild_services(): void
@@ -585,5 +698,141 @@ class ServiceCatalogControllerTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertDontSee('Посмотреть варианты');
+    }
+
+    public function test_category_page_shows_shooting_album_card(): void
+    {
+        $media = Media::factory()->create(['file_path' => 'albums/cat-shooting-cover.jpg']);
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+            'description' => 'Закулисье съёмочного дня для школ',
+            'cover_media_id' => $media->id,
+        ]);
+
+        $this->schools->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertSee('Фото со съёмок');
+        $response->assertSee('За кулисами съёмки');
+        $response->assertSee('Закулисье съёмочного дня для школ');
+        $response->assertSee(route('media.thumbnail', ['media' => $media->id]), false);
+        $response->assertSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_category_page_shows_shooting_album_grid(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+            'description' => 'Закулисье съёмочного дня для школ',
+        ]);
+
+        $media1 = Media::factory()->create(['file_path' => 'albums/cat-shoot-1.jpg']);
+        $media2 = Media::factory()->create(['file_path' => 'albums/cat-shoot-2.jpg']);
+
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media1->id, 'caption' => 'Кадр категории', 'sort_order' => 1]);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media2->id, 'sort_order' => 2]);
+
+        $this->schools->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertSee('Фото со съёмок');
+        $response->assertSee(route('media.lightbox', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.display', ['media' => $media1->id]), false);
+        $response->assertSee(route('media.lightbox', ['media' => $media2->id]), false);
+        $response->assertSee('data-caption="Кадр категории"', false);
+        $response->assertSee('lightboxCaption', false);
+        $response->assertDontSee(route('portfolio.show', $album->slug), false);
+        $response->assertDontSee('Закулисье съёмочного дня для школ');
+    }
+
+    public function test_category_page_hides_shooting_album_block_without_album(): void
+    {
+        $response = $this->get('/services/vypusknye-albomy');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Фото со съёмок');
+    }
+
+    public function test_category_page_hides_shooting_album_block_for_unpublished_album(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => false,
+            'title' => 'Скрытое фото со съёмок',
+        ]);
+
+        $media = Media::factory()->create(['file_path' => 'albums/cat-hidden-shoot.jpg']);
+        Photo::factory()->create(['album_id' => $album->id, 'media_id' => $media->id]);
+
+        $this->schools->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Фото со съёмок');
+        $response->assertDontSee('Скрытое фото со съёмок');
+        $response->assertDontSee(route('media.lightbox', ['media' => $media->id]), false);
+    }
+
+    public function test_category_page_places_shooting_album_block_after_videos(): void
+    {
+        $video = Video::factory()->create(['type' => 'horizontal', 'title' => 'Видео о съёмке']);
+        $this->schools->videos()->attach($video->id);
+
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'За кулисами съёмки',
+        ]);
+
+        $this->schools->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertSeeInOrder(['Видео о съёмке', 'Фото со съёмок']);
+    }
+
+    public function test_category_page_handles_deleted_shooting_album(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_published' => true,
+            'title' => 'Удаляемый альбом',
+        ]);
+
+        $this->schools->update([
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+
+        $album->delete();
+
+        $response = $this->get('/services/vypusknye-albomy/dlya-shkol');
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Фото со съёмок');
+        $response->assertDontSee('Удаляемый альбом');
+        $this->assertNull($this->schools->fresh()->shooting_album_id);
     }
 }

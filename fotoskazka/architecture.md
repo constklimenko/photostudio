@@ -154,6 +154,7 @@ resources/views/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
 │   ├── album-photos.blade.php # Сетка фото альбома + lightbox (страница альбома и блок в услуге)
+│   ├── shooting-album.blade.php # Блок «Фото со съёмок» (card-карточка либо grid через album-photos; используется на страницах услуги и категории)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
 │   ├── footer.blade.php        # Подвал (контакты, политика)
@@ -1212,6 +1213,34 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
 
 Компонент `<x-site.album-photos>` расположил разметку сетки + lightbox и JS
 в одном месте, устранив дублирование со страницей альбома.
+
+### Блок «Фото со съёмок» на страницах услуги и категории
+
+Каждая из моделей `Service` / `Category` (B12) несёт привязку одного альбома
+`shooting_album_id` (BelongsTo → `albums`, `ON DELETE SET NULL`) и настройку
+`shooting_album_display` (`card` по умолчанию | `grid`; enum
+`App\Enums\ShootingAlbumDisplay`, trait `HasShootingAlbumDisplay` сбрасывает
+значение к `card`, если альбом не выбран).
+
+Публичный рендеринг — единый переиспользуемый компонент
+`<x-site.shooting-album :album="…" :display="…" />`:
+
+- блок выводится только если `shootingAlbum` загружен — т.е. альбом выбран
+  (`shooting_album_id` заполнен), существует и опубликован (`is_published = true`);
+  удалённый или неопубликованный альбом скрывает блок автоматически;
+- `card` — компактная карточка (обложка через `media.thumbnail` / плейсхолдер,
+  название, краткое описание при наличии), ссылка ведёт на
+  `route('portfolio.show', $album->slug)`;
+- `grid` — фотографии альбома прямо на странице через
+  `<x-site.album-photos :album="$album" />` (сетка + lightbox), ссылка-карточка
+  на альбом не выводится;
+- контроллер (`ServiceCatalogController::showService` / `showCategory`) грузит
+  `shootingAlbum` с `where('is_published', true)` и **без лишних данных**:
+  для `card` — только обложку, для `grid` — `photos.media`;
+- расположение — после блока видео («Видео»), при его отсутствии — после
+  основного контента страницы (в `services/show.blade.php` блок идёт сразу
+  после `<x-site.videos>`, в `services/category.blade.php` — после секции видео
+  перед формой заявки).
 
 Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
 принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`

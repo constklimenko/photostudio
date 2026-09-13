@@ -216,7 +216,11 @@
     </section>
 @endif
 
-
+@if ($category->shootingAlbum)
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <x-site.shooting-album :album="$category->shootingAlbum" :display="$category->shooting_album_display" />
+    </div>
+@endif
 
 <section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
