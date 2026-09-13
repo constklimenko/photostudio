@@ -489,6 +489,8 @@ cta_button_text VARCHAR(255) NULL
 
 shooting_album_id BIGINT NULL
 
+shooting_album_display VARCHAR(20) DEFAULT 'card'
+
 created_at TIMESTAMP
 updated_at TIMESTAMP
 ```
@@ -532,6 +534,19 @@ shooting_album_id -> albums.id ON DELETE SET NULL
 несколькими категориями (unique-ограничения нет); при удалении альбома ссылка
 обнуляется (`ON DELETE SET NULL`). Связь модели: `Category::shootingAlbum()`
 (BelongsTo → albums).
+
+`shooting_album_display` — способ отображения привязанного альбома на публичной
+странице категории. Допустимые значения:
+
+| Значение | Отображение                                |
+|----------|--------------------------------------------|
+| `card`   | Карточка альбома (по умолчанию)            |
+| `grid`   | Непосредственно сетка фотографий           |
+
+Ограничение целостности: если `shooting_album_id` пуст, значение
+`shooting_album_display` всегда сбрасывается к `card` (shared trait
+`HasShootingAlbumDisplay` в моделях Service и Category). Единый список значений —
+enum `App\Enums\ShootingAlbumDisplay` (методы `label()`, `options()`).
 
 Поля показа альбома блоком (аналогично услугам):
 
@@ -736,6 +751,8 @@ cta_button_text VARCHAR(255) NULL
 
 shooting_album_id BIGINT NULL
 
+shooting_album_display VARCHAR(20) DEFAULT 'card'
+
 price_from DECIMAL(10,2) NULL
 
 price_note TEXT NULL
@@ -778,6 +795,12 @@ INDEX(shooting_album_id)
 несколькими услугами (unique-ограничения нет); при удалении альбома ссылка
 обнуляется (`ON DELETE SET NULL`). Связь модели: `Service::shootingAlbum()`
 (BelongsTo → albums).
+
+`shooting_album_display` — способ отображения привязанного альбома на публичной
+странице услуги. Допустимые значения: `card` («Карточка альбома», по умолчанию)
+и `grid` («Сетка фотографий»). Если `shooting_album_id` пуст, значение всегда
+сбрасывается к `card` (shared trait `HasShootingAlbumDisplay`; единый список
+значений — enum `App\Enums\ShootingAlbumDisplay`).
 
 Поля показа альбома блоком:
 

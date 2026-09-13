@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Models\Album;
 use App\Models\Category;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Component;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -132,6 +134,111 @@ class CategoryShootingAlbumTest extends TestCase
         $this->assertDatabaseHas('categories', [
             'slug' => 'novaya-kategoriya',
             'shooting_album_id' => $album->id,
+        ]);
+    }
+
+    public function test_display_field_is_hidden_when_no_album_selected(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        Livewire::test(EditCategory::class, ['record' => $category->getKey()])
+            ->assertSchemaComponentExists(
+                'shooting_album_display',
+                checkComponentUsing: fn (Component $component): bool => $component->isVisible() === false,
+            );
+    }
+
+    public function test_display_field_is_visible_when_album_selected(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        Livewire::test(EditCategory::class, ['record' => $category->getKey()])
+            ->assertSchemaComponentExists(
+                'shooting_album_display',
+                checkComponentUsing: fn (Select $component): bool => $component->isVisible(),
+            );
+    }
+
+    public function test_display_field_offers_card_and_grid_options(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        Livewire::test(EditCategory::class, ['record' => $category->getKey()])
+            ->assertSchemaComponentExists(
+                'shooting_album_display',
+                checkComponentUsing: function (Select $component): bool {
+                    $options = $component->getOptions();
+
+                    return in_array('Карточка альбома', $options, true)
+                        && in_array('Сетка фотографий', $options, true);
+                },
+            );
+    }
+
+    public function test_new_category_defaults_display_to_card(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+
+        Livewire::test(CreateCategory::class)
+            ->fillForm([
+                'name' => 'Новая категория',
+                'slug' => 'novaya-kategoriya',
+                'type' => 'service',
+                'shooting_album_id' => $album->id,
+            ])
+            ->assertSet('data.shooting_album_display', ShootingAlbumDisplay::Card->value)
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('categories', [
+            'slug' => 'novaya-kategoriya',
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+    }
+
+    public function test_category_can_be_saved_with_grid_display(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service']);
+
+        Livewire::test(EditCategory::class, ['record' => $category->getKey()])
+            ->fillForm([
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'shooting_album_id' => $album->id,
+                'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+            ])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+    }
+
+    public function test_clearing_album_resets_display_to_card(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create([
+            'type' => 'service',
+            'shooting_album_id' => $album->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Grid->value,
+        ]);
+
+        Livewire::test(EditCategory::class, ['record' => $category->getKey()])
+            ->set('data.shooting_album_id', null)
+            ->assertSet('data.shooting_album_display', ShootingAlbumDisplay::Card->value)
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_id' => null,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
         ]);
     }
 }

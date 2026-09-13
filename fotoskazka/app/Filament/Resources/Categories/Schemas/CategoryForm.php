@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Category;
 use App\Services\CategoryTreeService;
 use Filament\Forms\Components\Hidden;
@@ -171,6 +172,18 @@ class CategoryForm
                             ->searchable()
                             ->nullable()
                             ->placeholder('Без фото со съёмок')
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                if (! $state) {
+                                    $set('shooting_album_display', ShootingAlbumDisplay::Card->value);
+                                }
+                            })
+                            ->columnSpanFull(),
+                        Select::make('shooting_album_display')
+                            ->label('Отображение фото со съёмок')
+                            ->options(ShootingAlbumDisplay::options())
+                            ->default(ShootingAlbumDisplay::Card->value)
+                            ->visible(fn (Get $get): bool => filled($get('shooting_album_id')))
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

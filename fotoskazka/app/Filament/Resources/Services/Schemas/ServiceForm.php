@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Services\Schemas;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Media;
 use App\Models\Service;
 use Filament\Forms\Components\Hidden;
@@ -12,6 +13,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -150,6 +153,18 @@ class ServiceForm
                             ->searchable()
                             ->nullable()
                             ->placeholder('Без фото со съёмок')
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                if (! $state) {
+                                    $set('shooting_album_display', ShootingAlbumDisplay::Card->value);
+                                }
+                            })
+                            ->columnSpanFull(),
+                        Select::make('shooting_album_display')
+                            ->label('Отображение фото со съёмок')
+                            ->options(ShootingAlbumDisplay::options())
+                            ->default(ShootingAlbumDisplay::Card->value)
+                            ->visible(fn (Get $get): bool => filled($get('shooting_album_id')))
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

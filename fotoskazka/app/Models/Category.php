@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ShootingAlbumDisplay;
+use App\Models\Concerns\HasShootingAlbumDisplay;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +14,7 @@ use LogicException;
 class Category extends Model
 {
     use HasFactory;
+    use HasShootingAlbumDisplay;
 
     protected $fillable = [
         'parent_id',
@@ -32,6 +35,7 @@ class Category extends Model
         'cta_album_id',
         'cta_button_text',
         'shooting_album_id',
+        'shooting_album_display',
     ];
 
     protected function casts(): array
@@ -40,6 +44,7 @@ class Category extends Model
             'is_published' => 'boolean',
             'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
+            'shooting_album_display' => ShootingAlbumDisplay::class,
         ];
     }
 

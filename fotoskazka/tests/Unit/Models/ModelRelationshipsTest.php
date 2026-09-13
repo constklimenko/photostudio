@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Models;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Album;
 use App\Models\Category;
 use App\Models\Inquiry;
@@ -275,6 +276,28 @@ class ModelRelationshipsTest extends TestCase
         $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
 
         $this->assertTrue($category->shootingAlbum->is($album));
+    }
+
+    public function test_service_shooting_album_display_defaults_to_card_and_casts_to_enum(): void
+    {
+        $service = Service::factory()->create();
+
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+        $this->assertSame(ShootingAlbumDisplay::Card, $service->shooting_album_display);
+    }
+
+    public function test_category_shooting_album_display_defaults_to_card_and_casts_to_enum(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+        $this->assertSame(ShootingAlbumDisplay::Card, $category->shooting_album_display);
     }
 
     public function test_deleting_shooting_album_sets_category_album_to_null(): void

@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-09-13 — B12 — Способ отображения альбома «Фото со съёмок» (`shooting_album_display`)
+
+### Цель
+
+Определить способ отображения привязанного к услуге/категории альбома
+`shooting_album_id` на публичной странице: `card` (карточка альбома) или
+`grid` (сетка фотографий). Значение по умолчанию — `card`, чтобы новое
+поведение не перегружало страницу автоматически.
+
+### Изменено
+
+- **app/Enums/ShootingAlbumDisplay.php** (новый) — единый BackedEnum
+  (`card` / `grid`) с `label()` и `options()` по образцу `ProjectStatus`;
+  используется моделями Service и Category, формами Filament и тестами.
+- **app/Models/Concerns/HasShootingAlbumDisplay.php** (новый) — shared trait:
+  при `saving` модели, если `shooting_album_id` пуст, `shooting_album_display`
+  сбрасывается к `card`. Гарантирует инвариант независимо от точки записи
+  (Filament, tinker, seeder), без дублирования логики в двух моделях.
+- **database/migrations/2026_09_13_100200_add_shooting_album_display_to_services_table.php** (новая) —
+  в `services` добавлена `shooting_album_display` (VARCHAR(20), `default('card')`,
+  после `shooting_album_id`).
+- **database/migrations/2026_09_13_100300_add_shooting_album_display_to_categories_table.php** (новая) —
+  аналогично для `categories`.
+- **app/Models/Service.php** / **app/Models/Category.php** —
+  `shooting_album_display` добавлен в `$fillable`, каст на
+  `ShootingAlbumDisplay::class`, подключён trait `HasShootingAlbumDisplay`.
+- **app/Filament/Resources/Services/Schemas/ServiceForm.php** /
+  **app/Filament/Resources/Categories/Schemas/CategoryForm.php** — секция
+  «Фото со съёмок»:
+  - селект `shooting_album_id` стал `live()`; при очистке выбора альбома
+    `afterStateUpdated` сбрасывает `shooting_album_display` к `card`;
+  - новый селект «Отображение фото со съёмок» (опции из
+    `ShootingAlbumDisplay::options()`: «Карточка альбома» / «Сетка фотографий»),
+    виден только если выбран альбом (`visible(fn (Get $get) => filled($get('shooting_album_id')))`).
+
+### НЕ изменено
+
+- Публичный сайт — рендеринг блока «Фото со съёмок» остаётся вне рамок
+  задачи; вводится только настройка способа отображения.
+- Привязка `shooting_album_id`, связи `shootingAlbum()`, дерево категорий,
+  альбомы-примеры — без изменений.
+
+### Тесты
+
+- **tests/Unit/Enums/ShootingAlbumDisplayTest.php** (новый) — значения,
+  дефолт `card`, русские label'ы, `options()`.
+- **tests/Unit/Models/ModelRelationshipsTest.php** — добавлены
+  `test_service_shooting_album_display_defaults_to_card_and_casts_to_enum`
+  и `test_category_shooting_album_display_defaults_to_card_and_casts_to_enum`.
+- **tests/Feature/Filament/ServiceShootingAlbumTest.php** /
+  **tests/Feature/Filament/CategoryShootingAlbumTest.php** — добавлены по 6 тестов:
+  поле скрыто без выбранного альбома; видно при выбранном; опции card/grid;
+  дефолт `card` при создании; сохранение с `grid`; очистка альбома сбрасывает
+  отображение к `card` (live-сброс + сохранение в БД).
+
+### Проверка
+
+- `php artisan test` — 968/969 passed (единственный фейл — предсуществующий
+  `MediaRegenerateThumbnailsCommandTest::test_regenerates_missing_thumbnail_file`,
+  воспроизводится и на чистом `HEAD`, к задаче не относится);
+- `./vendor/bin/pint --test` — clean.
+
+---
+
 ## 2026-09-13 — Categories: привязка альбома «Фото со съёмок» (`shooting_album_id`)
 
 ### Цель

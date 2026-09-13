@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ShootingAlbumDisplay;
+use App\Models\Concerns\HasShootingAlbumDisplay;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,13 +13,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Service extends Model
 {
     use HasFactory;
+    use HasShootingAlbumDisplay;
 
     protected $fillable = [
         'category_id', 'cover_media_id', 'title', 'slug',
         'short_description', 'description', 'examples_title', 'price_from', 'price_note',
         'is_published', 'sort_order', 'seo_title', 'seo_description',
         'show_album_photos', 'featured_album_id', 'cta_album_id', 'cta_button_text',
-        'shooting_album_id',
+        'shooting_album_id', 'shooting_album_display',
     ];
 
     protected function casts(): array
@@ -26,6 +29,7 @@ class Service extends Model
             'is_published' => 'boolean',
             'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
+            'shooting_album_display' => ShootingAlbumDisplay::class,
         ];
     }
 
