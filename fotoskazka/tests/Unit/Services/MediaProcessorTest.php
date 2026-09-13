@@ -311,6 +311,84 @@ class MediaProcessorTest extends TestCase
         $this->assertFalse($this->processor->process($media));
     }
 
+    public function test_regenerate_image_cache_restores_missing_variants_only(): void
+    {
+        $media = $this->makeMedia($this->storeJpeg(2000, 1000));
+
+        $this->processor->process($media);
+        $media->refresh();
+
+        $thumbDisk = Storage::disk('thumbnails');
+        $cacheDisk = Storage::disk('image_cache');
+        $service = new ImageCacheService;
+
+        $thumbnailBefore = $thumbDisk->get($media->thumbnail_path);
+        $metadataBefore = $media->only(['mime_type', 'width', 'height', 'file_size', 'thumbnail_path']);
+
+        foreach (array_keys($service->tiers()) as $tier) {
+            $cacheDisk->delete($service->relativePath($media, (string) $tier));
+        }
+
+        $this->assertTrue($this->processor->regenerateImageCache($media));
+        $media->refresh();
+
+        foreach (array_keys($service->tiers()) as $tier) {
+            $cacheDisk->assertExists($service->relativePath($media, (string) $tier));
+        }
+
+        $this->assertSame($metadataBefore, $media->only(['mime_type', 'width', 'height', 'file_size', 'thumbnail_path']));
+        $this->assertSame($thumbnailBefore, $thumbDisk->get($media->thumbnail_path));
+    }
+
+    public function test_regenerate_image_cache_force_rewrites_existing_variants(): void
+    {
+        $media = $this->makeMedia($this->storeJpeg(800, 600));
+
+        $this->processor->process($media);
+        $this->assertTrue($this->processor->regenerateImageCache($media, force: true));
+
+        $service = new ImageCacheService;
+        $displayPath = $service->relativePath($media, ImageCacheService::TIER_DISPLAY);
+        Storage::disk('image_cache')->assertExists($displayPath);
+    }
+
+    public function test_regenerate_image_cache_returns_false_for_missing_original(): void
+    {
+        Log::shouldReceive('warning')->atLeast()->once();
+
+        $media = $this->makeMedia('images/nonexistent.jpg', [
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        $this->assertFalse($this->processor->regenerateImageCache($media));
+    }
+
+    public function test_regenerate_image_cache_returns_false_for_non_image(): void
+    {
+        Storage::disk('public')->put('documents/readme.txt', 'plain text');
+        $media = $this->makeMedia('documents/readme.txt', ['mime_type' => 'text/plain']);
+
+        $this->assertFalse($this->processor->regenerateImageCache($media));
+    }
+
+    public function test_regenerate_image_cache_or_fail_rethrows_storage_errors(): void
+    {
+        Log::shouldReceive('error')->once();
+
+        $mock = Mockery::mock(Filesystem::class);
+        $mock->shouldReceive('exists')
+            ->andThrow(new RuntimeException('storage temporarily unavailable'));
+
+        Storage::shouldReceive('disk')->andReturn($mock);
+
+        $media = $this->makeMedia('images/any.jpg', ['mime_type' => 'image/jpeg']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('storage temporarily unavailable');
+
+        $this->processor->regenerateImageCacheOrFail($media);
+    }
+
     public function test_thumbnail_write_failure_keeps_metadata(): void
     {
         Log::shouldReceive('warning')->atLeast()->once();

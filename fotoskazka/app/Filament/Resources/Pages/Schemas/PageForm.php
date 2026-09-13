@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Pages\Schemas;
 
+use App\Models\Media;
 use App\Models\Page;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
@@ -16,6 +17,18 @@ use Illuminate\Support\Str;
 
 class PageForm
 {
+    private const SYSTEM_SLUGS = ['home', 'services', 'portfolio', 'blog', 'video'];
+
+    protected static function isHomePage(?callable $get): bool
+    {
+        return ($get('slug') ?? '') === 'home';
+    }
+
+    protected static function isSystemPage(?callable $get): bool
+    {
+        return in_array(($get('slug') ?? ''), self::SYSTEM_SLUGS, true);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -48,6 +61,7 @@ class PageForm
                             ->required()
                             ->unique(ignoreRecord: true)
                             ->maxLength(255)
+                            ->disabled(fn (callable $get) => self::isSystemPage($get))
                             ->live(true)
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $set('_slug_manual', '1');
@@ -61,12 +75,14 @@ class PageForm
 
                 Section::make('Заголовок страницы')
                     ->columns(2)
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('subtitle')
                             ->maxLength(255)
                             ->label('Подзаголовок'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
+                            ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
                             ->preload()
                             ->nullable()
                             ->label('Обложка'),
@@ -76,6 +92,7 @@ class PageForm
                     ]),
 
                 Section::make('Главная страница')
+                    ->visible(fn (callable $get) => self::isHomePage($get))
                     ->schema([
                         Toggle::make('show_on_home')
                             ->label('Показывать блок на главной')
@@ -99,6 +116,7 @@ class PageForm
                     ]),
 
                 Section::make('Альбомы')
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         Select::make('albums')
                             ->relationship('albums', 'title')
@@ -108,7 +126,44 @@ class PageForm
                             ->label('Привязанные альбомы'),
                     ]),
 
+                Section::make('Оживающие фотографии')
+                    ->visible(fn (callable $get) => self::isHomePage($get))
+                    ->schema([
+                        Toggle::make('ar_teaser_enabled')
+                            ->label('Показывать секцию')
+                            ->live(true),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('ar_teaser_title')
+                                    ->maxLength(255)
+                                    ->label('Заголовок')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                Select::make('ar_teaser_media_id')
+                                    ->relationship('arTeaserMedia', 'title')
+                                    ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
+                                    ->preload()
+                                    ->nullable()
+                                    ->label('Изображение')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                TextInput::make('ar_teaser_accent')
+                                    ->maxLength(255)
+                                    ->label('Акцент заголовка')
+                                    ->helperText('Золотая строка под заголовком')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                Textarea::make('ar_teaser_subtitle')
+                                    ->label('Описание')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled'))
+                                    ->columnSpanFull(),
+                                TextInput::make('ar_teaser_footer')
+                                    ->maxLength(255)
+                                    ->label('Нижняя строка')
+                                    ->helperText('Текст под описанием')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                            ]),
+                    ]),
+
                 Section::make('SEO')
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('seo_title')
                             ->maxLength(255),

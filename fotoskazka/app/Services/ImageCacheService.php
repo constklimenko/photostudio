@@ -13,20 +13,49 @@ class ImageCacheService
 
     public const TIER_LIGHTBOX = 'lightbox';
 
+    public const FORMAT_PNG = 'png';
+
+    public const FORMAT_WEBP = 'webp';
+
+    public function format(string $tier): string
+    {
+        $formats = (array) config('filesystems.image_cache.formats', [
+            self::TIER_DISPLAY => self::FORMAT_WEBP,
+            self::TIER_LIGHTBOX => self::FORMAT_PNG,
+        ]);
+
+        return ($formats[$tier] ?? self::FORMAT_PNG) === self::FORMAT_WEBP
+            ? self::FORMAT_WEBP
+            : self::FORMAT_PNG;
+    }
+
+    public function mimeType(string $tier): string
+    {
+        return $this->format($tier) === self::FORMAT_WEBP ? 'image/webp' : 'image/png';
+    }
+
     public function url(Media $media, string $tier): ?string
     {
         if (! str_starts_with((string) $media->mime_type, 'image/')) {
             return null;
         }
 
-        return route($tier === self::TIER_DISPLAY ? 'media.display' : 'media.lightbox', ['media' => $media->getKey()]);
+        $routeName = $tier === self::TIER_DISPLAY ? 'media.display' : 'media.lightbox';
+        $parameters = ['media' => $media->getKey()];
+
+        if ($this->format($tier) !== self::FORMAT_PNG) {
+            $parameters['v'] = $this->format($tier);
+        }
+
+        return route($routeName, $parameters);
     }
 
     public function relativePath(Media $media, string $tier): string
     {
-        $hash = substr(sha1($media->getKey().'|'.$tier.'|'.$media->disk.'|'.$media->file_path), 0, 12);
+        $format = $this->format($tier);
+        $hash = substr(sha1($media->getKey().'|'.$tier.'|'.$format.'|'.$media->disk.'|'.$media->file_path), 0, 12);
 
-        return $tier.'/'.$media->getKey().'-'.$hash.'.png';
+        return $tier.'/'.$media->getKey().'-'.$hash.'.'.$format;
     }
 
     /**
@@ -178,7 +207,13 @@ class ImageCacheService
             imagedestroy($srcImage);
 
             $stream = fopen('php://temp', 'w+');
-            imagepng($resized, $stream, (int) config('filesystems.image_cache.png_level', 6));
+
+            if ($this->format($tier) === self::FORMAT_WEBP) {
+                imagewebp($resized, $stream, (int) config('filesystems.image_cache.webp_quality', 80));
+            } else {
+                imagepng($resized, $stream, (int) config('filesystems.image_cache.png_level', 6));
+            }
+
             imagedestroy($resized);
 
             rewind($stream);

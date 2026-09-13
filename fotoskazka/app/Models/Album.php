@@ -48,10 +48,20 @@ class Album extends Model
         return $this->belongsToMany(Service::class);
     }
 
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'category_album');
+    }
+
     public function videos(): BelongsToMany
     {
         return $this->belongsToMany(Video::class)
             ->withPivot('caption', 'sort_order')
             ->orderByPivot('sort_order');
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class);
     }
 }

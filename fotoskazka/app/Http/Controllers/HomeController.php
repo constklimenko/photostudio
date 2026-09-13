@@ -69,7 +69,16 @@ class HomeController extends Controller
             ->where('is_active', true)
             ->where('show_on_home', true)
             ->orderBy('sort_order')
-            ->get(['id', 'title', 'url', 'file_path', 'type']);
+            ->get(['id', 'title', 'url', 'file_path', 'type', 'rotation', 'has_sound', 'sort_order']);
+
+        $arTeaser = [
+            'enabled' => $page?->ar_teaser_enabled ?? true,
+            'title' => $page?->ar_teaser_title,
+            'accent' => $page?->ar_teaser_accent,
+            'subtitle' => $page?->ar_teaser_subtitle,
+            'footer' => $page?->ar_teaser_footer,
+            'media' => $page?->arTeaserMedia,
+        ];
 
         $heroAlbum = Album::query()
             ->where('type', 'homepage')
@@ -91,6 +100,7 @@ class HomeController extends Controller
             'faqItems',
             'socialLinks',
             'videos',
+            'arTeaser',
         ));
     }
 

@@ -47,6 +47,162 @@ class HomeControllerTest extends TestCase
         $response->assertSee('ФОТОСКАЗКА УФА');
     }
 
+    public function test_home_page_renders_ar_teaser(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
+            ->assertSee('оживающие фотографии')
+            ->assertSee('ar-teaser')
+            ->assertSee('images/ar-teaser.jpg');
+    }
+
+    public function test_ar_teaser_hidden_when_disabled(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_enabled' => false,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('ar-teaser')
+            ->assertDontSee('Скоро в&nbsp;Фотосказке&nbsp;—', false);
+    }
+
+    public function test_ar_teaser_title_and_subtitle_from_database(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_enabled' => true,
+            'ar_teaser_title' => 'Тестовый заголовок AR',
+            'ar_teaser_subtitle' => 'Тестовое описание AR',
+            'ar_teaser_accent' => 'Тестовый акцент AR',
+            'ar_teaser_footer' => 'Тестовый футер AR',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Тестовый заголовок AR')
+            ->assertSee('Тестовый акцент AR')
+            ->assertSee('Тестовое описание AR')
+            ->assertSee('Тестовый футер AR');
+    }
+
+    public function test_ar_teaser_accent_and_footer_defaults_when_null(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_title' => null,
+            'ar_teaser_accent' => null,
+            'ar_teaser_subtitle' => null,
+            'ar_teaser_footer' => null,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('оживающие фотографии')
+            ->assertSee('Следите за&nbsp;новостями&nbsp;— подробности скоро появятся на&nbsp;сайте.', false);
+    }
+
+    public function test_ar_teaser_image_from_selected_media(): void
+    {
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'ar/custom-photo.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_enabled' => true,
+            'ar_teaser_media_id' => $media->id,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('/media/'.$media->getKey().'/', false)
+            ->assertDontSee('images/ar-teaser.jpg');
+    }
+
+    public function test_ar_teaser_without_media_shows_fallback(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_enabled' => true,
+            'ar_teaser_media_id' => null,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('ar-teaser')
+            ->assertSee('images/ar-teaser.jpg');
+    }
+
+    public function test_ar_teaser_default_values_when_fields_null(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_title' => null,
+            'ar_teaser_subtitle' => null,
+            'ar_teaser_media_id' => null,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
+            ->assertSee('оживающие фотографии')
+            ->assertSee('images/ar-teaser.jpg');
+    }
+
+    public function test_ar_teaser_page_saved_clears_cache(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'is_published' => true,
+            'ar_teaser_title' => 'Original Title',
+        ]);
+
+        Cache::flush();
+        $this->get('/');
+
+        $page = Page::where('slug', 'home')->first();
+        $page->ar_teaser_title = 'Updated Title';
+        $page->save();
+
+        Cache::flush();
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Updated Title')
+            ->assertDontSee('Original Title');
+    }
+
     public function test_home_page_shows_page_title_from_database(): void
     {
         Page::factory()->create([
@@ -215,8 +371,18 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
-        $response->assertSee(route('media.display', ['media' => $media->getKey()]), false);
-        $response->assertSee('data-original="'.e($media->getUrl()).'"', false);
+
+        $html = $response->getContent();
+
+        preg_match('/<section[^>]*id="hero-block".*?<\/section>/s', $html, $matches);
+
+        $hero = $matches[0] ?? '';
+
+        $this->assertNotSame('', $hero);
+        $this->assertStringContainsString(route('media.display', ['media' => $media->getKey(), 'v' => 'webp']), $hero);
+        $this->assertStringContainsString('data-original="'.e($media->getUrl()).'"', $hero);
+        $this->assertStringContainsString('fetchpriority="high"', $hero);
+        $this->assertStringNotContainsString('loading=', $hero);
     }
 
     public function test_home_hero_without_cache_falls_back_to_original(): void
@@ -244,8 +410,15 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
-        $response->assertSee($media->getUrl(), false);
-        $response->assertDontSee('data-original="'.$media->getUrl().'"', false);
+
+        preg_match('/<section[^>]*id="hero-block".*?<\/section>/s', $response->getContent(), $matches);
+
+        $hero = $matches[0] ?? '';
+
+        $this->assertNotSame('', $hero);
+        $this->assertStringContainsString($media->getUrl(), $hero);
+        $this->assertStringNotContainsString('data-original="'.$media->getUrl().'"', $hero);
+        $this->assertStringContainsString('fetchpriority="high"', $hero);
     }
 
     public function test_home_page_shows_inquiry_form(): void

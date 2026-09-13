@@ -22,6 +22,8 @@ class MediaRetryProcessingTest extends TestCase
     {
         parent::setUp();
 
+        $this->signInAsAdmin();
+
         Storage::fake('public');
         Storage::fake('yandex_disk');
         Storage::fake('thumbnails');

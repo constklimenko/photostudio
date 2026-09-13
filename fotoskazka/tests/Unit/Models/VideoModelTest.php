@@ -114,6 +114,48 @@ class VideoModelTest extends TestCase
         $this->assertEquals($url, $video->embed_url);
     }
 
+    public function test_embed_url_is_muted_for_youtube_when_sound_disabled(): void
+    {
+        $video = new Video(['has_sound' => false, 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+
+        $this->assertEquals('https://www.youtube.com/embed/dQw4w9WgXcQ?mute=1', $video->embed_url);
+    }
+
+    public function test_embed_url_is_not_muted_for_youtube_when_sound_enabled(): void
+    {
+        $video = new Video(['has_sound' => true, 'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
+
+        $this->assertEquals('https://www.youtube.com/embed/dQw4w9WgXcQ', $video->embed_url);
+    }
+
+    public function test_embed_url_is_muted_for_vimeo_when_sound_disabled(): void
+    {
+        $video = new Video(['has_sound' => false, 'url' => 'https://vimeo.com/76979871']);
+
+        $this->assertEquals('https://player.vimeo.com/video/76979871?muted=1', $video->embed_url);
+    }
+
+    public function test_embed_url_is_muted_for_rutube_when_sound_disabled(): void
+    {
+        $video = new Video(['has_sound' => false, 'url' => 'https://rutube.ru/video/abcdef123']);
+
+        $this->assertEquals('https://rutube.ru/play/embed/abcdef123?muted=1', $video->embed_url);
+    }
+
+    public function test_embed_url_is_muted_for_vk_when_sound_disabled(): void
+    {
+        $video = new Video(['has_sound' => false, 'url' => 'https://vk.com/video-208625881_456239018']);
+
+        $this->assertEquals('https://vk.com/video_ext.php?oid=-208625881&id=456239018&muted=1', $video->embed_url);
+    }
+
+    public function test_embed_url_is_not_muted_for_vk_when_sound_enabled(): void
+    {
+        $video = new Video(['has_sound' => true, 'url' => 'https://vk.com/video-208625881_456239018']);
+
+        $this->assertEquals('https://vk.com/video_ext.php?oid=-208625881&id=456239018', $video->embed_url);
+    }
+
     public function test_is_upload_true_when_file_path_exists(): void
     {
         $video = new Video(['file_path' => 'videos/clip.mp4']);

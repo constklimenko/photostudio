@@ -40,26 +40,42 @@ class Video extends Model
             return null;
         }
 
-        if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $this->url, $m)) {
-            return 'https://www.youtube.com/embed/'.$m[1];
+        return $this->buildEmbedUrl($this->url);
+    }
+
+    protected function buildEmbedUrl(string $url): ?string
+    {
+        $mute = $this->has_sound === false ? 'muted=1' : '';
+
+        if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $url, $m)) {
+            return 'https://www.youtube.com/embed/'.$m[1].$this->querySuffix($this->has_sound === false ? 'mute=1' : '');
         }
-        if (preg_match('/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/', $this->url, $m)) {
-            return 'https://player.vimeo.com/video/'.$m[1];
+        if (preg_match('/(?:vimeo\.com\/|player\.vimeo\.com\/video\/)(\d+)/', $url, $m)) {
+            return 'https://player.vimeo.com/video/'.$m[1].$this->querySuffix($mute);
         }
-        if (preg_match('/rutube\.ru\/video\/([a-zA-Z0-9]+)/', $this->url, $m)) {
-            return 'https://rutube.ru/play/embed/'.$m[1];
+        if (preg_match('/rutube\.ru\/video\/([a-zA-Z0-9]+)/', $url, $m)) {
+            return 'https://rutube.ru/play/embed/'.$m[1].$this->querySuffix($mute);
         }
-        if (preg_match('/vkvideo\.ru\/(?:video|clip)(-?\d+)_(\d+)/', $this->url, $m)) {
-            return 'https://vk.com/video_ext.php?oid='.$m[1].'&id='.$m[2];
+        if (preg_match('/vkvideo\.ru\/(?:video|clip)(-?\d+)_(\d+)/', $url, $m)) {
+            return 'https://vk.com/video_ext.php?oid='.$m[1].'&id='.$m[2].$this->querySuffix($mute, true);
         }
-        if (preg_match('/vk\.com\/video(-?\d+)_(\d+)/', $this->url, $m)) {
-            return 'https://vk.com/video_ext.php?oid='.$m[1].'&id='.$m[2];
+        if (preg_match('/vk\.com\/video(-?\d+)_(\d+)/', $url, $m)) {
+            return 'https://vk.com/video_ext.php?oid='.$m[1].'&id='.$m[2].$this->querySuffix($mute, true);
         }
-        if (str_contains($this->url, 'vk.com/video_ext.php')) {
-            return $this->url;
+        if (str_contains($url, 'vk.com/video_ext.php')) {
+            return $url.$this->querySuffix($mute, true);
         }
 
-        return $this->url;
+        return $url;
+    }
+
+    protected function querySuffix(string $params, bool $alreadyHasQuery = false): string
+    {
+        if (! $params) {
+            return '';
+        }
+
+        return ($alreadyHasQuery ? '&' : '?').$params;
     }
 
     public function albums(): BelongsToMany

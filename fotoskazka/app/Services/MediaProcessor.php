@@ -50,6 +50,36 @@ class MediaProcessor
         }
     }
 
+    /**
+     * Регенерация только кэш-вариантов (display/lightbox) без пересоздания
+     * thumbnail и без изменения метаданных. Ошибки логируются, запись не меняется.
+     */
+    public function regenerateImageCache(Media $media, bool $force = false): bool
+    {
+        try {
+            return $this->regenerateImageCacheHandle($media, $force);
+        } catch (Throwable $exception) {
+            $this->reportFailure($media, $exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * Аналог regenerateImageCache(), но сбой storage (Throwable) пробрасывается
+     * после логирования — для Queue Job, где временные ошибки должны приводить к retry.
+     */
+    public function regenerateImageCacheOrFail(Media $media, bool $force = false): bool
+    {
+        try {
+            return $this->regenerateImageCacheHandle($media, $force);
+        } catch (Throwable $exception) {
+            $this->reportFailure($media, $exception);
+
+            throw $exception;
+        }
+    }
+
     protected function reportFailure(Media $media, Throwable $exception): void
     {
         Log::error('Media processing failed.', [
@@ -117,6 +147,48 @@ class MediaProcessor
 
         try {
             return $this->processFromTempFile($media, $tempFile, $force);
+        } finally {
+            @unlink($tempFile);
+        }
+    }
+
+    protected function regenerateImageCacheHandle(Media $media, bool $force): bool
+    {
+        $path = (string) $media->file_path;
+        $context = [
+            'media_id' => $media->id,
+            'disk' => $media->disk,
+            'path' => $path,
+        ];
+
+        if (! str_starts_with((string) $media->mime_type, 'image/')) {
+            return false;
+        }
+
+        if ($path === '') {
+            Log::warning('Media has no file_path, nothing to process.', $context);
+
+            return false;
+        }
+
+        $originalDisk = $this->originalDisk($media);
+
+        if (! $originalDisk->exists($path)) {
+            Log::warning('Media original file not found on disk.', $context);
+
+            return false;
+        }
+
+        $tempFile = $this->spoolToTempFile($originalDisk, $path);
+
+        if ($tempFile === null) {
+            Log::warning('Cannot read media original from disk.', $context);
+
+            return false;
+        }
+
+        try {
+            return $this->warmImageCache($media, $tempFile, $force, $context);
         } finally {
             @unlink($tempFile);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,11 @@ class Project extends Model
         'client_id', 'manager_id', 'title', 'slug', 'type',
         'description', 'shooting_date', 'status',
         'contact_name', 'contact_phone', 'contact_email',
+    ];
+
+    protected $casts = [
+        'status' => ProjectStatus::class,
+        'shooting_date' => 'date',
     ];
 
     public function client(): BelongsTo

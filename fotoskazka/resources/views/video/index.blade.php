@@ -47,7 +47,6 @@
     @if ($verticalVideos->isNotEmpty())
         <section class="py-24 bg-[#111111]" data-aos="fade-up">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 class="font-heading text-2xl font-normal tracking-wide text-white text-center mb-12">Вертикальные видео</h2>
                 <div class="video-slider" data-video-slider data-aos="fade-up">
                     @foreach ($verticalVideos as $video)
                         <div data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">

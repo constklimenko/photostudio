@@ -33,6 +33,7 @@ app/
 │       ├── MakeFilamentUser.php
 │       ├── MediaCheck.php                  # Проверка целостности + orphan-файлы (B9)
 │       ├── MediaMigrateToYandex.php      # Миграция локальных оригиналов на Диск (B8)
+│       ├── MediaRegenerateImageCache.php # Прогрев кэша display/lightbox через очередь (фоновый режим)
 │       ├── MediaRegenerateThumbnails.php
 │       ├── MediaPruneImageCache.php      # Очистка кэша display/lightbox
 │       └── MediaTestStorage.php          # Проверка подключения к диску
@@ -41,6 +42,7 @@ app/
 ├── Jobs/
 │   ├── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
 │   ├── ProcessMedia.php              # Очередь: обработка Media (metadata + thumbnail)
+│   ├── RegenerateMediaImageCache.php # Очередь: прогрев кэша display/lightbox (media:regenerate-image-cache)
 │   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
@@ -172,15 +174,22 @@ resources/views/
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
-│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, форма (B11)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11)
 │   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
 ├── cabinet/
-│   └── index.blade.php         # Личный кабинет (заглушка)
+│   ├── index.blade.php         # Dashboard кабинета (client/class_manager — проекты, parent — назначенные альбомы)
+│   ├── projects.blade.php      # Список проектов (client / class_manager)
+│   ├── project.blade.php       # Страница проекта + карточки альбомов со ссылкой на галерею (C2.5)
+│   └── album.blade.php         # Галерея альбома (сетка + lightbox + пагинация) (C2.6)
 └── auth/
     └── login.blade.php         # Страница входа
 ```
+
+`<x-site.album-photos>` принимает `$album` и опциональный `$photos` (пагинированная
+коллекция фото; по умолчанию берёт `$album->photos`) — переиспользуется публичной
+страницей альбома, страницами услуг/категорий и галереей кабинета.
 
 ## Маршруты
 
@@ -196,14 +205,51 @@ resources/views/
 | GET | `/video` | `VideoController@index` | — |
 | GET | `/video/{video}/stream` | `VideoController@stream` | raw |
 | GET | `/media/{media}/original` | `MediaController@original` | — |
+| GET | `/media/{media}/thumbnail` | `MediaController@thumbnail` | WebP-превью из диска `thumbnails` |
 | GET | `/media/{media}/download` | `MediaController@download` | attachment |
-| GET | `/media/{media}/display` | `MediaController@display` | PNG ≤800px из кэша |
+| GET | `/media/{media}/display` | `MediaController@display` | WebP ≤800px из кэша |
 | GET | `/media/{media}/lightbox` | `MediaController@lightbox` | PNG ≤1600px из кэша |
 | POST | `/inquiry` | `HomeController@storeInquiry` | — |
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
+| GET | `/cabinet/projects` | `CabinetController@projects` | `auth` |
+| GET | `/cabinet/projects/{project}` | `CabinetController@show` | `auth` |
+| GET | `/cabinet/albums/{album}` | `CabinetController@showAlbum` (галерея; `AlbumPolicy::view`) | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
 | POST | `/login` | `Auth\LoginController@store` | `guest` |
 | POST | `/logout` | `Auth\LoginController@destroy` | `auth` |
+
+### Авторизация файлов Media (C1.5)
+
+Роуты `MediaController` (`original`, `thumbnail`, `download`, `display`, `lightbox`)
+служат универсальным механизмом отдачи файлов по `Media` ID. `Media`
+переиспользуется публичным контентом (портфолио, услуги, homepage, обложки,
+отзывы) и приватными галереями (клиентские/проектные альбомы), поэтому сам по
+себе владельца не знает.
+
+Минимальное решение (без переписывания Media Storage): входной шлюз
+`app/Services/MediaAccessService.php` применяется в каждом методе контроллера
+до отдачи файла:
+
+- связь `Media → albums` через pivot `photos`;
+- `Media` приватна, если хотя бы один ссылающийся на неё альбом имеет
+  `type ∈ {client, project}`;
+- публичная Media — как раньше (доступен гостю);
+- приватная Media: гость → `404`; авторизованный без права → `403`; право
+  проверяется через `AlbumPolicy::view` хотя бы для одного содержащего приватного
+  альбома (наследование `Project → Album → Photo` соблюдается).
+
+Дополнительно (закрытие прямых URL-утечек): аксессоры `Media::getUrl()` и
+`Media::getThumbnailUrl()` **всегда** возвращают прокси-роуты
+(`media.original` / `media.thumbnail`), а не прямые URL дисков `/storage/...`.
+Причина: диск `thumbnails` и локальный `public`-диск оригиналов находятся под
+публичным веб-корнем и отдаются веб-сервером в обход приложения; любые прямые
+`/storage/...` ссылки на приватную Media делали бы её файлы общедоступными.
+Все файлы приватных галерей поэтому доходят до клиента только через
+защищённый шлюз.
+
+Корневая причина (универсальность `Media` и переиспользование одной записи
+публичным и приватным альбомом) зафиксирована; полноценное решение с контекстом
+родительского альбома/проекта — на этапе 5 (клиентские галереи).
 
 ## Blade Layout и условный Vite
 
@@ -357,6 +403,24 @@ MediaProcessor::processOrFail(Media)
 Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
 `--force`) остался в команде; сама обработка делегирована `MediaProcessor::process(force: true)` —
 единая реализация генерации превью без дублирования GD-кода.
+
+## Прогрев кэша в фоне — media:regenerate-image-cache
+
+Команда `php artisan media:regenerate-image-cache` пересоздаёт кэш производных
+изображений (display/lightbox, диск `image_cache`) **асинхронно через очередь**:
+CLI отбирает записи и диспатчит по одному Job `RegenerateMediaImageCache`
+(3 tries, timeout 180 c, backoff [30, 120], afterCommit) на Media, после чего
+завершается; тяжёлую работу (стрим оригинала + GD) выполняет queue worker.
+
+- Отбор: `mime_type LIKE 'image/%'` c `file_path`; по умолчанию — только
+  записи без хотя бы одного кэш-варианта (`ImageCacheService::isCached`),
+  `--force` — все изображения; `--dry-run`, `--limit=N`, `--id=ID` аналогичны
+  `media:regenerate-thumbnails`.
+- Job делегирует `MediaProcessor::regenerateImageCacheOrFail()` — регенерация
+  **только** cache-вариантов через `warmImageCache` (один стрим оригинала на оба
+  тира), без пересоздания thumbnail и без изменения метаданных/записи
+  (в отличие от `process()`). Идемпотентно: повторный запуск не создаёт
+  дубликатов; сбой одного Media не прерывает остальные.
 
 ## Проверка целостности — media:check — этап B9
 
@@ -595,6 +659,100 @@ Filament-UX (`MediaTable`, `EditMedia`):
 - `User::canAccessPanel()` проверяет `status === 'active'` и `hasRole('admin')`
 - `User` содержит методы: `isAdmin()`, `hasRole()`, `hasAnyRole()`, `hasAllRoles()`
 
+### Policy для проектов (C1.2)
+
+`app/Policies/ProjectPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Project» (нет опоры на скрытие ссылок в UI):
+
+- `view(User $user, Project $project): bool`:
+  - `admin` / `photographer` — полный доступ ко всем проектам (приоритет);
+  - `client` — только при `project.client_id === user->id`;
+  - `class_manager` — только при `project.manager_id === user->id`;
+  - `parent` — доступа нет, даже если в проекте есть альбом, назначенный родителю
+    (`album_user` — отдельный канал доступа к альбому, не к проекту);
+  - пользователь без роли и гость — доступа нет.
+- Комбинирование ролей: `admin`/`photographer` доминируют; для остальных доступ
+  разрешается, если совпадает хотя бы одно применимое правило (`client` ИЛИ
+  `class_manager`).
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+- Используется существующая система ролей; новая ACL не вводится.
+
+### Статусы проекта (C2.1)
+
+Допустимые статусы `Project.status` определены в одном месте —
+`App\Enums\ProjectStatus` (`BackedEnum`, значение — строка в БД):
+
+| Ключ                | Название               |
+|---------------------|------------------------|
+| `draft`             | Подготовка             |
+| `shooting_completed`| Фотосъёмка закончена   |
+| `reshoot`           | Пересъёмка             |
+| `processing`        | Обработка фотографий   |
+| `layout_approval`   | Согласование макета     |
+| `printing`          | Отправка в печать       |
+| `completed`         | Проект завершён         |
+| `archived`          | Архив                   |
+
+- Модель `Project` кастует `status` через `ProjectStatus::class` (см. `$casts`).
+- Enum предоставляет `label()` (русское название) и `color()` (цвет бейджа Filament);
+  единый список `options()` используется в форме, таблице и фильтре адимнки.
+- `reshoot` — не строго линейное следующее состояние: после пересъёмки проект
+  может вернуться к предыдущему этапу (например, снова в `processing` или `draft`).
+  Полноценный workflow переходов между статусами на этом этапе **не** внедряется.
+- Старое значение `active` устранено (миграция `update_projects_status_enum_table`):
+  существующие проекты со `status = 'active'` переводятся в `processing`.
+  `create`-логика создаёт проекты со статусом `draft` по умолчанию.
+
+### Policy для альбомов (C1.3)
+
+`app/Policies/AlbumPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Album» (нет опоры на скрытие ссылок в UI):
+
+- `viewAny(User $user): bool` — разрешён только `admin` / `photographer`;
+  не используется как источник бизнес-правил (без контекста проекта корректно
+  не реализуемо для client/class_manager/parent);
+- `view(User $user, Album $album): bool`:
+  - `admin` / `photographer` — полный доступ ко всем альбомам (приоритет);
+  - `client` — только к альбомам проектов, которыми владеет:
+    `album.project.client_id === user->id` (pivot `client → album` не создаётся,
+    источник права — `User → Project.client_id → Album.project_id`);
+    тип альбома не ограничен;
+  - `class_manager` — только к `client`-альбомам своего проекта:
+    `album.type === 'client'` И `album.project.manager_id === user->id`;
+    типы `project`/`portfolio`/прочие и чужие проекты недоступны;
+  - `parent` — только к назначенному альбому через `album_user`
+    (`album.type === 'client'` И связь существует); остальные альбомы проекта,
+    типы `project`/`portfolio` и альбомы без связи недоступны;
+  - пользователь без роли и гость — доступа нет.
+- Крайние случаи: альбом без `project` недоступен `client`/`class_manager`,
+  но доступен `parent` при наличии `album_user` и типе `client`.
+- Комбинирование ролей: `admin`/`photographer` доминируют; для остальных доступ
+  разрешается, если совпадает хотя бы одно применимое правило
+  (`client` ИЛИ `class_manager` ИЛИ `parent`) — ветки не обрывают проверку.
+- N+1: `client`/`class_manager` читают `album.project` (в массовых проверках
+  вызывающий код подготавливает eager loading `project`); `parent` — точечный
+  запрос `exists()` через существующую связь `album->users()`.
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+
+### Policy для фотографий (C1.4)
+
+`app/Policies/PhotoPolicy.php` — единственный источник решения «может ли
+пользователь просматривать Photo» (нет опоры на скрытие ссылок в UI):
+
+- `view(User $user, Photo $photo): bool` — единственный метод (без избыточных
+  `viewAny` и прочих — не используются существующей функциональностью);
+- правило полностью делегировано `AlbumPolicy`: `$user->can('view', $photo->album)`;
+- **матрица ролей в PhotoPolicy не дублируется** — отдельные правила
+  `client → photo`, `parent → photo`, `class_manager → photo` не создаются.
+  Доступ к фото наследуется от доступа к альбому:
+  `Project → Album → Photo`. Если пользователь не имеет доступа к Album,
+  он не имеет доступа ни к одной фотографии этого Album;
+- N+1: PhotoPolicy не выполняет собственных запросов — решение целиком
+  принимает `AlbumPolicy` (её требования к eager loading `album.project`
+  для client/class_manager в массовых проверках см. выше). Вызывающий код
+  должен корректно подготавливать связь `photo->album` (и `album->project`);
+- Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+
 ### Защита системных ролей
 
 - Поле `roles.is_system` (boolean, default true)
@@ -616,9 +774,93 @@ retoucher, assistant, manager, designer и т.д.
 ### Пользовательский кабинет
 
 - Маршрут: `GET /cabinet` (middleware `auth`)
-- Контроллер: `CabinetController@index`
+- Контроллер: `CabinetController@index` (тонкий, DI `CabinetService`)
 - Защищён middleware `auth`
-- Временно выводит приветствие пользователя
+
+#### Слой данных кабинета — C2.2 (`app/Services/CabinetService.php`)
+
+Единственная точка выборки данных личного кабинета. Логика запросов вынесена из
+контроллера; политики (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) остаются
+единственным источником правил авторизации, а query layer только сужает выборку
+на уровне БД под права роли:
+
+| Роль          | Проекты                                        | Альбомы                                   |
+|---------------|------------------------------------------------|-------------------------------------------|
+| `client`      | `projects.client_id = user.id`                 | все альбомы своих проектов                |
+| `class_manager` | `projects.manager_id = user.id`              | только `client`-альбомы своего проекта    |
+| `parent`      | не получает Project (пусто)                    | только назначенные через `album_user` `client`-альбомы |
+| `photographer`/`admin` | полный доступ                          | все `client`-альбомы (для `getAlbums*`)    |
+
+Методы:
+
+- `getProjectsForUser(User)` / `getProjectForUser(User, id)` — список/dashboard
+  и страница проекта; IDOR-защита, чужой проект → `null`;
+- `getAlbumsForUser(User)` / `getAlbumForUser(User, id)` — dashboard родителя
+  (вокруг альбомов, не Project);
+- `getPhotosForAlbum(User, id, perPage=24)` — фото альбома с `media`, только после
+  проверки доступа к альбому; пагинированный результат (`LengthAwarePaginator`);
+- `paginateAlbumPhotos(Album, perPage=24)` — пагинация фото уже авторизованного
+  альбома (используется галереей C2.6 после `AlbumPolicy::view`; без повторной
+  проверки доступа и без N+1).
+
+Гарантии выборки:
+
+- eager loading `project`/`cover`/`users` (альбом), `albums` + `withCount`
+  (`albums_count`, `client_albums_count`, `photos_count`) для проектов,
+  `media` для фото — без N+1;
+- счётчик фото — подзапросом на уровне SQL (не перебор коллекций);
+- закрытие выборки: если у пользователя нет ни одной применимой роли,
+  добавляется `where 1 = 0` (пустой результат), а не «без ограничений».
+
+#### Dashboard личного кабинета — C2.3
+
+Маршрут `GET /cabinet` защищён middleware `auth`. Контроллер (`CabinetController`)
+передаёт данные через `CabinetService` по ролям без дублирования бизнес-правил:
+`parent` получает `albums` (назначенные `client`-альбомы), остальные — `projects`.
+
+`resources/views/cabinet/index.blade.php` рендерит контент строго по полученным
+данным; роль используется только для формулировок интерфейса (заголовки, пустые
+состояния), а не для вычисления доступа:
+
+| Роль          | Заголовок      | Содержимое                                                   |
+|---------------|----------------|--------------------------------------------------------------|
+| `client`      | «Ваши проекты» | карточки своих проектов: название, статус (бейдж), дата съёмки, `client_albums_count`, `photos_count`, первые альбомы |
+| `class_manager` | «Ваш проект» | собственный проект + статус; внутри карточки показываются **только `client`-альбомы** (фильтрация `$project->albums->where('type','client')` на уже выбранной коллекции) |
+| `parent`      | «Назначенные альбомы» | карточки назначенных `client`-альбомов (обложка/плейсхолдер, название, проект, описание); проекты не показываются вовсе |
+| `photographer`/`admin` | «Проекты» | все проекты платформы |
+
+Особенности:
+
+- пустые состояния зависят от роли и ориентированы на контекст: parent —
+  «Нет назначенных альбомов» + пояснение про назначение фотографом; остальные —
+  «Нет доступных проектов»;
+- бейдж статуса проекта использует русскую `ProjectStatus::label()` + цветовую
+  карту в шаблоне (ключ — `ProjectStatus::value`), дублирования правил доступа нет;
+- `Project.shooting_date` кастуется как `date`: на C2.2 в шаблоне к дате
+  применялся `->format()` без каста, что падало на SQLite (строковое значение).
+  Каст добавлен на C2.3.
+
+UI галереи на C2.3 намеренно не создавался (рамки подэтапа: dashboard + список).
+
+#### Список проектов — C2.4
+
+Маршрут `GET /cabinet/projects` защищён middleware `auth`. Контроллер
+(`CabinetController::projects`) получает проекты через `CabinetService`
+и фильтрует через `ProjectPolicy::view` (защита от IDOR):
+
+| Роль          | Заголовок      | Содержимое                                                      |
+|---------------|----------------|-----------------------------------------------------------------|
+| `client`      | «Мои проекты»  | карточки своих проектов: название, статус (бейдж), дата, счётчики |
+| `class_manager` | «Ваш проект» | собственный проект + статус                                     |
+| `parent`      | пусто          | «Нет доступных проектов» (projects не видит)                     |
+| `photographer`/`admin` | «Мои проекты» | все проекты платформы                                   |
+
+`resources/views/cabinet/projects.blade.php` — отдельная страница списка проектов
+с карточками (название, статус, дата съёмки, счётчики альбомов/фото).
+Ссылка на страницу проекта (`href="#"`) — заготовка для C2.5.
+
+Dashboard (`cabinet/index.blade.php`) для client/class_manager/admin/photographer
+содержит ссылку «Все проекты» на `cabinet.projects`. Для parent ссылка не показывается.
 
 ### Аутентификация
 
@@ -702,8 +944,20 @@ storage/app/public/
 - **Роут `GET /video/{video}/stream`** — сырой поток загруженного видео через
   `VideoController@stream` (StreamedResponse, диск `filesystems.default_media_disk`).
   Заголовки: `Content-Type: video/mp4`, `Content-Disposition: inline`,
-  `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`,
-  `Accept-Ranges: bytes`. 404 при отсутствии `file_path` или файла.
+  `Cache-Control: private, max-age=86400, immutable`, `X-Content-Type-Options: nosniff`,
+  `Accept-Ranges: bytes`, `ETag`. 404 при отсутствии `file_path`/файла.
+- **Кэширование браузером**: `private max-age` позволяет хранить видео в
+  кэше конкретного браузера (недоступно для CDN/прокси/промежуточных узлов);
+  ETag + `If-None-Match` дают дешёвую ревалидацию (304). File не перезаписывается
+  по содержимому, поэтому `immutable` оправдан.
+- **Поддержка HTTP Range (206 Partial Content)** для мгновенного старта
+  воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
+  одиночные `bytes=start-end`, открытые (`bytes=n-`), суффиксные (`bytes=-n`)
+  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`) диапазоны;
+  `If-None-Match` → `304`, неудовлетворимый диапазон → `416` с
+  `Content-Range: bytes */size`. Стрим читается локально
+  (`fopen` + `fseek`/`fread` чанками 8 КБ), между запросами полнотелого 200 и
+  сегмента 206 выставляются `Content-Length`/`Content-Range`.
 - **`Video::source_url`** указывает на `video.stream` (прокси вместо `Storage::url`),
   чтобы не публиковать реальный путь файла напрямую.
 - **Компонент `x-site.video-player`** (`resources/views/components/site/video-player.blade.php`)
@@ -721,12 +975,23 @@ storage/app/public/
   (`0` / `90` / `-90`); контейнер повёрнутого видео — `aspect-video`, неповёрнутого
   вертикального — `aspect-[9/16]`. Прямой `/video/{id}/stream` отдаёт файл без поворота.
 - **Запрет скачивания (затруднение, не 100% защита)**: прокси-роут с
-  `Cache-Control: private, no-store` + `Content-Disposition: inline`;
-  на `<video>` — `controlsList="nodownload noremoteplayback"`,
-  `disablepictureinpicture`, `oncontextmenu="return false"`, `preload="none"`.
-- **Звук управляется только в админке** через поле `Video.has_sound`:
-  при `false` на `<video>` добавляется атрибут `muted` (и повёрнутых, и обычных
-  загруженных видео); кнопки в кастомном плеере нет.
+  `Content-Disposition: inline` и приватным кэшем; на `<video>` —
+  `controlsList="nodownload noremoteplayback"`, `disablepictureinpicture`,
+  `oncontextmenu="return false"`.
+- **Ленивая подгрузка**: `preload="auto"` — браузер сразу после загрузки
+  страницы подтягивает метаданные и часть видео (на странице не больше 3 видео),
+  поэтому воспроизведение начинается мгновенно; скачанные байты остаются в
+  браузерном кэше (см. выше) и повторное открытие не перекачивает файл.
+- **Звук управляется только в админке** через поле `Video.has_sound`. Когда звук
+  отключён (`false`), возможность включить звук недоступна в любом типе плеера:
+  - для загруженных видео (повёрнутых и обычных) на `<video>` добавляется
+    `muted` + `data-video-forbid-sound`; JS в `resources/js/app.js` принудительно
+    держит `video.muted = true` и повторно приглушает на `volumechange`/`play`/
+    `loadedmetadata`, поэтому кнопка mute/громкость нативных контролов не даёт
+    эффекта (у обычных видео к `controlsList` добавлен `noplaybackrate`);
+  - для встраиваемых видео `Video.embed_url` добавляет параметр приглушения:
+    YouTube `?mute=1`, Vimeo/Rutube `?muted=1`, VK (`video_ext.php`) `&muted=1`.
+  Кнопки включения звука в кастомном плеере нет.
 
 ### Кэш производных изображений (display / lightbox)
 
@@ -737,11 +1002,12 @@ storage/app/public/
   переиспользуя уже скачанный temp-файл оригинала — повторного запроса к
   Яндекс.Диску нет. Пропущенные варианты досчитываются при retry:
   `needsProcessing()` считает отсутствие любого варианта незавершённой обработкой
-- Сервис `ImageCacheService`: ленивая генерация PNG осталась как fallback
+- Сервис `ImageCacheService`: ленивая генерация осталась как fallback
   (первый запрос `media.display` / `media.lightbox`) — на случай вытеснения LRU,
   очистки командой или отставания воркера; пути детерминированы, поэтому файлы
   прогрева и fallback совпадают
-  ключ файла: `{tier}/{media_id}-{sha1(id|tier|disk|path)[0..12]}.png`; повторные
+  ключ файла: `{tier}/{media_id}-{sha1(id|tier|format|disk|path)[0..12]}.{format}`,
+  где display — WebP (800px), lightbox — PNG (1600px); повторные
   запросы отдаются с диска (`Cache-Control: immutable`)
 - Источник — оригинал с любого диска (включая Яндекс.Диск) через временную копию;
 - после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы;
@@ -766,7 +1032,8 @@ storage/app/public/
    хранятся локально независимо от диска оригинала.
 
 2. **Производные изображения хранятся локально.** WebP-превью (400px) — на диске
-   `thumbnails`; PNG-кэш display (800px) и lightbox (1600px) — на диске `image_cache`.
+   `thumbnails`; display (WebP, ≤800px) и lightbox (PNG, ≤1600px) — на диске
+   `image_cache`.
    Публичные страницы никогда не обращаются к Яндекс.Диску напрямую.
 
 3. **ProcessMedia выполняется через Queue.** Обработка (метаданные + превью + кэш)
@@ -936,7 +1203,13 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
 - неопубликованный `featured_album_id` игнорируется (блок не выводится);
 - при выключенном toggle выбранный альбом остаётся обычной карточкой.
 
-Функция реализована только для услуги; категории не затрагиваются.
+Аналогичная настройка реализована для категорий (`CategoryForm`, раздел
+«Примеры работ», и `services/category.blade.php`): `show_album_photos` +
+`featured_album_id` прикрепляют альбомы-примеры к категории через pivot
+`category_album` (`Category::albums()` BelongsToMany) и позволяют вывести
+выбранный альбом сеткой фотографий. Поведение полностью повторяет услуги
+(`ServiceCatalogController::showCategory`).
+
 Компонент `<x-site.album-photos>` расположил разметку сетки + lightbox и JS
 в одном месте, устранив дублирование со страницей альбома.
 
@@ -1044,6 +1317,13 @@ Slug генерируется уникальным сразу (base + `-N`), в�
 Меню сайта строится динамически из тех же записей.
 Контент блоков (услуги, альбомы, статьи, отзывы) продолжает загружаться
 из соответствующих моделей.
+
+### Контекстная админская форма Page
+`Page` остаётся единой моделью CMS, но `PageForm` контекстно разделяет
+настройки главной страницы (`slug = home`) и обычных страниц.
+Общие поля: `title`, `menu_title`, `slug` (locked для системных slug).
+Для `home`: секции «Главная страница» и «Оживающие фотографии».
+Для остальных: «Заголовок страницы», «Альбомы», «SEO».
 
 ## Правила разработки
 

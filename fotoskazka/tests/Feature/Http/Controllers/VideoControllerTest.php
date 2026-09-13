@@ -58,7 +58,6 @@ class VideoControllerTest extends TestCase
         $response = $this->get(route('video.index'));
 
         $response->assertSee('Вертикальное видео');
-        $response->assertSee('Вертикальные видео');
     }
 
     public function test_index_splits_videos_by_orientation(): void
@@ -161,7 +160,8 @@ class VideoControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'video/mp4');
         $response->assertHeader('Content-Disposition', 'inline; filename="clip.mp4"');
-        $response->assertHeaderContains('Cache-Control', 'no-store');
+        $response->assertHeaderContains('Cache-Control', 'private');
+        $response->assertHeaderContains('Cache-Control', 'max-age=86400');
         $response->assertHeader('X-Content-Type-Options', 'nosniff');
         $response->assertHeader('Accept-Ranges', 'bytes');
         $response->assertHeader('Content-Length', '19');
@@ -366,6 +366,7 @@ class VideoControllerTest extends TestCase
 
         $response->assertSee('<video', false);
         $response->assertSee(' muted', false);
+        $response->assertSee('data-video-forbid-sound', false);
     }
 
     public function test_index_does_not_render_muted_when_has_sound_enabled(): void
@@ -385,5 +386,6 @@ class VideoControllerTest extends TestCase
 
         $response->assertSee('<video', false);
         $response->assertDontSee(' muted', false);
+        $response->assertDontSee('data-video-forbid-sound', false);
     }
 }

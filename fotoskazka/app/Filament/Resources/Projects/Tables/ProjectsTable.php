@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Projects\Tables;
 
+use App\Enums\ProjectStatus;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,13 +30,8 @@ class ProjectsTable
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn ($state) => match ($state) {
-                        'draft' => 'gray',
-                        'active' => 'success',
-                        'completed' => 'info',
-                        'archived' => 'warning',
-                        default => 'gray',
-                    }),
+                    ->formatStateUsing(fn ($state) => $state instanceof ProjectStatus ? $state->label() : $state)
+                    ->color(fn ($state) => $state instanceof ProjectStatus ? $state->color() : 'gray'),
                 TextColumn::make('shooting_date')
                     ->date()
                     ->sortable(),
@@ -51,12 +47,7 @@ class ProjectsTable
                         'kindergarten' => 'Детский сад',
                     ]),
                 SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Черновик',
-                        'active' => 'Активен',
-                        'completed' => 'Завершён',
-                        'archived' => 'В архиве',
-                    ]),
+                    ->options(ProjectStatus::options()),
             ])
             ->recordActions([
                 EditAction::make(),

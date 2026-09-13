@@ -50,7 +50,7 @@ class VideoController extends Controller
         $baseHeaders = [
             'Content-Type' => 'video/mp4',
             'Content-Disposition' => 'inline; filename="'.addslashes($filename).'"',
-            'Cache-Control' => 'private, no-store',
+            'Cache-Control' => 'private, max-age=86400, immutable',
             'X-Content-Type-Options' => 'nosniff',
             'Accept-Ranges' => 'bytes',
             'ETag' => $etag,

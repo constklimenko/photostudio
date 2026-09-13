@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Services\Schemas;
 
+use App\Models\Media;
 use App\Models\Service;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\RichEditor;
@@ -57,6 +58,7 @@ class ServiceForm
                             ->nullable(),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
+                            ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
                             ->preload()
                             ->nullable()
                             ->label('Обложка'),
@@ -137,6 +139,20 @@ class ServiceForm
                             ->preload()
                             ->searchable()
                             ->columnSpanFull(),
+                    ]),
+                Section::make('Кнопка CTA')
+                    ->schema([
+                        Select::make('cta_album_id')
+                            ->label('Альбом для кнопки')
+                            ->relationship('ctaAlbum', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->nullable(),
+                        TextInput::make('cta_button_text')
+                            ->label('Текст кнопки')
+                            ->maxLength(255)
+                            ->nullable()
+                            ->placeholder('Посмотреть варианты обложек'),
                     ]),
             ]);
     }

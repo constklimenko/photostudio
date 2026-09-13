@@ -40,6 +40,7 @@ class VideosTable
                     ->badge()
                     ->formatStateUsing(fn ($state): string => match ((int) $state) {
                         90 => '90°',
+                        180 => '180°',
                         -90 => '-90°',
                         default => '—',
                     })

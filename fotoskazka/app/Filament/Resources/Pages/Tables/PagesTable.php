@@ -21,7 +21,8 @@ class PagesTable
                     ->sortable(),
                 TextColumn::make('slug')
                     ->searchable()
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (string $state): string => $state === 'home' ? 'Главная' : $state),
                 IconColumn::make('is_published')
                     ->boolean(),
                 TextColumn::make('sort_order')

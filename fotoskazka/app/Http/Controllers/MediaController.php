@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Media;
 use App\Services\ImageCacheService;
+use App\Services\MediaAccessService;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaController extends Controller
 {
-    public function original(Media $media): StreamedResponse
+    public function original(Media $media, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         $disk = Storage::disk($media->disk ?? 'public');
 
         abort_unless($media->file_path && $disk->exists($media->file_path), 404);
@@ -25,8 +28,27 @@ class MediaController extends Controller
         );
     }
 
-    public function download(Media $media): StreamedResponse
+    public function thumbnail(Media $media, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
+        $disk = Storage::disk('thumbnails');
+
+        abort_unless($media->thumbnail_path && $disk->exists($media->thumbnail_path), 404);
+
+        return $this->stream(
+            $disk,
+            (string) $media->thumbnail_path,
+            'image/webp',
+            'inline',
+            basename((string) $media->thumbnail_path),
+        );
+    }
+
+    public function download(Media $media, MediaAccessService $access): StreamedResponse
+    {
+        $this->authorizeView($media, $access);
+
         $disk = Storage::disk($media->disk ?? 'public');
 
         abort_unless($media->file_path && $disk->exists($media->file_path), 404);
@@ -40,14 +62,31 @@ class MediaController extends Controller
         );
     }
 
-    public function display(Media $media, ImageCacheService $cache): StreamedResponse
+    public function display(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         return $this->cachedImage($media, $cache, ImageCacheService::TIER_DISPLAY);
     }
 
-    public function lightbox(Media $media, ImageCacheService $cache): StreamedResponse
+    public function lightbox(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
     {
+        $this->authorizeView($media, $access);
+
         return $this->cachedImage($media, $cache, ImageCacheService::TIER_LIGHTBOX);
+    }
+
+    protected function authorizeView(Media $media, MediaAccessService $access): void
+    {
+        if ($access->isPublic($media)) {
+            return;
+        }
+
+        if (auth()->guest()) {
+            abort(404);
+        }
+
+        abort_unless($access->canView($media, auth()->user()), 403);
     }
 
     protected function cachedImage(Media $media, ImageCacheService $cache, string $tier): StreamedResponse
@@ -58,7 +97,7 @@ class MediaController extends Controller
 
         $disk = Storage::disk((string) config('filesystems.image_cache.disk', 'image_cache'));
 
-        return $this->stream($disk, $path, 'image/png', 'inline', basename($path), true);
+        return $this->stream($disk, $path, $cache->mimeType($tier), 'inline', basename($path), true);
     }
 
     protected function stream(

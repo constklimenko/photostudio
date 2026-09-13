@@ -4,6 +4,7 @@
     $rotation = (int) $video->rotation;
     $rotateTransform = match ($rotation) {
         90 => 'rotate(90deg)',
+        180 => 'rotate(180deg)',
         -90 => 'rotate(-90deg)',
         default => null,
     };
@@ -15,12 +16,12 @@
             <video
                 class="rotated-media absolute"
                 playsinline
-                preload="none"
-                {{ $video->has_sound ? '' : 'muted' }}
+                preload="auto"
+                {{ $video->has_sound ? '' : 'muted data-video-forbid-sound' }}
                 controlsList="nodownload noremoteplayback"
                 disablepictureinpicture
                 oncontextmenu="return false"
-                style="position:absolute;top:50%;left:50%;width:56.25%;height:177.78%;max-width:none;max-height:none;object-fit:cover;transform:translate(-50%,-50%) {{ $rotateTransform }};"
+                style="position:absolute;top:50%;left:50%;width:{{$rotation == 180 ? '100%' : '56.25%' }}    ;height:177.78%;max-width:none;max-height:none;object-fit:cover;transform:translate(-50%,-50%) {{ $rotateTransform }};"
             >
                 <source src="{{ $video->source_url }}" type="video/mp4">
             </video>
@@ -62,9 +63,9 @@
             class="w-full h-full"
             controls
             playsinline
-            preload="none"
-            {{ $video->has_sound ? '' : 'muted' }}
-            controlsList="nodownload noremoteplayback"
+            preload="auto"
+            {{ $video->has_sound ? '' : 'muted data-video-forbid-sound' }}
+            controlsList="nodownload noremoteplayback noplaybackrate"
             disablepictureinpicture
             oncontextmenu="return false"
         >

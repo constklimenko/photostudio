@@ -3,6 +3,7 @@
 namespace Tests\Feature\Filament;
 
 use App\Models\Album;
+use App\Models\Media;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -38,6 +39,16 @@ class AlbumResourceTest extends TestCase
 
     public function test_edit_page_renders(): void
     {
+        $album = Album::factory()->create();
+
+        $response = $this->get("/admin/albums/{$album->id}/edit");
+
+        $response->assertSuccessful();
+    }
+
+    public function test_edit_page_renders_with_media_without_title(): void
+    {
+        Media::factory()->create(['title' => null, 'file_path' => 'albums/no-title.jpg']);
         $album = Album::factory()->create();
 
         $response = $this->get("/admin/albums/{$album->id}/edit");

@@ -1,5 +1,1357 @@
 # Changelog
 
+## 2026-09-12 — Media: команда фоновой регенерации кэша изображений
+
+### Цель
+
+Дать оператору способ пересоздать кэш производных изображений (display — WebP
+≤800px, lightbox — PNG ≤1600px) на диске `image_cache` в фоновом режиме через
+очередь, не блокируя CLI и не трогая thumbnail/метаданные.
+
+### Добавлено
+
+- **app/Console/Commands/MediaRegenerateImageCache.php** (новый) — команда
+  `media:regenerate-image-cache`:
+  - отбирает Media `mime_type LIKE 'image/%'` с `file_path`;
+  - по умолчанию — записи без хотя бы одного кэш-варианта
+    (`ImageCacheService::isCached` по всем тирам);
+  - `--force` — все изображения; `--dry-run` — таблица плана без диспатча;
+    `--limit=N` и `--id=ID` — ограничение выборки;
+  - диспатчит по одному Job `RegenerateMediaImageCache` на запись и завершается
+    — тяжёлая работа выполняется queue worker'ом (`php artisan queue:work`).
+- **app/Jobs/RegenerateMediaImageCache.php** (новый) — queue job
+  (`mediaId`, `force`; `tries = 3`, `timeout = 180`, `backoff [30, 120]`,
+  `afterCommit`): находит Media (отсутствие записи — warning без ошибки) и
+  делегирует `MediaProcessor::regenerateImageCacheOrFail()`.
+- **app/Services/MediaProcessor.php** — добавлены
+  `regenerateImageCache(Media, bool $force)` и
+  `regenerateImageCacheOrFail(Media, bool $force)`: регенерация **только**
+  кэш-вариантов (один стрим оригинала + `warmImageCache` по всем тирам),
+  без пересоздания thumbnail и без изменения метаданных/записи. Симметрично
+  `process()`/`processOrFail()`: простой вариант логирует и возвращает `false`,
+  OrFail-вариант пробрасывает Throwable для retry очереди.
+
+### НЕ изменено
+
+- Жизненный цикл Media, `MediaObserver`, `ProcessMedia` — без изменений;
+- ленивая генерация кэша и роуты `/media/{id}/display`, `/media/{id}/lightbox`;
+- формат вариантов, лимиты и очистка (`media:prune-image-cache`);
+- `process()` и `media:regenerate-thumbnails` — не переписывались.
+
+### Документация
+
+- **README.md** — новый раздел «Медиа — перегенерация кэша производных
+  изображений (в фоне)».
+- **architecture.md** — в структуру добавлены Job и команда; новый подраздел
+  «Прогрев кэша в фоне — media:regenerate-image-cache».
+
+### Тесты
+
+- **tests/Feature/Console/MediaRegenerateImageCacheCommandTest.php** (новый):
+  диспатч job'а для Media с отсутствующими вариантами; dry-run ничего не
+  диспатчит; `--force` — все записи; без `--force` полные записи пропускаются;
+  не-изображения не отбираются; `--limit`; `--id`.
+- **tests/Feature/Jobs/RegenerateMediaImageCacheTest.php** (новый): регенерация
+  недостающих вариантов; только кэш (thumbnail и метаданные не меняются);
+  `--force` перезаписывает существующие варианты; существующий вариант без
+  `--force` сохраняется; отсутствующая/ненайденная Media — без ошибки; retry-конфиг.
+- **tests/Unit/Services/MediaProcessorTest.php** — добавлены тесты
+  `regenerateImageCache`: восстановление недостающих вариантов без изменения
+  thumbnail/метаданных; force; отсутствующий оригинал; не-изображение;
+  `regenerateImageCacheOrFail` пробрасывает storage-ошибку.
+
+### Проверка
+
+- `php artisan test` — **925/926 passed** (единственный фейл —
+  предсуществующий `MediaRegenerateThumbnailsCommandTest::test_regenerates_missing_thumbnail_file`,
+  воспроизводится и на чистом `HEAD`, к задаче не относится);
+- `./vendor/bin/pint --test` — clean.
+
+### Цель
+
+Уменьшить стоимость LCP hero-блока `#hero-block` на главной (mobile):
+display-вариант теперь генерируется в WebP, hero получает `fetchpriority="high"`.
+
+### Изменено
+
+- **app/Services/ImageCacheService.php** — display-кэш переведён с PNG на WebP:
+  - добавлены константы `FORMAT_WEBP` / `FORMAT_PNG` и методы `format($tier)` /
+    `mimeType($tier)`; формат тира берётся из `filesystems.image_cache.formats`
+    (по умолчанию: display → webp, lightbox → png);
+  - `relativePath()`: расширение и хэш ключа кэша теперь включают формат —
+    старые PNG-файлы не переиспользуются, ключ детерминирован:
+    `{tier}/{media_id}-{sha1(id|tier|format|disk|path)[0..12]}.{format}`;
+  - `generateFromTempFile()`: кодирование по формату —
+    `imagewebp()` (качество `webp_quality`, по умолчанию 80) для display,
+    `imagepng()` для lightbox (без изменений);
+  - `url()`: для каждого производного не-PNG-формата в URL добавляется
+    query-параметр версии `?v={format}`, ломающий старый immutable-кэш браузеров
+    (path `/media/{id}/display` и контракт Media Storage не меняются);
+    lightbox остаётся без версии и без изменения формата.
+- **app/Http/Controllers/MediaController.php** — `cachedImage()` отдаёт
+  `Content-Type` из `ImageCacheService::mimeType($tier)` вместо жёсткого
+  `image/png`; immutable cache-политика сохранена.
+- **config/filesystems.php** — в секцию `image_cache` добавлены `formats`
+  (display → webp, lightbox → png) и `webp_quality` (`IMAGE_CACHE_WEBP_QUALITY`, 80).
+- **resources/views/home.blade.php** — основному `<img>` hero добавлен
+  `fetchpriority="high"`; `loading="lazy"` отсутствует (hero остаётся первым LCP).
+  Логика mobile/desktop (display на мобайле, оригинал на ≥768px через `data-original`)
+  не менялась.
+
+### НЕ изменено
+
+- Контракт Media Storage и защищённые proxy-роуты `/media/{id}/*`;
+- формат lightbox (PNG) и thumbnails, оригиналы и Яндекс.Диск, authorization;
+- JS-логика свапа hero (`resources/js/app.js`) — desktop/mobile поведение прежнее;
+- путь `/media/{id}/display` — меняется только query-параметр версии в URL.
+
+### Старый кэш
+
+- Новый ключ кэша (расширение + хэш с форматом) гарантирует, что старый PNG-кэш
+  display не используется после перехода на WebP;
+- URL display теперь содержит `?v=webp`, поэтому браузеры не отдают прежний
+  immutable-ответ с PNG;
+- старые PNG-файлы не удаляются автоматически (LRU-вытеснение очистит их со
+  временем); принудительная очистка — `php artisan media:prune-image-cache --all`.
+
+### Тесты
+
+- **tests/Unit/Services/ImageCacheServiceTest.php** — добавлены:
+  `test_url_keeps_lightbox_without_version_param`, `test_format_resolves_per_tier`,
+  `test_mime_type_matches_format`, `test_display_cache_is_generated_as_webp`,
+  `test_lightbox_cache_is_generated_as_png`, `test_relative_path_distinguishes_format_change`;
+  обновлён `test_url_returns_route_for_image_media` (URL с `?v=webp`).
+- **tests/Feature/Http/Controllers/MediaImageCacheTest.php** —
+  display-тест переведён на WebP (`image/webp`, `.webp`, magic `RIFF/WEBP`),
+  модель-URL ожидают `?v=webp`; добавлены `test_display_serves_webp_for_versioned_url`
+  и `test_old_png_cache_is_not_reused_by_webp_key`.
+- **tests/Unit/Models/MediaModelTest.php** — `getDisplayUrl()` ожидает `?v=webp`.
+- **tests/Feature/Http/Controllers/HomeControllerTest.php** — hero-тесты проверяют
+  версионированный display URL, `fetchpriority="high"` и отсутствие `loading=`
+  на герое; fallback на оригинал без `data-original` сохранён.
+
+### Проверка
+
+- `php artisan test` — 905/906 passed (единственный фейл
+  `MediaRegenerateThumbnailsCommandTest::test_regenerates_missing_thumbnail_file`
+  воспроизводится и на чистом `HEAD` — pre-existing, к патчу не относится);
+- `./vendor/bin/pint --test` — clean;
+- `npm run build` — собран пользователем (код фронтенда не менялся; локальный
+  прогон в окружении автора был невозможен из-за root-owned `public/build`).
+
+## 2026-09-11 — Page: контекстная административная форма
+
+### Цель
+
+Страницы `home`, `services`, `portfolio`, `blog`, `video` используют единую
+модель `Page` и единый `PageResource`, но настройки главной страницы теперь
+контекстно разделены в административной форме по системному `slug`.
+
+> Page остаётся единой моделью CMS, но административная форма контекстно
+> разделяет настройки главной страницы и обычных страниц.
+
+### Изменено
+
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — форма стала
+  контекстной:
+  - для `slug = home`: секции «Главная страница» (`show_on_home`,
+    `home_sort_order`, `home_title`, `home_subtitle`) и «Оживающие фотографии»
+    (`ar_teaser_enabled`, `ar_teaser_title`, `ar_teaser_accent`,
+    `ar_teaser_subtitle`, `ar_teaser_media_id`, `ar_teaser_footer`);
+  - для обычных страниц (`services`, `portfolio`, `blog`, `video` и др.):
+    секции «Заголовок страницы» (`subtitle`, `cover`, `content`), «Альбомы»,
+    «SEO» — без полей `home_*` и `ar_teaser_*`;
+  - общими остаются `title`, `menu_title`, `slug`;
+  - slug системных страниц (`home`, `services`, `portfolio`, `blog`, `video`)
+    заблокирован для редактирования (`disabled`);
+  - при создании новой страницы, пока slug не установлен, настройки главной
+    не показываются (условие по `slug = 'home'`).
+- **app/Filament/Resources/Pages/Tables/PagesTable.php** — в списке `/admin/pages`
+  для страницы `home` slug отображается бейджем «Главная».
+- **app/Filament/Resources/Pages/Pages/EditPage.php** — у системных страниц
+  скрыта кнопка удаления (нельзя удалить `home`, `services`, `portfolio`,
+  `blog`, `video`).
+
+### НЕ изменено
+
+- Таблица `pages` и её поля — не тронуты (никаких миграций).
+- Модель `Page`, `PageContentService`, `HomeController`, публичные URL,
+  внешний вид блока AR teaser — не изменялись.
+
+### Тесты
+
+- **tests/Feature/Filament/PageResourceTest.php** — добавлены:
+  1. `test_home_page_shows_ar_teaser_fields` — AR teaser виден у `home`;
+  2. `test_services_page_does_not_show_ar_teaser_fields`;
+  3. `test_portfolio_page_does_not_show_ar_teaser_fields`;
+  4. `test_blog_page_does_not_show_ar_teaser_fields`;
+  5. `test_video_page_does_not_show_ar_teaser_fields`;
+  6. `test_home_settings_not_shown_on_regular_pages`;
+  7. `test_regular_page_shows_common_fields`;
+  8. `test_regular_page_shows_seo_fields`;
+  9. `test_home_page_shows_home_settings`;
+  10. `test_home_page_saves_ar_teaser_settings`;
+  11. `test_regular_page_save_does_not_affect_ar_teaser`;
+  12. `test_system_page_slug_is_disabled_on_edit`.
+
+### Проверка
+
+- `php artisan test tests/Feature/Filament/PageResourceTest.php` — 21 passed.
+- `php artisan test` — 898 passed / 2258 assertions.
+- `./vendor/bin/pint` — чисто.
+
+---
+
+## 2026-09-11 — AR-тизер: акцент заголовка и нижняя строка
+
+### Добавлено
+
+- **database/migrations/2026_09_11_084636_add_ar_teaser_accent_and_footer_to_pages_table.php** —
+  2 поля в таблицу `pages`:
+  - `ar_teaser_accent` (string, nullable) — золотая строка под заголовком;
+  - `ar_teaser_footer` (string, nullable) — строка «Следите за новостями».
+- **app/Models/Page** — поля добавлены в `$fillable`.
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — поля «Акцент
+  заголовка» и «Нижняя строка» в секции «Оживающие фотографии».
+- **app/Http/Controllers/HomeController** — `$arTeaser` дополнен ключами
+  `accent` и `footer`.
+- **resources/views/components/site/ar-teaser.blade.php** — пропсы `$accent`
+  и `$footer` с fallback на дефолтные значения.
+
+### Тесты
+
+- `test_ar_teaser_title_and_subtitle_from_database` — включает проверку
+  accent и footer.
+- `test_ar_teaser_accent_and_footer_defaults_when_null` — дефолты при NULL.
+
+### Проверка
+
+- `php artisan test --filter=HomeControllerTest` — 30 passed / 71 assertions.
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — AR-тизер: управление из CMS (Filament)
+
+### Цель
+
+Сделать основные параметры секции «Оживающие фотографии» на главной странице
+управляемыми из админки Filament. Секция является частью контента страницы
+`home`, поэтому управление находится в Контент → Страницы → Главная.
+
+### Добавлено
+
+- **database/migrations/2026_09_11_081548_add_ar_teaser_fields_to_pages_table.php** (новая) —
+  4 поля в таблицу `pages`:
+  - `ar_teaser_enabled` (boolean, default true);
+  - `ar_teaser_title` (string, nullable);
+  - `ar_teaser_subtitle` (text, nullable);
+  - `ar_teaser_media_id` (FK → media, nullable, nullOnDelete).
+- **app/Models/Page** — добавлены `ar_teaser_*` в `$fillable`, каст
+  `ar_teaser_enabled` → boolean, связь `arTeaserMedia()`.
+- **app/Filament/Resources/Pages/Schemas/PageForm.php** — секция
+  «Оживающие фотографии» с toggle, TextInput, Textarea и Select media.
+- **resources/views/components/site/ar-teaser.blade.php** — компонент
+  принимает пропсы `$title`, `$subtitle`, `$media` с fallback на дефолтные
+  значения. Изображение из Media или статический `images/ar-teaser.jpg`.
+
+### Изменено
+
+- **app/Http/Controllers/HomeController** — собирает массив `$arTeaser` из
+  полей страницы `home` и передаёт в view.
+- **resources/views/home.blade.php** — секция AR рендерится условно
+  (`$arTeaser['enabled']`) с прокидыванием данных в компонент.
+
+### Кэш
+
+Инвалидация через существующий `PageObserver::saved` — при сохранении
+страницы `home` автоматически очищается `page_content_home`. Отдельный
+механизм кэширования не добавлялся.
+
+### Тесты
+
+- `test_home_page_renders_ar_teaser` — существующий тест (дефолтные значения).
+- `test_ar_teaser_hidden_when_disabled` — секция скрыта при `ar_teaser_enabled = false`.
+- `test_ar_teaser_title_and_subtitle_from_database` — заголовок и описание из БД.
+- `test_ar_teaser_image_from_selected_media` — изображение из выбранного Media.
+- `test_ar_teaser_without_media_shows_fallback` — fallback на статическое фото.
+- `test_ar_teaser_default_values_when_fields_null` — дефолты при NULL.
+- `test_ar_teaser_page_saved_clears_cache` — инвалидация кэша при изменении.
+
+### Проверка
+
+- `php artisan test --filter=HomeControllerTest` — 29 passed / 66 assertions.
+- `php artisan test --filter=PageResourceTest --filter=PageObserverTest` — 4 passed.
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — AR-тизер на главной странице (маркетинговый блок)
+
+### Цель
+
+Подготовить место на главной странице для будущей услуги дополненной реальности:
+визуально привлекательное объявление «Скоро в Фотосказке — оживающие фотографии».
+На этом этапе AR-функциональность, камеры, WebAR, JS-анимации и backend-логика
+**не** реализуются — это исключительно статичный маркетинговый блок.
+
+### Добавлено
+
+- **resources/views/components/site/ar-teaser.blade.php** (новый) — отдельный
+  Blade-компонент тизера:
+  - бейдж «СКОРО» (золотой pill, иконка-magic);
+  - заголовок `Скоро в Фотосказке — оживающие фотографии` (Forum, золотой акцент
+    на второй строке);
+  - короткое описание концепции + строка «Следите за новостями»;
+  - media-блок со статичной фотографией, спроектированный под будущую замену
+    на демо-видео/AR-демо без переделки структуры секции (`aspect`-контейнер,
+    оверлей-градиент, общий контейнер);
+  - декоративные золотые «линии-сканеры» (лёгкая CSS-анимация через `@keyframes`,
+    отключена через `prefers-reduced-motion`), мягкое золотое свечение;
+  - вся стилистика — существующая дизайн-система (тёмный фон `#0a0a0a/#111111`,
+    золото `#d4af37`, Ubuntu/Forum, стандартные контейнеры `max-w-7xl`, `py-24`,
+    адаптивные Tailwind-классы, AOS);
+  - адаптивность: desktop / tablet / mobile; `loading="lazy"` + `decoding="async"`
+    у изображения; осмысленный `alt`-текст.
+- **public/images/ar-teaser.jpg** — лёгкий статичный плейсхолдер (34 КБ, тёмная
+  гамма с золотыми акцентами); подлежит замене на реальное фото фотографа.
+
+### Изменено
+
+- **resources/views/home.blade.php** — `<x-site.ar-teaser />` вставлен строго
+  между секциями «Избранные работы» и «Видеогалерея».
+- **tests/Feature/Http/Controllers/HomeControllerTest.php** — добавлен тест
+  `test_home_page_renders_ar_teaser` (главная отдаёт тизер: заголовок,
+  классы, путь к изображению).
+
+### Не реализовывалось
+
+- CTA-кнопка, карточки преимуществ, интерактивность, JavaScript, AR.
+- Изменения БД, моделей, контроллеров и маршрутов не вносились.
+
+### Проверка
+
+- `php artisan test --filter=HomeControllerTest` — 23 passed / 47 assertions.
+- `php artisan test` — 878 passed / 2092 assertions; 9 падений в окружении
+  (`touch(): Utime failed` из-за устаревшего кэша скомпилированных views с
+  несовместимым владельцем) устраняются `php artisan view:clear`, в изоляции
+  падавшие тесты проходят.
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — Security: закрытие прямых `/storage/...` утечек приватной Media
+
+### Цель
+
+Аудит защиты выдачи media для клиентских галерей (цепочка
+`Media → Photo → Album → authorization`, роуты `/media/{id}/*`, IDOR,
+thumbnails и другие варианты URL). Требование: приватная Media не должна
+получаться ни по какому URL без прав на соответствующую Photo/Album.
+
+### Результат аудита
+
+**Защищено (без изменений):** все роуты `/media/{id}/*` (`original`,
+`download`, `display`, `lightbox`) гейтятся `MediaAccessService` через
+`AlbumPolicy::view` (наследование Project → Album → Photo):
+гость → 404, чужой → 403, свои client / назначенный parent / свой
+class_manager / admin / photographer → 200. Покрыто
+`MediaAccessAuthorizationTest`.
+
+**Обнаруженные утечки (исправлены):** на страницах кабинета аксессоры
+`Media::getUrl()` (локальные диски) и `Media::getThumbnailUrl()`
+формировали **прямые** URL `…/storage/{file_path}` и
+`…/storage/thumbnails/{thumbnail_path}`. Диск `thumbnails` и `public`-диск
+оригиналов лежат внутри веб-корня (`public/storage → storage/app/public`),
+поэтому эти файлы отдавались веб-сервером в обход шлюза авторизации —
+приватные обложки/оригиналы клиентских альбомов были доступны по косту
+прямой ссылки даже гостю.
+
+### Исправление (минимальное, без переписывания Media Storage)
+
+- **routes/web.php** — новый роут `GET /media/{media}/thumbnail`
+  (`media.thumbnail`), за гейтом `MediaAccessService`.
+- **app/Http/Controllers/MediaController.php** — метод `thumbnail()`:
+  `authorizeView()` → стрим WebP-превью с диска `thumbnails`;
+  отсутствие файла → 404.
+- **app/Models/Media.php**:
+  - `getUrl()` — всегда возвращает прокси-роут `media.original`
+    (ранее для локальных дисков — прямую ссылку `/storage/...`);
+  - `getThumbnailUrl()` — всегда возвращает прокси-роут `media.thumbnail`.
+- Диск хранения, пути, миграции — **не изменялись**; политики
+  (`AlbumPolicy`, `PhotoPolicy`, `MediaAccessService`) — не изменялись.
+
+### Регрессионные тесты
+
+- **tests/Feature/Http/Controllers/MediaAccessAuthorizationTest.php**:
+  thumbnail приватной Media: гость → 404, чужой client → 403, свой
+  client → 200; thumbnail публичной Media → гость 200; отсутствующий
+  thumbnail → 404; свой class_manager видит media своего client-альбома;
+  client не видит media чужого проекта (IDOR Project → Album → Media).
+- **tests/Feature/Http/Controllers/Cabinet/CabinetAlbumShowTest.php**:
+  страница приватной галереи не содержит прямых `/storage/...` ссылок
+  (оригинал/превью), обложка альбома рендерится через `media.thumbnail`,
+  а не `/storage/thumbnails/...`.
+- **tests/Unit/Models/MediaModelTest.php**: `getUrl()`/`getThumbnailUrl()`
+  больше не возвращают `/storage/...`; локальный диск → прокси-роут;
+  thumbnail-роут при заданном `thumbnail_path`; null без `file_path`.
+
+### Проверка
+
+- `php artisan test` — **878 passed / 2201 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — C2.6 — Галерея альбома в личном кабинете
+
+### Цель
+
+Реализовать страницу клиентской галереи альбома `/cabinet/albums/{album}`
+с доступом через `AlbumPolicy::view` (защита от IDOR для всех ролей),
+пагинацией при большом числе фото и выдачей media через существующую систему
+Media Storage (`MediaController` / `ImageCacheService`).
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/albums/{album}` (middleware
+  `auth`, имя `cabinet.album`). Не конфликтует с публичными `media.*` и
+  `portfolio.*` маршрутами.
+- **app/Http/Controllers/CabinetController.php** — метод `showAlbum()`:
+  `Gate::authorize('view', $album)` (AlbumPolicy) → `CabinetService::paginateAlbumPhotos()`.
+  Пользователь не может вытащить фото чужого альбома, подменив ID в URL — 403.
+- **app/Services/CabinetService.php** — `getPhotosForAlbum()` переведён на
+  пагинацию (`LengthAwarePaginator`, 24 фото/страница, `with('media')`);
+  добавлен `paginateAlbumPhotos(Album, int $perPage)` для уже авторизованного
+  альбома (без повторного запроса доступа и без N+1).
+- **resources/views/cabinet/album.blade.php** (новый) — страница галереи:
+  заголовок альбома, название проекта, описание, счётчик фото, сетка+lightbox
+  через переиспользуемый `<x-site.album-photos>` (превью через
+  `getDisplayUrl()`, оригинал через `getUrl()`/`getLightboxUrl()`), пагинация
+  через стандартный Tailwind-пейджер, пустое состояние.
+- **resources/views/components/site/album-photos.blade.php** — добавлен
+  опциональный параметр `photos` (пагинированная коллекция) с сохранением
+  прежнего поведения (`$album->photos` по умолчанию).
+- **resources/views/cabinet/project.blade.php** — карточки альбомов теперь
+  ссылаются на `cabinet.album` вместо «Открыть →»-заглушки `href="#"`.
+- **resources/views/cabinet/index.blade.php** — карточки назначенных альбомов
+  parent ведут на `cabinet.album`.
+
+### Доступ (через AlbumPolicy, без изменений политики)
+
+- client — альбомы собственных projects (любой тип);
+- class_manager — только `type = client` альбомы собственного project;
+- parent — только назначенные через `album_user` альбомы `type = client`;
+- photographer/admin — полный доступ;
+- Media выдаётся только через существующий Media Storage: для приватных
+  типов альбомов (`client`, `project`) `MediaController` дополнительно
+  проверяет `MediaAccessService::canView` (гость → 404, чужой → 403).
+  Второе хранилище изображений не создаётся, фото в публичную директорию
+  не копируются.
+
+### Не реализовывалось
+
+Комментарии (C2.8) и выбор фотографий — вне рамок задачи, согласно roadmap.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetAlbumShowTest.php** (новый, 27 тестов):
+  - авторизация: гость → redirect на `/login`;
+  - client: видит галерею своего альбома (любой тип), превью/lightbox/original
+    URL через Media Storage; чужой альбом → 403; не видит медиа чужого альбома;
+    пустое состояние; remote-медиа использует `media.original` route;
+  - class_manager: `type = client` собственного проекта — доступно; `type =
+    project` своего проекта и client чужих менеджеров → 403;
+  - parent: назначенный `client`-альбом (в т.ч. без проекта) — доступно;
+    неназначенный и назначенный не-client → 403;
+  - photographer/admin: полный доступ;
+  - без роли → 403; комбинированные роли (client+admin) — полный доступ;
+  - IDOR: client A ↔ client B, manager A ↔ manager B, parent A ↔ parent B —
+    взаимная изоляция;
+  - пагинация: 60 фото → 2-я страница; 3 фото → пагинации нет;
+  - навигация: назад на проект (client) / на кабинет (parent);
+  - N+1: число SQL-запросов ограничено при сетке из 10 фото.
+
+### Не менялось
+
+- Policies (`AlbumPolicy`, `PhotoPolicy`) — без изменений; `PhotoPolicy::view`
+  продолжает делегировать `AlbumPolicy`.
+- Схема БД, миграции — без изменений.
+- Media Storage / `MediaController` / `MediaAccessService` — без изменений.
+
+### Проверка
+
+- `php artisan test` — **867 passed / 2183 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — C2.5 — Страница проекта в личном кабинете
+
+### Цель
+
+Реализовать страницу проекта `/cabinet/projects/{project}` внутри личного
+кабинета с проверкой доступа через `ProjectPolicy::view` (защита от IDOR)
+и роль-зависимым набором альбомов.
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/projects/{project}` (middleware
+  `auth`, имя `cabinet.project`).
+- **app/Http/Controllers/CabinetController.php** — метод `show()`:
+  `Gate::authorize('view', $project)` → `CabinetService::getProjectForUser()`
+  (IDOR-защита) → фильтрация альбомов: class_manager видит только
+  `type = client`, прочие — все.
+- **resources/views/cabinet/project.blade.php** (новый) — страница проекта:
+  название, статус с бейджем, дата съёмки, описание, счётчик альбомов;
+  сетка альбомов (обложка, название, описание, число фото, ссылка на будущую
+  галерею «Открыть →»), пустое состояние; у project-albums cover тянутся
+  через `albums.cover` (eager loading).
+- **app/Services/CabinetService.php** — в `baseProjectQuery()` к загрузке
+  `albums` добавлены `withCount('photos')` и `albums.cover` (без N+1).
+- **resources/views/cabinet/projects.blade.php** — карточки проектов теперь
+  ведут на `cabinet.project` вместо `href="#"`.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetProjectShowTest.php** (новый, 24 теста):
+  - авторизация: гость → redirect на `/login`;
+  - client: видит собственный проект (инфо, статус, описание, дата съёмки,
+    счётчики, обложка, все альбомы любых типов); чужой проект → 403;
+  - class_manager: видит собственный проект, только `type = client` альбомы;
+    чужой проект → 403;
+  - parent: доступ к проекту запрещён (403);
+  - photographer/admin: полный доступ ко всем проектам и типам альбомов;
+  - IDOR: client A ↔ client B, manager A ↔ manager B — взаимная изоляция;
+    отсутствие чужих альбомов на странице проекта;
+  - N+1: число SQL-запросов ограничено;
+  - статус через `ProjectStatus::label()`; ссылка «Открыть →» для галереи;
+  - список проектов ведёт на страницу проекта.
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) — без изменений.
+- Схема БД — без изменений.
+- Содержимое галереи (C2.6) — не реализовывалось.
+
+### Проверка
+
+- `php artisan test` — **840 passed / 2132 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-11 — C2.4 — Список проектов
+
+### Цель
+
+Реализовать отдельную страницу списка проектов `/cabinet/projects` для client
+и class_manager с проверкой доступа через `ProjectPolicy::view` (защита от IDOR).
+
+### Добавлено
+
+- **routes/web.php** — маршрут `GET /cabinet/projects` (middleware `auth`);
+  обёрнут в `Route::middleware('auth')->group()` вместе с `GET /cabinet`.
+- **app/Http/Controllers/CabinetController.php** — метод `projects()`:
+  получает проекты через `CabinetService::getProjectsForUser()`, фильтрует
+  через `$user->can('view', $project)` (ProjectPolicy::view).
+- **resources/views/cabinet/projects.blade.php** (новый) — страница списка
+  проектов: заголовок (роль-зависимый), обратная ссылка на dashboard, карточки
+  проектов (название, статус с бейджем, дата съёмки, счётчики альбомов/фото),
+  пустое состояние.
+- **resources/views/cabinet/index.blade.php** — добавлена ссылка «Все проекты»
+  на `cabinet.projects` в заголовке для client/class_manager/admin/photographer.
+  Для parent ссылка не показывается.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/Cabinet/CabinetProjectsTest.php** (новый, 26 тестов):
+  - авторизация: гость → redirect на `/login`; авторизованный — `200`;
+  - client: видит свои проекты и статус, не видит чужих; счётчики альбомов/фото;
+    заголовок «Мои проекты»; пустое состояние;
+  - class_manager: видит свой проект и статус, не видит чужих; счётчик только
+    `client`-альбомов; заголовок «Ваш проект»; пустое состояние;
+  - parent: не видит проекты; пустое состояние;
+  - photographer/admin: видят все проекты;
+  - IDOR: client A ↔ client B, manager A ↔ manager B, parent A ↔ parent B —
+    взаимная изоляция;
+  - N+1: число SQL-запросов ограничено и не растёт с количеством вложенных
+    сущностей;
+  - бейдж статуса: русское название через `ProjectStatus::label()`;
+  - ссылка с dashboard на projects: видна для client/class_manager, не видна
+    для parent;
+  - проекты проходят проверку `ProjectPolicy::view`;
+  - комбинированные роли: client+admin.
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) — без изменений.
+- Слой данных `CabinetService` (C2.2) — без изменений.
+- Схема БД — без изменений.
+
+### Проверка
+
+- `php artisan test` — **816 passed / 2074 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-10 — C2.3 — Dashboard личного кабинета
+
+### Цель
+
+Реализовать главную страницу личного кабинета `/cabinet` с роль-ориентированным
+содержимым для `client`, `class_manager`, `parent` и сохранением корректного
+поведения для `photographer`/`admin` на базе существующего слоя данных C2.2
+и Policies C1.
+
+### Изменено
+
+- **resources/views/cabinet/index.blade.php** — dashboard доведён до вида C2.3
+  в стилистике публичного сайта (тёмная тема `#0a0a0a`/`#111111`, `font-heading`,
+  золотые акценты):
+  - `client` — «Ваши проекты»: карточки собственных проектов с русским статусом
+    (бейдж с цветовой картой по `ProjectStatus::value`), датой съёмки,
+    `client_albums_count`, `photos_count` и первыми альбомами;
+  - `class_manager` — «Ваш проект»: собственный проект и статус; внутри карточки
+    показываются только `client`-альбомы проекта (`->where('type', 'client')`
+    на уже выбранной коллекции, без повторных запросов);
+  - `parent` — «Назначенные альбомы»: только назначенные `client`-альбомы
+    (обложка или плейсхолдер, название, проект, описание); проекты не видны;
+  - `photographer`/`admin` — «Проекты»: все проекты платформы;
+  - пустые состояния роль-зависимы: parent — «Нет назначенных альбомов»
+    + пояснение «когда фотограф назначит их вам»; остальные — «Нет доступных
+    проектов»;
+  - альбомы без обложки получают иконку-плейсхолдер вместо пустого блока.
+- **app/Models/Project.php** — добавлен каст `shooting_date` → `date`.
+  На этапе C2.2 шаблон вызывал `$project->shooting_date->format('d.m.Y')`, но
+  колонка `DATE` не кастовалась: на SQLite (тесты) значение приходит строкой и
+  вызов `->format()` падал. Каст устраняет latent-баг; значение в БД не меняется.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/CabinetControllerTest.php** (новый, 31 тест):
+  - доступ: гость → redirect на `/login`; авторизованный — `200` + имя в приветствии;
+  - `client`: видит свои проекты и статус («Обработка фотографий»), не видит чужих;
+    счётчики альбомов/фото; заголовок «Ваши проекты»; пустое состояние;
+  - `class_manager`: видит свой проект и статус («Фотосъёмка закончена»), не видит
+    чужих; видит только `client`-альбомы (даже при наличии `project`-альбома);
+    заголовок «Ваш проект»; пустое состояние; счётчик только `client`-альбомов;
+  - `parent`: видит назначенные альбомы и заголовок «Назначенные альбомы»; не видит
+    проекты, чужие альбомы и `project`-альбомы даже при `album_user`; пустое состояние;
+    счётчик альбомов;
+  - `photographer`/`admin`: видят все проекты; заголовок «Проекты»; пустое состояние;
+  - отсутствие чужих данных: client A ↔ client B, manager A ↔ manager B,
+    parent A ↔ parent B — взаимная изоляция;
+  - N+1: число SQL-запросов на страницу (client/проекты и parent/альбомы) ограничено
+    и не растёт с количеством вложенных сущностей (eager loading в `CabinetService`).
+- **tests/Feature/InquiryTest.php** — `test_create_project_in_transaction` переведён
+  с сырого сравнения `shooting_date` в БД (зависело от формата хранения СУБД) на
+  проверку через каст: `$project->shooting_date instanceof \DateTimeInterface`
+  + `format('Y-m-d') === '2026-09-15'`. Намерение теста (транзакционность) сохранено.
+- **tests/Feature/Services/CabinetServiceTest.php** — у теста
+  `test_projects_eager_load_albums_and_photos_count` устранена флаки-зависимость:
+  `albumA` получал случайный `type` из `AlbumFactory` (мог оказаться `client`,
+  ломая ожидание `client_albums_count = 1`); тип зафиксирован как `project`.
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) — единственный источник
+  правил авторизации; роль в шаблоне используется только для формулировок UI.
+- Слой данных `CabinetService` (C2.2) — без изменений.
+- Схема БД — без изменений (миграции не добавлялись).
+- Полноценная страница проекта и галерея не реализовывались (рамки C2.3).
+
+### Проверка
+
+- `php artisan test` — **790 passed / 2011 assertions** (1 risky —
+  предсуществующий `test_three_level_category_page_renders_full_breadcrumb`,
+  не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+# Changelog
+
+## 2026-09-10 — C2.2 — Слой данных личного кабинета
+
+### Цель
+
+Создать слой получения данных для личного кабинета (`CabinetService`),
+на который лягут последующие подэтапы C2.3–C2.6 (dashboard, список проектов,
+страница проекта, галерея альбома). `CabinetController` остаётся тонким,
+без ветвлений по ролям внутри контроллера.
+
+### Добавлено
+
+- **app/Services/CabinetService.php** (новый) — единственная точка выборки данных
+  кабинета, с роль-ориентированными запросами и eager loading без N+1:
+  - `getProjectsForUser(User)` — проекты для dashboard/списка: клиент — свои
+    (`projects.client_id`), class_manager — свой (`projects.manager_id`),
+    admin/photographer — все, parent и пользователи без роли — пусто.
+  - `getProjectForUser(User, int $projectId)` — проект по ID с теми же фильтрами
+    (IDOR-защита: чужой/недоступный проект → null).
+  - `getAlbumsForUser(User)` — альбомы для dashboard родителя: admin/photographer —
+    все `client`-альбомы; client — альбомы своих проектов; class_manager —
+    `client`-альбомы своего проекта; parent — только назначенные через `album_user`
+    `client`-альбомы; без роли — пусто.
+  - `getAlbumForUser(User, int $albumId)` — альбом по ID с теми же фильтрами.
+  - `getPhotosForAlbum(User, int $albumId)` — фото альбома (с `media`) только после
+    подтверждения доступа к альбому.
+  - `Project`-запросы дополняются `withCount`: `albums_count`,
+    `client_albums_count`, `photos_count` (подзапросом, без N+1).
+  - Eager loading: `project`, `cover`, `users` для альбомов; `albums` с сортировкой
+    для проектов; `media` для фото.
+  - Критичное правило фильтрации закрытия: если у пользователя нет ни одной
+    применимой роли — запрос получает `where 1 = 0` (пустая выборка), а не
+    «без ограничений».
+
+### Изменено
+
+- **app/Http/Controllers/CabinetController.php** — внедрён `CabinetService` (DI);
+  `index()` отдаёт данные в зависимости от роли: parent → `albums`, остальные →
+  `projects`. Логика выборки переехала из контроллера в сервис.
+- **resources/views/cabinet/index.blade.php** — заглушка заменена на рендер
+  dashboard: для parent — карточки назначенных альбомов (обложка, название,
+  проект, описание); для клиента/class_manager/admin — карточки проектов
+  (название, статус, дата съёмки, счётчики альбомов и фото, список альбомов).
+  UI галереи намеренно не создавался (рамки C2.2).
+
+### Не менялось
+
+- Policies (`ProjectPolicy`, `AlbumPolicy`, `PhotoPolicy`) остаются единственным
+  источником правил авторизации; query layer не дублирует бизнес-логику Policy.
+- Схема БД не изменялась.
+
+### Тесты
+
+- **tests/Feature/Services/CabinetServiceTest.php** (новый, 30 тестов):
+  - admin/photographer — полный доступ (все проекты, проект по ID, фото альбома);
+  - client — только свои проекты, все типы альбомов своих проектов, отсутствие
+    чужих и orphan-альбомов; IDOR: чужой проект/альбом → null;
+  - class_manager — только свой проект и его `client`-альбомы; чужие проекты,
+    альбомы типа `project`/прочие — недоступны; IDOR → null;
+  - parent — проектов не видит, только назначенные `client`-альбомы (в т.ч. без
+    проекта), не-`client` альбомы недоступны даже при `album_user`; IDOR → null;
+  - пользователь без роли — пустая выборка;
+  - комбинированные роли: client+class_manager, client+admin;
+  - eager loading: сортировка альбомов проекта, связи `project`/`cover`/`users`,
+    счётчики `albums_count`/`client_albums_count`/`photos_count`.
+
+### Проверка
+
+- `php artisan test` — **759 passed / 1932 assertions** (1 risky —
+  предсуществующий, не связан с задачей).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+# Changelog
+
+## 2026-09-09 — C2.1 — Финализация статусов проекта
+
+### Цель
+
+Создать единое представление допустимых бизнес-статусов `Project` перед разработкой
+личного кабинета (подэтап C2.1 roadmap), устранить устаревшее значение `active`
+и перевести админку на русские названия статусов.
+
+### Добавлено
+
+- **app/Enums/ProjectStatus.php** (новый) — единый источник допустимых статусов
+  (BackedEnum): `draft`, `shooting_completed`, `reshoot`, `processing`,
+  `layout_approval`, `printing`, `completed`, `archived`.
+  - `label()` — русское название (Подготовка, Фотосъёмка закончена, Пересъёмка,
+    Обработка фотографий, Согласование макета, Отправка в печать, Проект завершён,
+    Архив);
+  - `color()` — цвет бейджа Filament;
+  - `options()` — единый список `[value => label]` для формы/таблицы/фильтра.
+
+### Изменено
+
+- **app/Models/Project.php** — `status` в `$casts` → `ProjectStatus::class`;
+  заполняемые поля не менялись.
+- **database/factories/ProjectFactory.php** — статус генерируется из
+  `ProjectStatus::cases()` (убрано устаревшее `active`).
+- **app/Actions/Inquiry/CreateProjectFromInquiry.php** — статус по умолчанию
+  `ProjectStatus::Draft` вместо строки `'draft'`.
+- **app/Filament/Resources/Projects/Schemas/ProjectForm.php** — Select статуса
+  переведён на `ProjectStatus::options()`; дефолт `ProjectStatus::Draft->value`.
+- **app/Filament/Resources/Projects/Tables/ProjectsTable.php** — бейдж статуса:
+  русское название через `label()`, цвет через `color()`; фильтр статуса — на
+  `ProjectStatus::options()`.
+- **app/Filament/Resources/Inquiries/Schemas/InquiryForm.php** — отображение
+  `project.status` переведено на русское название через `label()`.
+
+### Миграция
+
+- **database/migrations/2026_09_09_072522_update_projects_status_enum_table.php**
+  (новая):
+  - расширяет `ENUM('projects.status')` до 8 значений; старое `active` убрано;
+  - существующие проекты `status = 'active'` переводятся в `processing`
+    (ближайший этап активной работы; в фактических данных таких записей нет —
+    конверсия выполнена безопасно);
+  - `down()` восстанавливает старый enum (`draft/active/completed/archived`),
+    переводя новые статусы обратно в `active`;
+  - миграция работает и на MySQL (`ALTER TABLE ... MODIFY`), и на SQLite
+    (пересборка таблицы с заменой `CHECK`-ограничения и конверсией данных
+    на лету), чтобы тестовый набор на SQLite оставался зелёным.
+
+### Прочее
+
+- Полноценный workflow переходов между статусами не внедрялся (вне рамок C2.1);
+  `reshoot` не является строго линейным следующим состоянием — после пересъёмки
+  проект может вернуться к предыдущему этапу.
+- Личный кабинет, галереи и комментарии не затрагивались.
+
+### Документация
+
+- **database.md**: таблица `projects` — новый enum `status` + таблица допустимых
+  значений и примечание о `reshoot` и устранении `active`.
+- **architecture.md**: новый подраздел «Статусы проекта (C2.1)» в разделе ролей/доступа.
+
+### Тесты
+
+- **tests/Unit/Enums/ProjectStatusTest.php** (новый, 12 тестов) — состав `cases()`,
+  отсутствие `active`, русские названия, `options()`, цвета.
+- **tests/Feature/Models/ProjectModelTest.php** (новый, 4 теста) — каст в enum,
+  дефолт `draft`, строка в БД, поддержка всех 8 статусов.
+- **tests/Feature/InquiryTest.php** — проверка статуса при создании проекта из
+  заявки переведена на `ProjectStatus::Draft`.
+
+### Проверка
+
+- `php artisan test` — **729 passed / 1877 assertions** (1 risky — предсуществующий
+  `test_three_level_category_page_renders_full_breadcrumb`, не связан с задачей)
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-09 — C1.6 — Финальный security-аудит доступа
+
+### Цель
+
+Финальная проверка модели доступа C1 (без добавления новой функциональности).
+Проверена фактическая матрица доступа против ожидаемой:
+
+```text
+client          → свои Project → все Albums → все Photos
+parent          → назначенный Album → Photos этого Album
+class_manager   → свой Project → Albums type=client → Photos
+photographer    → все
+admin           → все
+```
+
+### Аудит
+
+- **Project access** — `ProjectPolicy::view` реализует матрицу ролей
+  (admin/photographer → все; client → `client_id`; class_manager → `manager_id`;
+  parent → нет). Покрыто `ProjectPolicyTest` (свой/чужой проект, проект без
+  client, проект без manager, комбинации ролей). **PASS**
+- **Album access** — `AlbumPolicy::view` (admin/photographer → все; client →
+  `project.client_id`; class_manager → `client`-альбомы своего проекта; parent →
+  назначенный через `album_user` `client`-альбом). Покрыто `AlbumPolicyTest`
+  (свой/чужой client-album, project album, album без project, parent без
+  `album_user`, parent с несколькими `album_user`, client проекта, manager
+  другого проекта). **PASS**
+- **Photo access** — `PhotoPolicy::view` делегирует в `AlbumPolicy`
+  (наследование Project → Album → Photo). Покрыто `PhotoPolicyTest`. **PASS**
+- **IDOR** — отдельные HTTP-эндпоинты `/client/projects/{id}` и
+  `/client/albums/{id}` и `/media/photo/{id}` **не существуют**
+  (`CabinetController` — заглушка этапа 5). Единственная точка прямого доступа
+  по ID — роуты `MediaController` (`/media/{id}/original|download|display|lightbox`),
+  защищены шлюзом `MediaAccessService` (C1.5): приватная Media → гость `404`,
+  чужой пользователь `403`. Покрыто `MediaAccessAuthorizationTest`. **PASS**
+- **HTTP endpoints** — публичные контроллеры (`PortfolioController`,
+  `HomeController`, `ServiceCatalogController`, `BlogController`) отдают только
+  опубликованный публичный контент (`type = portfolio`/публичные), приватные
+  альбомы/фото не отдаются. **PASS**
+- **Mass queries** — `Model::all()` в приложении отсутствует; выборки
+  фильтруются на уровне Query Builder (`where('type', ...)`,
+  `where('is_published', true)`). Клиентских массовых выборок пока нет
+  (кабинет не реализован — этап 5 roadmap). **PASS**
+- **Отсутствие утечек** — `CabinetController` возвращает только `$user->name`;
+  названия/ссылки/URL/счётчики чужих проектов и альбомов в ответы не попадают.
+  **PASS**
+
+### Итог
+
+Проблем в модели доступа C1 не обнаружено. Исправления и regression-тесты
+не требовались (дефекты C1.2–C1.5 уже исправлены в предыдущих шагах;
+покрытие тестами присутствует). Документация (`architecture.md` разделы C1.2–C1.5,
+`database.md` `album_user`) уже соответствует фактической модели доступа,
+roadmap не менялся (перенос на отдельный этап после завершения всей C1).
+
+### Проверка
+
+- `php artisan test` — **713 passed / 1843 assertions** (1 risky —
+  предсуществующий `test_three_level_category_page_renders_full_breadcrumb`,
+  не связан с задачей)
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-09 — C1.5 — Подключение Policies к реальным точкам доступа
+
+### Аудит точек доступа
+
+Найденные места, где пользователь может получить `Project` / `Album` / `Photo`:
+
+| Точка доступа | Тип | Статус |
+|---------------|-----|--------|
+| `CabinetController@index` (`/cabinet`) | заглушка, возвращает только `$user->name` | приватных данных не отдаёт; защищён middleware `auth` |
+| `PortfolioController` | только `type = portfolio` + `is_published` | публичный контент, объекты/`Photo` приватных альбомов не отдаются |
+| `ServiceCatalogController`, `HomeController` | только опубликованный публичный контент | приватные данные не отдаются |
+| **`MediaController`** (`/media/{media}/original`, `/download`, `/display`, `/lightbox`) | **универсальный, по `Media` ID** | **УЯЗВИМ (IDOR)** — отдаёт файл любого `Media` без проверки владельца, в обход `AlbumPolicy`/`PhotoPolicy` |
+
+Отдельных HTTP/AJAX-эндпоинтов для `Project`/`Album`/`Photo` в текущем коде нет —
+коль скоро `CabinetController` пока заглушка (этап 5 roadmap). Единственная точка,
+через которую сейчас можно получить приватный контент напрямую по ID, — роуты `Media`.
+
+### Проблема Media (зафиксирована)
+
+`Media` универсален: одна и та же запись переиспользуется публичными альбомами
+(портфолио, услуги, homepage, обложки, отзывы) и приватными (клиентские/проектные
+галереи). `Media` не знает «владельца контента», поэтому `AlbumPolicy`/`PhotoPolicy`
+к нему напрямую не применимы. Полностью переписывать Media Storage в рамках C1.5
+запрещено заданием и не требуется.
+
+### Минимальное архитектурное решение
+
+Не переписывая хранение, добавлен **входной шлюз авторизации** поверх существующих
+роутов `Media` (`app/Services/MediaAccessService.php`):
+
+- у `Media` определена связь `media → photos → albums` (pivot `photos`);
+- `Media` считается **приватной**, если хотя бы один альбом, ссылающийся на неё
+  через `Photo`, имеет `type` = `client` или `project`;
+- публичная Media отдаётся как раньше (гость видит её);
+- приватная Media: гость → `404` (не раскрываем существование); авторизованный
+  пользователь без доступа → `403`; доступ проверяется через `AlbumPolicy::view`
+  (делегирование `PhotoPolicy` соблюдается) для хотя бы одного содержащего приватного
+  альбома (`admin`/`photographer` — полный доступ; `client` — свой проект;
+  `class_manager` — `client`-альбом своего проекта; `parent` — назначенный `client`-альбом).
+
+Тем самым приватная фотография **не** отдаётся через отдельный URL `Media` в обход
+`Photo`/`Album` авторизации. Корневая причина (универсальность `Media`, переиспользование
+одного `Media` публичным и приватным альбомом) — документирована; полноценное решение
+будет рассмотрено на этапе 5 (клиентские галереи), когда появится контекст родительского
+альбома/проекта.
+
+### Изменено
+
+- **app/Models/Media.php** — добавлены связи `photos()` (HasMany) и
+  `albums()` (BelongsToMany через pivot `photos`).
+- **app/Services/MediaAccessService.php** (новый) — решение о публичности/доступе
+  к `Media` на основе его приватных альбомов.
+- **app/Http/Controllers/MediaController.php** — все 4 метода
+  (`original`, `download`, `display`, `lightbox`) вызывают `authorizeView()`
+  до отдачи файла.
+
+### Какие Policy реально используются
+
+- `AlbumPolicy::view` (через `MediaAccessService::canView` + `User::can`) — фактический
+  шлюз для доступа к файлам приватных альбомов.
+- `PhotoPolicy::view` — делегируется в `AlbumPolicy` (правило наследования
+  `Project → Album → Photo` соблюдается автоматически: доступ к фото определяется
+  доступом к альбому).
+- `ProjectPolicy::view` — на текущем этапе прямых HTTP-точек нет; подключится при
+  появлении эндпоинтов этапа 5 (документировано).
+
+### Feature-тесты (`tests/Feature/Http/Controllers/MediaAccessAuthorizationTest.php`)
+
+Реальные HTTP-запросы в матрицу доступа к фото посредством роутов `Media`:
+
+- публичная Media → гость `200`;
+- приватная Media → гость `404`;
+- свой client → своя приватная Media `200`;
+- чужой client → чужая приватная Media `403`;
+- чужой parent → чужая приватная Media `403`;
+- назначенный parent → своя приватная Media `200`;
+- чужой class_manager → чужая приватная Media `403`;
+- admin → любая приватная Media `200`;
+- display/lightbox приватной Media: гость `404`, чужой пользователь `403`;
+- display публичной Media → гость `200`.
+
+### Результаты
+
+- `php artisan test` — **713 passed / 1843 assertions** (1 risky — существующий).
+- `./vendor/bin/pint --test` — чисто.
+
+---
+
+## 2026-09-09 — Исправление авторизации admin в Filament (CRUD-методы Policy + админ в тестах)
+
+### Причина
+После внедрения `AlbumPolicy`, `ProjectPolicy` и `PhotoPolicy` (C1.2–C1.4) в policy
+были только методы `view`/`viewAny`. Laravel Gate при отсутствии нужного метода
+в policy возвращает `false` (политика полностью пропускается, `before` не вызывается),
+поэтому страницы Filament (`Edit/Create/Delete`) для `Album`, `Project`, `Photo`
+отдавали **403** даже администратору. Валился тест
+`test_deleting_album_keeps_media` («Attempt to read property "mountedActions" on null»).
+
+Дополнительно: тесты не сигнализировали подлинную причину — их `setUp()` перекрывал
+`setUp()` трейта `AdminTestCase`, поэтому администратор никогда не создавался и не
+аутентифицировался (Livewire-компоненты монтировались анонимно).
+
+### Изменено
+- **app/Policies/AlbumPolicy.php** — добавлены CRUD-методы `create`, `update`,
+  `delete` (право управления: роли `admin` и `photographer`).
+- **app/Policies/ProjectPolicy.php** — добавлены `viewAny`, `create`, `update`,
+  `delete` (те же роли).
+- **app/Policies/PhotoPolicy.php** — добавлены `viewAny`, `create`, `update`,
+  `delete`; CRUD делегируется в `AlbumPolicy` через альбом фотографии
+  (`create` принимает необязательный `Album`).
+- **tests/Feature/Filament/AdminTestCase.php** — логика администратора вынесена
+  в метод `signInAsAdmin()`; `setUp()` трейта вызывает его, что позволяет
+  переопределяющим `setUp()` тестам восстанавливать аутентифицированного админа.
+- Тесты с собственным `setUp()`, перекрывающим трейт, теперь вызывают
+  `$this->signInAsAdmin()`:
+  `MediaReuseSafetyTest`, `AlbumPhotosRelationManagerTest`, `MediaDeletionTest`,
+  `MediaUploadTest`, `MediaRetryProcessingTest`.
+
+### Тесты
+- 702 tests — passed (было 701 passed / 1 error).
+
+## 2026-09-07 — Админка: добавление существующего медиа из другого альбома
+
+### Добавлено
+- **app/Filament/Resources/Albums/RelationManagers/PhotosRelationManager.php** —
+  новое header-действие **«Добавить из альбома»** (иконка `heroicon-o-plus-circle`):
+  - выбор **альбома-источника** через `Select` с поиском (текущий альбом
+    исключён из списка);
+  - выбор **фотографий** через `CheckboxList` (3 колонки), наполняемый
+    динамически после выбора альбома-источника (live/reactive);
+  - **дедупликация**: из выбора исключаются медиа, уже присутствующие
+    в текущем альбоме (сравнение по `media_id`);
+  - создание записей `Photo` для выбранных медиа с
+    `sort_order` = `max(sort_order) + 1..n` (добавление в конец);
+  - уведомление об успехе/пустом выборе;
+  - повторное использование одного и того же `Media` в нескольких альбомах
+    через несколько строк `photos` (структура БД не менялась).
+
+### Изменено
+- В структуру БД изменения не вносились — переиспользование реализовано
+  средствами существующей схемы (`albums → photos → media`).
+
+### Тесты
+- **tests/Feature/Filament/AlbumPhotosRelationManagerTest.php** — добавлены
+  тесты на новое действие:
+  - `test_add_from_album_action_is_available`;
+  - `test_add_from_album_creates_photos_from_source_album` (добавление новой
+    фотографии с `sort_order` после максимума);
+  - `test_add_from_album_action_with_empty_media_selection_does_not_add_photos`;
+  - `test_add_from_album_action_skips_media_already_in_target_album` (дедупликация).
+
+## 2026-09-07 — C1.4: PhotoPolicy — доступ к фотографиям через AlbumPolicy
+
+### Добавлено
+- **app/Policies/PhotoPolicy.php** — единственный источник решения «может ли
+  пользователь просматривать Photo»:
+  - `view(User $user, Photo $photo): bool` — единственный метод (без избыточных
+    `viewAny` и прочих — не используются существующей функциональностью;
+    кабинет/контроллеры/UI не реализуются в рамках задачи);
+  - правило полностью делегировано `AlbumPolicy`: `$user->can('view', $photo->album)`;
+  - **отсутствует дублирование матрицы ролей** — отдельные правила
+    `client → photo`, `parent → photo`, `class_manager → photo` не создавались.
+    Иерархия доступа: `Project → Album → Photo`;
+  - N+1: PhotoPolicy не выполняет собственных запросов — решение целиком
+    в `AlbumPolicy`. Массовые проверки требуют корректного eager loading
+    связей `photo->album` (+ `album->project` для client/class_manager)
+    со стороны вызывающего кода (задокументировано в `AlbumPolicy`);
+  - Policy подключена стандартным автодискавери Laravel
+    (`App\Policies\{Model}Policy`).
+
+### Тесты
+- **tests/Feature/Policies/PhotoPolicyTest.php** (17 тестов, 49 утверждений) —
+  полная матрица доступа и особые случаи:
+  - `admin`/`photographer` → любое фото (включая `project`/`portfolio`/orphan-альбомы);
+  - `client` A/B — только фото своих проектов, любых типов альбомов; без проекта — нет;
+  - `class_manager` A/B — только фото `client`-альбомов своего проекта
+    (проект- и portfolio-типы и чужие проекты запрещены); без проекта — нет;
+  - `parent` — только фото назначенного `client`-альбома (другой клиентский,
+    project/portfolio/homepage/service даже при назначении — нет);
+  - пользователь без роли, гость — нет;
+  - комбинирование ролей: `client`+`class_manager`, `client`+`admin`;
+  - **IDOR-тест**: User A / Photo A→Album A и User B / Photo B→Album B —
+    User A не получает Photo B даже при знании её ID (и симметрично для User B);
+  - авто-дискавери Policy.
+
+### Не реализовано (границы задачи)
+Загрузка/удаление фотографий, комментарии, UI, клиентский кабинет, контроллеры
+и маршруты — вне рамок C1.4. Публичные страницы не изменялись.
+
+### Документация
+- **architecture.md**: раздел «Система ролей и доступа» дополнен подразделом
+  «Policy для фотографий (C1.4)» — делегирование в `AlbumPolicy`, отсутствие
+  дублирования матрицы ролей, подход к N+1.
+
+### Проверка
+- **tests/Feature/Policies/PhotoPolicyTest.php**: 17 tests, 49 assertions — passed
+- Полный набор: 697/698 passed (1 предсуществующая ошибка
+  `MediaReuseSafetyTest::test_deleting_album_keeps_media` — Livewire
+  "mountedActions on null", не связана с задачей; см. C1.3)
+- Pint: clean для новых файлов (app/Policies, tests/Feature/Policies)
+
+## 2026-09-07 — C1.3: AlbumPolicy — разграничение доступа к альбомам
+
+### Добавлено
+- **app/Policies/AlbumPolicy.php** — доменное правило доступа к `Album` (единственный
+  источник решения «может ли пользователь просматривать Album»):
+  - `viewAny(User $user): bool` — позволяет только `admin`/`photographer`;
+    не используется как источник бизнес-правил (без контекста проекта корректно
+    не реализуемо для client/class_manager/parent);
+  - `view(User $user, Album $album): bool` — главное правило:
+    - `admin` и `photographer` — полный доступ ко всем альбомам (приоритет ролей);
+    - `client` — только к альбомам проектов, которыми владеет:
+      `album.project.client_id === user->id` (pivot `client → album` не создавался,
+      источник права — `User → Project.client_id → Album.project_id`), тип альбома
+      не ограничен;
+    - `class_manager` — только к `client`-альбомам своего проекта:
+      `album.type === 'client'` И `album.project.manager_id === user->id`;
+      на `project`/`portfolio`/прочие типы и чужие проекты доступ не распространяется;
+    - `parent` — только к назначенному альбому через `album_user`
+      И `album.type === 'client'`; остальные альбомы проекта, `project`/`portfolio`
+      типы и альбомы без связи недоступны;
+    - пользователь без роли и гость — доступа нет;
+    - при нескольких ролях правила комбинируются предсказуемо: `admin`/`photographer`
+      доминируют; для остальных доступ разрешён, если совпадает хотя бы одно из
+      применимых правил (`client` ИЛИ `class_manager` ИЛИ `parent`) — без
+      преждевременного `return` в ветках;
+    - крайние случаи: альбом без `project` недоступен `client`/`class_manager`,
+      но доступен `parent` при связи `album_user` и типе `client`;
+    - Policy подключена стандартным автодискавери Laravel (`App\Policies\{Model}Policy`).
+  - N+1: для проверки `client`/`class_manager` используется связь `album->project`
+    (в массовых проверках вызывающий код подготавливает eager loading `project`);
+    для `parent` — точечный запрос через существующую связь `album->users()`
+    (`exists()`), без загрузки коллекции.
+
+### Тесты
+- **tests/Feature/Policies/AlbumPolicyTest.php** (18 тестов, 48 утверждений) — матрица
+  доступа и особые случаи: admin/photographer → любой альбом; client A/B — только проекты
+  A/B (pivot нет); class_manager A/B — только `client`-альбомы своего проекта
+  (проект- и portfolio-типы запрещены); parent — только назначенный `client`-альбом
+  (другой клиентский, project/portfolio/homepage/service даже при назначении — нет);
+  альбом без `project`; client/class_manager без проекта; parent без `album_user`;
+  пользователь без роли; гость; client + class_manager; client + admin;
+  `viewAny` для ролей; авто-дискавери Policy.
+
+### Не реализовано (границы задачи)
+PhotoPolicy, кабинет, контроллеры, маршруты, комментарии, статусы, UI — вне рамок C1.3.
+Публичные страницы не изменялись.
+
+### Документация
+- **architecture.md**: раздел «Система ролей и доступа» дополнен подразделом
+  «Policy для альбомов (C1.3)» с правилами `view`/`viewAny`, крайними случаями,
+  комбинированием ролей и подходом к N+1.
+- **database.md**: в раздел `album_user` добавлена ссылка на `AlbumPolicy`
+  (требование `type = 'client'` для `parent`/`class_manager`); схема не менялась.
+- **roadmap.md**: в «Текущий статус» добавлен пункт «C1 — разграничение доступа
+  к проектам и альбомам (C1.1–C1.3)», уточнено описание текущего этапа 5.
+
+### Проверка
+- Полный тестовый набор: 640 тестов, 639 passed + 1 предсуществующая ошибка
+  `MediaReuseSafetyTest::test_deleting_album_keeps_media` (Livewire "mountedActions on null",
+  не связана с задачей; Filament AlbumResourceTest — 10/10 passed);
+  18 новых тестов / 48 утверждений — passed
+- Pint: clean (app/Policies, tests/Feature/Policies)
+
+## 2026-09-07 — C1.2: ProjectPolicy — правила доступа к проектам
+
+### Добавлено
+- **app/Policies/ProjectPolicy.php** — доменное правило доступа к `Project` (единственный
+  источник решения «может ли пользователь просматривать Project»):
+  - `view(User $user, Project $project): bool` — единственный метод (без избыточных
+    `viewAny` и прочих — кабинет/UI/контроллеры не реализуются в рамках задачи);
+  - `admin` и `photographer` — полный доступ ко всем проектам (приоритет ролей);
+  - `client` — доступ только при `project.client_id === user->id`;
+  - `class_manager` — доступ только при `project.manager_id === user->id`;
+  - `parent` — доступа к Project не получает, даже если в проекте есть альбом,
+    назначенный этому родителю (родитель видит только свой альбом);
+  - пользователь без роли и гость — доступа нет;
+  - при нескольких ролях правила комбинируются предсказуемо: `admin`/`photographer`
+    доминируют, для остальных ролей доступ разрешён, если совпадает хотя бы одно
+    из применимых правил (`client` ИЛИ `class_manager`);
+  - Policy подключена стандартным автодискавери Laravel (`App\Policies\{Model}Policy`),
+    новая система ACL не создавалась, используется существующая система ролей.
+
+### Тесты
+- **tests/Feature/Policies/ProjectPolicyTest.php** (11 тестов, 21 утверждение) — матрица
+  доступа и особые случаи: admin/photographer → любые проекты; client A/B — только свои;
+  class_manager A/B — только свои; parent — никакой проект, даже при назначенном альбоме;
+  гость; пользователь без роли; client + class_manager (обе связи); client + admin;
+  авто-дискавери Policy; client против проекта без клиента.
+
+### Не реализовано (границы задачи)
+AlbumPolicy, PhotoPolicy, кабинет, контроллеры, комментарии, статусы — вне рамок C1.2.
+
+### Документация
+- **architecture.md**: раздел «Система ролей и доступа» дополнен описанием `ProjectPolicy`.
+
+### Проверка
+- Полный тестовый набор: 622/622 passed (611 до + 11 новых), 1660 утверждений;
+  единственный risky — предсуществующий `ServiceCatalogControllerTest::test_three_level_category_page_renders_full_breadcrumb` (не связан с задачей)
+- Pint: clean (app/Policies, tests/Feature/Policies)
+
+## 2026-09-04 — Кнопка CTA на страницах услуг и категорий
+
+### Добавлено
+- **Миграция `add_cta_button_fields_to_services_and_categories_table`** — добавлены
+  в `services` и `categories`: `cta_album_id` (nullable FK → `albums`, ON DELETE SET NULL)
+  и `cta_button_text` (nullable VARCHAR(255)).
+- **app/Models/Service.php** — связь `ctaAlbum()` (BelongsTo → Album); `cta_album_id`,
+  `cta_button_text` в `$fillable`.
+- **app/Models/Category.php** — связь `ctaAlbum()` (BelongsTo → Album); `cta_album_id`,
+  `cta_button_text` в `$fillable`.
+- **ServiceForm** (Filament) — секция «Кнопка CTA»: Select альбома и TextInput текста кнопки.
+- **CategoryForm** (Filament) — аналогичная секция «Кнопка CTA».
+- **ServiceCatalogController** — eager loading `ctaAlbum` (опубликованный) на страницах
+  услуги и категории.
+- **resources/views/services/show.blade.php** — золотая кнопка перед формой заявки
+  (при заполненных `cta_album_id` + `cta_button_text`).
+- **resources/views/services/category.blade.php** — аналогичная кнопка перед формой заявки.
+
+### Документация
+- Обновлён `database.md` (поля, FK, индексы, описание CTA-кнопки для categories и services).
+- Обновлён `changelog.md`.
+
+---
+
+## 2026-09-03 — Исправление устаревшего теста обложки категории
+
+### Исправлено
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** —
+  `test_category_page_shows_cover_image` проверял оригинальный путь
+  `covers/album-cover.jpg`, тогда как страница категории рендерит обложку через
+  display-кэш (`getDisplayUrl()` → `/media/{id}/display`). Тест переведён на
+  современный паттерн (как в `PortfolioControllerTest`): проверяется
+  `route('media.display', ...)` + `alt`.
+
+### Проверка
+- Полный тестовый набор: 600/600 passed (ранее падал 1 тест)
+
+---
+
+## 2026-09-02 — Прикрепление альбомов к категориям
+
+Дублированы возможности услуг для категорий каталога (`type = service`): прикрепление
+альбомов-примеров и вывод выбранного альбома блоком с фото.
+
+### Добавлено
+- **Миграция** `2026_09_02_175143_create_category_album_table` — pivot `category_album`
+  (many-to-many категории ↔ альбомы, `CASCADE` с обеих сторон).
+- **Миграция** `2026_09_02_175149_add_featured_album_fields_to_categories_table` —
+  в `categories` добавлены `show_album_photos` (boolean, default false)
+  и `featured_album_id` (nullable FK → `albums`, `ON DELETE SET NULL`).
+- **Миграция** `2026_09_02_190253_add_examples_title_to_categories_table` —
+  в `categories` добавлен настраиваемый заголовок `examples_title` (nullable).
+- **app/Models/Category.php** — отношения `albums()` (BelongsToMany через
+  `category_album`) и `featuredAlbum()` (BelongsTo); `$fillable` и `$casts`
+  дополнены новыми полями.
+- **app/Models/Album.php** — обратное отношение `categories()` (BelongsToMany).
+- **app/Filament/Resources/Categories/Schemas/CategoryForm.php** — раздел
+  «Примеры работ»: TextInput `examples_title`, multi-select `albums`, Toggle
+  `show_album_photos` «Показать первый альбом блоком с фото», Select
+  `featured_album_id`.
+- **app/Http/Controllers/ServiceCatalogController.php** — `showCategory()` грузит
+  альбомы категории и (при включённом переключателе) `featuredAlbum` с `photos.media`,
+  исключая выбранный альбом из карточек (как у услуги).
+- **resources/views/services/category.blade.php** — секция «Примеры работ»
+  (сетка карточек альбомов, заголовок `examples_title` с фоллбэком «Примеры работ»)
+  и блок фото выбранного альбома через `<x-site.album-photos>`.
+
+### Документация
+- Обновлены `database.md` (таблица `category_album`, новые поля категорий, связи)
+  и `architecture.md` (раздел альбома на странице категории).
+
+### Тесты
+- `ServiceCatalogControllerTest` — 32/33 проходят; падение
+  `test_category_page_shows_cover_image` — известное независящее падение среды
+  Media/Storage (не связано с этой задачей).
+
+---
+## 2026-09-02 — Запрет включения звука, когда звук отключён в админке
+
+### Изменено
+- **resources/views/components/site/video-player.blade.php**: при `has_sound = false`
+  на загруженных видео (и повёрнутых, и обычных) на `<video>` теперь добавляется
+  атрибут `data-video-forbid-sound` (вместе с `muted`). У обычных (неповёрнутых)
+  видео в `controlsList` добавлен `noplaybackrate`.
+- **resources/js/app.js**: для всех `video[data-video-forbid-sound]` принудительно
+  устанавливается `muted = true`, а слушатели `volumechange`/`play`/`loadedmetadata`
+  заново приглушают видео — пользователь физически не может включить звук через
+  нативные контролы: кнопка mute/громкость не дают эффекта.
+- **app/Models/Video.php**: `embed_url` теперь учитывает `has_sound`. Когда звук
+  отключён, в URL встраиваемого плеера добавляется параметр приглушения:
+  - YouTube → `?mute=1`;
+  - Vimeo / Rutube → `?muted=1`;
+  - VK (`video_ext.php`) → `&muted=1`.
+
+Такое поведение распространяется на все типы плеера: кастомный (повёрнутые),
+нативный (неповёрнутые) и встраиваемые (YouTube/Vimeo/Rutube/VK).
+
+### Тесты
+- **tests/Unit/Models/VideoModelTest.php** (+6): muted-параметры в embed_url
+  при `has_sound = false` для YouTube/Vimeo/Rutube/VK и их отсутствие при
+  `has_sound = true`.
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: тесты muted-рендера
+  дополнены проверкой наличия/отсутствия `data-video-forbid-sound`.
+- Итого тесты прошли, кроме предшествующего независящего падения
+  `ServiceCatalogControllerTest::test_category_page_shows_cover_image` (среда
+  Media/Storage, не связано с этой задачей).
+
+### Документация
+- Обновлён `architecture.md`.
+
+## 2026-09-01 — Ленивая подгрузка видео и кэширование браузером
+
+### Добавлено
+- **resources/views/components/site/video-player.blade.php**: `preload` изменён
+  с `none` на `auto` для обоих загруженных `<video>` — браузер сразу после
+  загрузки страницы подтягивает метаданные и часть видео (на странице не больше
+  трёх видео), воспроизведение стартует мгновенно.
+- **app/Http/Controllers/VideoController.php**: `Cache-Control` для `video.stream`
+  изменён с `private, no-store` на `private, max-age=86400, immutable`. Браузер
+  хранит видео в собственном кэше (недоступно CDN/прокси), а ETag + `If-None-Match`
+  дают дешёвую ревалидацию (304) — повторное открытие страницы не перекачивает файл.
+
+### Тесты
+- **tests/Feature/Http/Controllers/VideoControllerTest.php**: уточнены проверки
+  заголовка кэша (`private`, `max-age=86400`).
+- Итого 594 теста — все пройдены.
+
+### Документация
+- Обновлён `architecture.md` (кэширование браузером, `preload="auto"`).
+
+## 2026-09-01 — Мгновенное воспроизведение видео: поддержка HTTP Range в потоке
+
+### Исправлено
+- **app/Http/Controllers/VideoController.php** — `stream()` теперь поддерживает
+  HTTP Range-запросы, из-за отсутствия которых браузер ждал весь файл (~41 МБ)
+  до начала воспроизведения:
+  - одиночные диапазоны `bytes=start-end`, открытые `bytes=n-`, суффиксные
+    `bytes=-n`, множественные `bytes=a-b,c-d` → `206 Partial Content`;
+  - множественные диапазоны отдаются как `multipart/byteranges`;
+  - неудовлетворимый диапазон → `416` + `Content-Range: bytes */size`;
+  - `If-None-Match` (ETag) → `304 Not Modified`;
+  - полнотелый запрос без Range → `200` с `Content-Length`;
+  - тело стримится локально (`fopen` + `fseek`/`fread`, чанки 8 КБ);
+  - защитные заголовки (`Cache-Control: private, no-store`, `X-Content-Type-Options:
+    nosniff`, `Content-Disposition: inline`, `Accept-Ranges: bytes`) сохранены.
+
+### Тесты
+- **tests/Feature/Http/Controllers/VideoControllerTest.php** (+8): полнотелый
+  200 с `Content-Length`, одиночный `206` с корректным слайсом и `Content-Range`,
+  открытый и суффиксный диапазоны, множественный `206 multipart/byteranges`,
+  416 на неудовлетворимый диапазон, 304 по `If-None-Match`.
+- Итого 594 теста — все пройдены (предыдущий прогон 588).
+
+### Документация
+- Обновлён `architecture.md` (раздел поддержки Range в `video.stream`).
+
 ## 2026-09-01 — Вращение видео на ±90°, управление звуком и запрет скачивания
 
 ### Добавлено
@@ -925,6 +2277,16 @@ Policies, кабинет, комментарии, статусы проекто�
   - LRU-обрезка кэша переведена на best-effort: сбой листинга диска не роняет
     уже сгенерированный вариант
 
+### Исправлено
+- **TypeError на страницах редактирования** (`/admin/{albums,services,posts,pages}/…/edit`):
+  `Select::isOptionDisabled(): Argument #2 ($label) must be string, null given`.
+  Причина: Media с `title = NULL` (артефакт отладочного tinker-запуска) ломал
+  Select обложки, читающий `media.title` всех записей
+  - Все четыре формы с выбором обложки получили
+    `getOptionLabelFromRecordUsing()` — записи без заголовка отображаются как
+    «Медиа #id», падение исключено независимо от данных
+  - Данные исправлены: существующим Media с пустым заголовком проставлен title
+
 ### Диагностировано на сервере (воркер супервизора)
 - Симптом «Папка [ppp] не найдена» при существующей папке: воркер, запущенный до
   деплоя пагинации, держал старые классы в памяти и видел только первые ~20
@@ -938,8 +2300,8 @@ Policies, кабинет, комментарии, статусы проекто�
   Требуется выровнять владельца/права (см. задачу пользователю)
 
 ### Статистика
-- Тесты: 383 проходят (+2)
-- Assertions: 754
+- Тесты: 384 проходят (+3 за день)
+- Assertions: 755
 - Pint: clean
 
 ## 2026-08-22 — Импорт с Яндекс.Диска: пагинация листинга и асинхронный импорт

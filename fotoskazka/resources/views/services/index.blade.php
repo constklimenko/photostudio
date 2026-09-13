@@ -32,7 +32,7 @@
                            class="group block bg-[#1a1a1a] rounded-xl overflow-hidden shadow-lg shadow-black/30 hover:bg-[#242424] transition">
                             <div class="aspect-[16/9] bg-gray-100">
                                 @if ($child->cover)
-                                    <img src="{{ $child->cover->getThumbnailUrl() }}"
+                                    <img src="{{ $child->cover->getDisplayUrl() }}"
                                          alt="{{ $child->name }}"
                                          class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                                          loading="lazy">
@@ -60,7 +60,7 @@
                     <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
                              <a href="{{ route('services.show', $service->catalogPath()) }}" class="lg:w-5/12 shrink-0">
-                                 <img src="{{ $service->cover->getThumbnailUrl() }}"
+                                 <img src="{{ $service->cover->getDisplayUrl() }}"
                                       alt="{{ $service->title }}"
                                       class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
                                       loading="lazy">
@@ -127,7 +127,7 @@
                 <article class="flex flex-col lg:flex-row gap-8 mb-16 last:mb-0" data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
 @if ($service->cover)
                          <a href="{{ route('services.show', $service->catalogPath()) }}" class="lg:w-5/12 shrink-0">
-                             <img src="{{ $service->cover->getThumbnailUrl() }}"
+                             <img src="{{ $service->cover->getDisplayUrl() }}"
                                   alt="{{ $service->title }}"
                                   class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
                                   loading="lazy">

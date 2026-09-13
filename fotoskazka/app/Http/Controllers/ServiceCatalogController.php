@@ -64,6 +64,7 @@ class ServiceCatalogController extends Controller
             'category',
             'items.icon',
             'videos',
+            'ctaAlbum',
             'albums' => function ($query) use ($service) {
                 $query->where('is_published', true);
 
@@ -88,7 +89,8 @@ class ServiceCatalogController extends Controller
         $serviceList = Service::query()
             ->where('is_published', true)
             ->whereKeyNot($service->id)
-            ->orderBy('sort_order')
+            ->inRandomOrder()
+            ->limit(3)
             ->with(['cover', 'category'])
             ->get(['id', 'cover_media_id', 'title', 'slug', 'category_id']);
 
@@ -106,7 +108,27 @@ class ServiceCatalogController extends Controller
             'services' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'items']),
             'videos',
             'items.icon',
+            'ctaAlbum',
+            'albums' => function ($query) use ($category) {
+                $query->where('is_published', true);
+
+                if ($category->show_album_photos && $category->featured_album_id) {
+                    $query->whereKeyNot($category->featured_album_id);
+                }
+
+                $query->with(['cover', 'videos']);
+            },
         ]);
+
+        if ($category->show_album_photos && $category->featured_album_id) {
+            $category->load([
+                'featuredAlbum' => fn ($query) => $query->where('is_published', true),
+            ]);
+
+            if ($category->featuredAlbum) {
+                $category->featuredAlbum->load('photos.media');
+            }
+        }
 
         return view('services.category', compact('page', 'category'));
     }

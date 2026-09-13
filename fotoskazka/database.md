@@ -203,6 +203,10 @@ INDEX(user_id)
 `parent`. Parent получает доступ только к явно назначенным альбомам — не ко всем
 альбомам своего проекта.
 
+Правила доступа к альбомам (в т.ч. требование `type = 'client'` для `parent`
+и `class_manager`) определяет `AlbumPolicy` — см. «Система ролей и доступа»
+в `architecture.md`. Изменения схемы эта задача не вносила.
+
 Методы моделей:
 
 | Модель | Метод   | Связь                                    |
@@ -238,6 +242,36 @@ Indexes:
 INDEX(service_id)
 INDEX(sort_order)
 ```
+
+---
+
+## category_album
+
+Pivot для many-to-many связи категорий услуг и альбомов-примеров.
+
+```sql
+category_id BIGINT UNSIGNED
+album_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, album_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+album_id -> albums.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(album_id)
+```
+
+Связь используется для прикрепления альбомов-примеров к категории каталога услуг
+(аналогично `album_service`). Управляется в `CategoryForm`, отображается на
+публичной странице категории `/services/...` как сетка карточек.
 
 ---
 
@@ -439,12 +473,19 @@ type ENUM(
     'post'
 )
 description TEXT NULL
+examples_title VARCHAR(255) NULL
 price_from DECIMAL(10,2) NULL
 price_note TEXT NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
 sort_order INT DEFAULT 0
+show_album_photos BOOLEAN DEFAULT FALSE
+featured_album_id BIGINT NULL
+
+cta_album_id BIGINT NULL
+
+cta_button_text VARCHAR(255) NULL
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -455,6 +496,8 @@ updated_at TIMESTAMP
 ```sql
 parent_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
+featured_album_id -> albums.id ON DELETE SET NULL
+cta_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
@@ -468,6 +511,10 @@ cover_media_id -> media.id ON DELETE SET NULL
 | `cover()`   | Обложка категории (BelongsTo → media)                        |
 | `services()`| Услуги, непосредственно принадлежащие категории (HasMany)    |
 | `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
+| `videos()`  | Видео, прикреплённые к категории (BelongsToMany)             |
+| `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
+| `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
+| `ctaAlbum()` | Альбом, на который ведёт кнопка CTA (BelongsTo → album) |
 | `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
 | `descendants()` | Все потомки в глубину любых уровней                       |
 | `path(true)` | Полный путь от корня до самой категории                     |
@@ -475,6 +522,26 @@ cover_media_id -> media.id ON DELETE SET NULL
 Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
 запрещено выбирать категорию в качестве собственного родителя и делать
 потомка родителем предка (`A → B → C → A`).
+
+Поля показа альбома блоком (аналогично услугам):
+
+| Поле              | Назначение                                                                |
+|-------------------|---------------------------------------------------------------------------|
+| examples_title    | Заголовок секции альбомов-примеров (фоллбэк: «Примеры работ»)             |
+| show_album_photos | Переключатель: показывать выбранный альбом на странице категории как сетку фото |
+| featured_album_id | Альбом, который отображается всеми фото вместо карточки                   |
+
+Поля CTA-кнопки (кнопка ссылается на альбом портфолио):
+
+| Поле              | Назначение                                                                |
+|-------------------|---------------------------------------------------------------------------|
+| cta_album_id      | Альбом, на который ведёт кнопка (BelongsTo → albums)                     |
+| cta_button_text   | Текст кнопки (например, «Посмотреть варианты обложек»)                   |
+
+При `show_album_photos = true` выбранный альбом исключается из списка
+альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
+с lightbox (как на странице услуги). Если список карточек остаётся непустым
+(осталось ≥ 1 альбом), он рендерится перед сеткой.
 
 Indexes:
 
@@ -485,6 +552,8 @@ INDEX(sort_order)
 INDEX(parent_id)
 INDEX(cover_media_id)
 INDEX(is_published)
+INDEX(featured_album_id)
+INDEX(cta_album_id)
 ```
 
 ---
@@ -526,6 +595,17 @@ Indexes:
 INDEX(disk)
 INDEX(created_at)
 ```
+
+Связи модели `Media` (добавлены в C1.5 для шлюза авторизации файлов):
+
+| Метод    | Связь                             | Назначение                                        |
+|----------|-----------------------------------|---------------------------------------------------|
+| `photos()` | HasMany → `photos.media_id`       | Фотографии, использующие это Media                |
+| `albums()` | BelongsToMany через pivot `photos` | Альбомы, содержащие это Media (для доступа к файлу) |
+
+Связь `albums()` используется `MediaAccessService` для определения, ссылается ли
+на `Media` приватный альбом (`type ∈ {client, project}`), и для применения
+`AlbumPolicy` при отдаче файла через роуты `MediaController`.
 
 ---
 
@@ -639,6 +719,10 @@ show_album_photos BOOLEAN DEFAULT FALSE
 
 featured_album_id BIGINT NULL
 
+cta_album_id BIGINT NULL
+
+cta_button_text VARCHAR(255) NULL
+
 price_from DECIMAL(10,2) NULL
 
 price_note TEXT NULL
@@ -660,6 +744,7 @@ Foreign keys:
 category_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
+cta_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -670,6 +755,7 @@ INDEX(category_id)
 INDEX(is_published)
 INDEX(sort_order)
 INDEX(featured_album_id)
+INDEX(cta_album_id)
 ```
 
 Поля показа альбома блоком:
@@ -732,10 +818,14 @@ contact_email VARCHAR(255) NULL
 
 status ENUM(
     'draft',
-    'active',
+    'shooting_completed',
+    'reshoot',
+    'processing',
+    'layout_approval',
+    'printing',
     'completed',
     'archived'
-)
+) DEFAULT 'draft'
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -758,6 +848,28 @@ INDEX(status)
 INDEX(shooting_date)
 INDEX(contact_phone)
 ```
+
+Статус проекта (`status`) — enum в одном месте (`App\Enums\ProjectStatus`), значение
+маппится на PHP-перечисление кастом `Project::$casts['status']`. Допустимые значения:
+
+| Ключ                | Название               |
+|---------------------|------------------------|
+| `draft`             | Подготовка             |
+| `shooting_completed`| Фотосъёмка закончена   |
+| `reshoot`           | Пересъёмка             |
+| `processing`        | Обработка фотографий   |
+| `layout_approval`   | Согласование макета     |
+| `printing`          | Отправка в печать       |
+| `completed`         | Проект завершён         |
+| `archived`          | Архив                   |
+
+`reshoot` — не строго линейное следующее состояние: после пересъёмки проект может
+вернуться к предыдущему этапу (например, снова в `processing` или `draft`).
+
+Старое значение `active` устранено миграцией `update_projects_status_enum_table`
+(2026-09-09): существующие `active` проекты переведены в `processing`. Переходы
+между статусами как полноценный workflow на этом этапе не внедрены — список
+является единым источником допустимых значений для формы/таблицы/фильтра Filament.
 
 ---
 
@@ -1274,8 +1386,9 @@ Laravel Filesystem
     │
     ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
     │
-    └── image_cache disk (Local)     → ленивый кэш PNG: display ≤800px / lightbox ≤1600px,
-                                       лимит размера IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    └── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
+                                       lightbox (PNG ≤1600px), формат и лимит
+                                       IMAGE_CACHE_MAX_MB, вытеснение по возрасту
 ```
 
 - MediaProcessor генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.
@@ -1283,12 +1396,15 @@ Laravel Filesystem
   повторный вызов заполняет только пустые поля и не пересоздаёт существующий thumbnail.
 - Превью всегда пишутся на диск `thumbnails` (локальный кэш), независимо от диска оригинала.
 - Путь thumbnail детерминирован: `{директория оригинала}/{имя}_thumb.webp`.
-- `Media::getUrl()` — URL оригинала через диск из `Media::disk`.
-  Для remote-дисков (конфиг `remote => true`) возвращается прокси-роут
-  `GET /media/{media}/original` — файл стримится через Laravel, публичных ссылок на Диск нет.
-- `Media::getThumbnailUrl()` — возвращает URL превью 400px через диск `thumbnails`.
+- `Media::getUrl()` — всегда прокси-роут `GET /media/{media}/original` (стримится
+  через Laravel). Прямые URL дисков не отдаются: `public`-диск и диск `thumbnails`
+  находятся в публичном веб-корне, и `/storage/...` ссылки обходили бы шлюз
+  авторизации C1.5.
+- `Media::getThumbnailUrl()` — всегда прокси-роут `GET /media/{media}/thumbnail`
+  (WebP-превью 400px с диска `thumbnails` через тот же шлюз авторизации).
 - `Media::getDisplayUrl()` / `Media::getLightboxUrl()` — прокси-роуты ленивого кэша
-  производных PNG (≤800px / ≤1600px, диск `image_cache`); скачивание оригинала —
+  производных (display — WebP ≤800px, lightbox — PNG ≤1600px, диск `image_cache`);
+  скачивание оригинала —
   `GET /media/{media}/download`.
 - `Video::source_url` / `Video::embed_url` — используют конфиг `filesystems.default_media_disk`.
 - Все FileUpload в Filament используют `config('filesystems.default_media_disk', 'public')`.

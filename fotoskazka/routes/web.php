@@ -31,6 +31,8 @@ Route::get('/video/{video}/stream', [VideoController::class, 'stream'])->name('v
 
 Route::get('/media/{media}/original', [MediaController::class, 'original'])
     ->name('media.original');
+Route::get('/media/{media}/thumbnail', [MediaController::class, 'thumbnail'])
+    ->name('media.thumbnail');
 Route::get('/media/{media}/download', [MediaController::class, 'download'])
     ->middleware('auth')
     ->name('media.download');
@@ -41,8 +43,18 @@ Route::get('/media/{media}/lightbox', [MediaController::class, 'lightbox'])
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
 
-Route::get('/cabinet', [CabinetController::class, 'index'])
-    ->middleware('auth')
-    ->name('cabinet.index');
+Route::middleware('auth')->group(function () {
+    Route::get('/cabinet', [CabinetController::class, 'index'])
+        ->name('cabinet.index');
+
+    Route::get('/cabinet/projects', [CabinetController::class, 'projects'])
+        ->name('cabinet.projects');
+
+    Route::get('/cabinet/projects/{project}', [CabinetController::class, 'show'])
+        ->name('cabinet.project');
+
+    Route::get('/cabinet/albums/{album}', [CabinetController::class, 'showAlbum'])
+        ->name('cabinet.album');
+});
 
 require __DIR__.'/auth.php';
