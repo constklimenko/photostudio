@@ -236,6 +236,39 @@ class ModelRelationshipsTest extends TestCase
         $this->assertInstanceOf(Album::class, $service->albums->first());
     }
 
+    public function test_service_belongs_to_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $service = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $this->assertTrue($service->shootingAlbum->is($album));
+    }
+
+    public function test_deleting_shooting_album_sets_service_album_to_null(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $service = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $album->delete();
+        $service->refresh();
+
+        $this->assertNull($service->shootingAlbum);
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'shooting_album_id' => null,
+        ]);
+    }
+
+    public function test_multiple_services_can_share_the_same_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $first = Service::factory()->create(['shooting_album_id' => $album->id]);
+        $second = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $this->assertTrue($first->shootingAlbum->is($album));
+        $this->assertTrue($second->shootingAlbum->is($album));
+    }
+
     public function test_inquiry_belongs_to_project(): void
     {
         $project = Project::factory()->create();

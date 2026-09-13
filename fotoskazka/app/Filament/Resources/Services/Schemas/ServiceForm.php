@@ -13,6 +13,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class ServiceForm
@@ -129,6 +130,26 @@ class ServiceForm
                             ->preload()
                             ->searchable()
                             ->nullable()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Фото со съёмок')
+                    ->schema([
+                        Select::make('shooting_album_id')
+                            ->label('Альбом «Фото со съёмок»')
+                            ->relationship('shootingAlbum', 'title', function (Builder $query, ?Service $record): Builder {
+                                $query->where('type', 'behind_the_scenes')
+                                    ->where('is_published', true);
+
+                                if ($record?->shooting_album_id) {
+                                    $query->orWhere('id', $record->shooting_album_id);
+                                }
+
+                                return $query;
+                            })
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Без фото со съёмок')
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

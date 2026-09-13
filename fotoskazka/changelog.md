@@ -1,6 +1,57 @@
 # Changelog
 
-## 2026-09-13 — Albums: новый тип `behind_the_scenes` («Фото со съёмок»)
+## 2026-09-13 — Services: привязка альбома «Фото со съёмок» (`shooting_album_id`)
+
+### Цель
+
+Дать возможность привязать к услуге один альбом типа `behind_the_scenes`
+(«Фото со съёмок»). Альбом остаётся обычной записью `albums` и может
+использоваться несколькими услугами — unique-ограничение не вводится.
+
+### Изменено
+
+- **database/migrations/2026_09_13_100000_add_shooting_album_id_to_services_table.php** (новая) —
+  в `services` добавлено nullable `shooting_album_id` (FK → `albums.id`,
+  `ON DELETE SET NULL`), колонка размещена после `cta_button_text`.
+- **app/Models/Service.php** — `shooting_album_id` добавлен в `$fillable`;
+  новая связь `shootingAlbum()` (BelongsTo → albums).
+- **app/Filament/Resources/Services/Schemas/ServiceForm.php** — новая секция
+  «Фото со съёмок» с полем «Альбом «Фото со съёмок»»:
+  - выбор nullable (можно не выбирать альбом);
+  - в опциях только альбомы `type = 'behind_the_scenes'`;
+  - по умолчанию только опубликованные альбомы (`is_published = true`);
+  - текущий альбом услуги всегда присутствует в опциях при редактировании,
+    даже если его публикация была выключена после привязки.
+
+### НЕ изменено
+
+- Выборка альбомов-примеров (`albums`), `featured_album_id`, `cta_album_id` —
+  без изменений.
+- Публичный сайт (страницы услуг/каталога) — блок «Фото со съёмок» вне рамок
+  задачи, отображение не добавлялось.
+- Модель `Album` и её связи — без изменений.
+
+### Тесты
+
+- **tests/Unit/Models/ModelRelationshipsTest.php** — добавлены:
+  1. `test_service_belongs_to_shooting_album`;
+  2. `test_deleting_shooting_album_sets_service_album_to_null` (ON DELETE SET NULL);
+  3. `test_multiple_services_can_share_the_same_shooting_album` (без unique).
+- **tests/Feature/Filament/ServiceShootingAlbumTest.php** (новый, 7 тестов):
+  поле на странице редактирования; в опциях только альбомы
+  `behind_the_scenes`; в опциях только опубликованные альбомы; текущий
+  неопубликованный альбом виден при редактировании; сохранение/очистка
+  выбора; создание новой услуги с выбранным альбомом.
+
+### Проверка
+
+- `php artisan test` — 940/941 passed (единственный фейл —
+  предсуществующий `MediaRegenerateThumbnailsCommandTest` без регрессий,
+  воспроизводится и на чистом `HEAD`);
+- `./vendor/bin/pint --test` — clean;
+- `php artisan migrate` — миграция применена (MySQL).
+
+---
 
 ### Цель
 

@@ -723,6 +723,8 @@ cta_album_id BIGINT NULL
 
 cta_button_text VARCHAR(255) NULL
 
+shooting_album_id BIGINT NULL
+
 price_from DECIMAL(10,2) NULL
 
 price_note TEXT NULL
@@ -745,6 +747,7 @@ category_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
 cta_album_id -> albums.id ON DELETE SET NULL
+shooting_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -756,7 +759,14 @@ INDEX(is_published)
 INDEX(sort_order)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
+INDEX(shooting_album_id)
 ```
+
+`shooting_album_id` — необязательная привязка одного альбома «Фото со съёмок»
+(`albums.type = 'behind_the_scenes'`) к услуге. Один альбом может использоваться
+несколькими услугами (unique-ограничения нет); при удалении альбома ссылка
+обнуляется (`ON DELETE SET NULL`). Связь модели: `Service::shootingAlbum()`
+(BelongsTo → albums).
 
 Поля показа альбома блоком:
 
