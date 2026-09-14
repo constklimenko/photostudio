@@ -1242,6 +1242,20 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
   после `<x-site.videos>`, в `services/category.blade.php` — после секции видео
   перед формой заявки).
 
+### Блок «Фото со съёмок» на главной странице
+
+Главная (`HomeController::__invoke`) выводит опубликованные альбомы
+`type = 'behind_the_scenes'` с `is_featured = true` и `is_published = true`
+переменной `$shootingWorks`, отсортированные по `sort_order`, с eager load
+`cover` одним IN-запросом (без N+1). Секция `home.blade.php` рендерится
+карточками (обложка через `cover->getThumbnailUrl()` либо плейсхолдер,
+название, описание при наличии), ссылка ведёт на `route('portfolio.show')`.
+Секция выводится **только** при непустом `$shootingWorks` — пустые блоки не
+создаются. Блок «Избранные работы» не зависит от этого перечисления и по
+прежнему фильтрует `type = 'portfolio'`, поэтому `behind_the_scenes` туда
+не попадают. Схема БД не изменялась (используются существующие
+`albums.type`, `is_featured`, `is_published`, `sort_order`).
+
 Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
 принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`
 отображается как текущая страница. Используется на страницах категории и услуги.

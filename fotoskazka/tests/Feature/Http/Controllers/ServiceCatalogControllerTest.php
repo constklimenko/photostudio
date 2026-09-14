@@ -518,7 +518,7 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Варианты оформления');
         $response->assertSee('Классика');
         $response->assertSee('Классический альбом');
-        $response->assertSee('от 15 000', false);
+        $response->assertSee('15 000 ₽', false);
         $response->assertSee('Подробнее');
         $response->assertSee('/services/vypusknye-albomy/dlya-shkol/klassika');
     }

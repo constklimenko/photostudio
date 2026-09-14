@@ -1,5 +1,73 @@
 # Changelog
 
+## 2026-09-14 — B12 — Финальный аудит и закрытие этапа
+
+### Цель
+
+Финальная проверка сценария B12 «Фото со съёмок» от создания альбома в админке
+до отображения на публичных страницах (услуги, категории, главная).
+
+### Проверенный сценарий
+
+1. В админке можно создать альбом «Фото со съёмок» — `AlbumForm`/`UploadPhotos`/
+   `ImportFromYandexDisk` содержат тип `behind_the_scenes`, бейдж и фильтр в списке;
+2. привязка альбома к услуге — `services.shooting_album_id` (FK → albums,
+   ON DELETE SET NULL), секция «Фото со съёмок» в `ServiceForm`;
+3. привязка альбома к категории — `categories.shooting_album_id` (аналогично);
+4. один альбом можно использовать в нескольких местах — unique-ограничений нет
+   (покрыто тестами `ModelRelationshipsTest`);
+5–6. режимы «Карточка» / «Сетка» — enum `ShootingAlbumDisplay` (`card`/`grid`),
+   поле `shooting_album_display` в формах Filament;
+7–8. страница услуги: `card` — карточка через `<x-site.shooting-album>`,
+   `grid` — сетка фото через `<x-site.album-photos>` (покрыто тестами);
+9. страница категории: оба режима работают (покрыто тестами);
+10. главная страница: блок «Фото со съёмок» показывает все опубликованные
+    `behind_the_scenes` c `is_featured = true`;
+11. неопубликованные альбомы не попадают на публичные страницы — фильтр
+    `where('is_published', true)` в контроллерах;
+12. отсутствие альбома не создаёт пустых блоков — `@if ($shootingWorks->isNotEmpty())`
+    на главной; на страницах услуги/категории `@if ($service->shootingAlbum)` /
+    `@if ($category->shootingAlbum)`;
+13. удаление альбома не оставляет битых ссылок — `ON DELETE SET NULL`,
+    неопубликованный/удалённый альбом → связь `null` → блок скрыт
+    (`test_category_page_handles_deleted_shooting_album`);
+14. существующие типы альбомов продолжают работать — `type = portfolio/homepage/...`
+    выборки не затрагивались;
+15. N+1 — eager load `cover` на главной одним IN-запросом
+    (`test_home_page_shooting_works_avoid_n_plus_one`), в контроллере
+    услуги/категории `shootingAlbum` грузится выборочно (`cover` либо `photos.media`).
+
+### Исправлено по итогам аудита
+
+- **tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php** —
+  `test_category_page_shows_service_cards`: ассерт `от 15 000` исправлен на
+  `15 000 ₽`. Карточка услуги на странице категории выводит цену без префикса
+  «от» (код корректен; ошибочным был ассерт).
+- **tests/Feature/Console/MediaRegenerateThumbnailsCommandTest.php** — в `setUp()`
+  добавлен `Storage::fake('image_cache')` (как в остальных тестах обработки Media).
+  Причина падения: остатки реальных файлов в `storage/app/image-cache/display/`
+  (владелец www-data, права 700) не давали тестовому процессу записывать кэш —
+  `put` молча возвращал `false`, `warmImageCache` помечал обработку неуспешной.
+  Фейковый диск изолирует тест от системы хранения.
+- **tests/Unit/Enums/ShootingAlbumDisplayTest.php** — `./vendor/bin/pint` применил
+  `single_blank_line_at_eof` (стиль).
+
+### Тесты
+
+- `php artisan test` — **988 passed / 2559 assertions** (1 risky — предсуществующий);
+- `./vendor/bin/pint --test` — clean;
+- миграции B12 применены к БД (MySQL): `2026_09_13_100000`,
+  `2026_09_13_100100`, `2026_09_13_100200`, `2026_09_13_100300`.
+
+### Документация
+
+- `architecture.md` — добавлен подраздел «Блок „Фото со съёмок“ на главной
+  странице»;
+- `database.md` — актуална (поля и связи B12 уже описаны);
+- `roadmap.md` — этап B12 добавлен и отмечен как выполненный.
+
+---
+
 ## 2026-09-14 — B12 — Блок «Фото со съёмок» на главной странице
 
 ### Цель
