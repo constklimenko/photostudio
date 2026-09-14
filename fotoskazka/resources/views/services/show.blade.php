@@ -35,7 +35,7 @@
         </div>
 
         @if ($service->price_from)
-            <p class="mt-4 text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
+            <p class="mt-4 text-2xl font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
             @if ($service->price_note)
                 <p class="mt-1 text-xs text-gray-500">{{ $service->price_note }}</p>
             @endif

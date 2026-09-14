@@ -102,7 +102,7 @@
 
                             <div class="mt-6 flex items-center gap-6">
                                 @if ($service->price_from)
-                                    <span class="text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                                    <span class="text-2xl font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                                 @endif
                                 <a href="{{ route('services.show', $service->catalogPath()) }}"
                                    class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">

@@ -141,7 +141,7 @@
                             @endif
                             <div class="mt-3 flex items-center justify-between">
                                 @if ($service->price_from)
-                                    <span class="text-sm font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                                    <span class="text-sm font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                                 @endif
                                 <span class="text-sm text-[#d4af37] font-semibold uppercase tracking-wider group-hover:opacity-70 transition">Подробнее</span>
                             </div>
