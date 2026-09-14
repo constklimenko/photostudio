@@ -37,6 +37,14 @@ class HomeController extends Controller
             ->with('cover')
             ->get(['id', 'cover_media_id', 'title', 'slug']);
 
+        $shootingWorks = Album::query()
+            ->where('type', 'behind_the_scenes')
+            ->where('is_featured', true)
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->with('cover')
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'description', 'sort_order']);
+
         $testimonials = Testimonial::query()
             ->where('is_published', true)
             ->with('photo')
@@ -93,6 +101,7 @@ class HomeController extends Controller
             'homeSections',
             'homeCategories',
             'featuredWorks',
+            'shootingWorks',
             'testimonials',
             'latestPosts',
             'serviceList',

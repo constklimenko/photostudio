@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-09-14 — B12 — Блок «Фото со съёмок» на главной странице
+
+### Цель
+
+Добавить на главную страницу автоматический блок «Фото со съёмок»: карточки
+опубликованных альбомов `type = behind_the_scenes` с пометкой
+`is_featured = true`. Альбомы этого типа не попадают в блок «Избранные работы».
+
+### Изменено
+
+- **app/Http/Controllers/HomeController.php** — новая выборка `shootingWorks`:
+  `type = 'behind_the_scenes'`, `is_featured = true`, `is_published = true`,
+  сортировка по существующему полю `sort_order`, eager load `cover` (одним
+  IN-запросом для всех обложек — без N+1). Передаётся во view отдельной
+  переменной. Блок «Избранные работы» не менялся: он и так фильтрует
+  `type = 'portfolio'`, поэтому `behind_the_scenes` туда не попадают.
+- **resources/views/home.blade.php** — новая секция «Фото со съёмок» после
+  «Видеогалереи» (перед отзывами), в стиле существующих секций главной:
+  сетка карточек (обложка через `cover->getThumbnailUrl()` либо плейсхолдер,
+  название, описание при наличии), ссылка на `route('portfolio.show')`.
+  Только карточки — сетки фотографий не выводятся. Секция рендерится только
+  если `$shootingWorks->isNotEmpty()`.
+
+### НЕ изменено
+
+- Схема БД и миграции — без изменений (используются существующие
+  `albums.type`, `is_featured`, `is_published`, `sort_order`).
+- Существующие секции главной, AR-тизер (строго между «Избранными работами»
+  и «Видеогалереей»), контроллеры Services/Category, компонент
+  `<x-site.shooting-album>` — без изменений.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/HomeControllerTest.php** — добавлены 8 тестов:
+  1. `test_home_page_shows_shooting_works_block` — блок, название, описание,
+     ссылка на страницу альбома;
+  2. `test_home_page_hides_unfeatured_shooting_albums` — без `is_featured` блок скрыт;
+  3. `test_home_page_hides_unpublished_shooting_albums` — неопубликованный скрыт;
+  4. `test_home_page_ignores_other_album_types_in_shooting_block` — типы вне
+     `behind_the_scenes` блок не показывают;
+  5. `test_home_page_shows_shooting_work_cover` — обложка через Media-роут;
+  6. `test_home_page_orders_shooting_works_by_sort_order` — сортировка по `sort_order`;
+  7. `test_behind_the_scenes_albums_not_shown_in_featured_works` — в секции
+     «Избранные работы» нет альбомов `behind_the_scenes` (проверка по извлечённой секции);
+  8. `test_home_page_shooting_works_avoid_n_plus_one` — 25 альбомов с обложками
+     дают ≤16 запросов за запрос главной (фактически 12: один IN по обложкам).
+- Итог по файлу — 38 passed (30 базовых + 8 новых).
+
+### Проверка
+
+- `php artisan test tests/Feature/Http/Controllers/HomeControllerTest.php` — 38 passed;
+- `php artisan test` — 986/988 passed; 2 фейла — предсуществующие, воспроизводятся
+  на чистом `HEAD`, к задаче не относятся (`MediaRegenerateThumbnailsCommandTest`
+  и `ServiceCatalogControllerTest::test_category_page_shows_service_cards`);
+- `./vendor/bin/pint --test app/Http/Controllers/HomeController.php tests/Feature/Http/Controllers/HomeControllerTest.php` — clean;
+- `architecture.md` — обновлён комментарий о составе главной страницы.
+
+---
+
 ## 2026-09-13 — B12 — Блок «Фото со съёмок» на публичных страницах услуги и категории
 
 ### Цель

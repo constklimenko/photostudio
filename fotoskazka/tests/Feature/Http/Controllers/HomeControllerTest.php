@@ -296,6 +296,178 @@ class HomeControllerTest extends TestCase
         $response->assertSee('Избранный проект');
     }
 
+    public function test_home_page_shows_shooting_works_block(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'За кадром выпускного',
+            'description' => 'Как проходила съёмка',
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Фото со съёмок')
+            ->assertSee('За кадром выпускного')
+            ->assertSee('Как проходила съёмка')
+            ->assertSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_home_page_hides_unfeatured_shooting_albums(): void
+    {
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => false,
+            'is_published' => true,
+            'title' => 'Неизбранный закадровый',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('Фото со съёмок')
+            ->assertDontSee('Неизбранный закадровый');
+    }
+
+    public function test_home_page_hides_unpublished_shooting_albums(): void
+    {
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => false,
+            'title' => 'Неопубликованный закадровый',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('Фото со съёмок')
+            ->assertDontSee('Неопубликованный закадровый');
+    }
+
+    public function test_home_page_ignores_other_album_types_in_shooting_block(): void
+    {
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Обычное портфолио',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('Фото со съёмок');
+    }
+
+    public function test_home_page_shows_shooting_work_cover(): void
+    {
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'shooting/card.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'cover_media_id' => $media->getKey(),
+            'title' => 'За кадром',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('/media/'.$media->getKey().'/', false);
+    }
+
+    public function test_home_page_orders_shooting_works_by_sort_order(): void
+    {
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Первая съёмка',
+            'sort_order' => 1,
+        ]);
+
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Вторая съёмка',
+            'sort_order' => 2,
+        ]);
+
+        $response = $this->get('/');
+        $html = $response->getContent();
+
+        preg_match('/<section[^>]*>.*?Фото со съёмок.*?<\/section>/su', $html, $matches);
+        $section = $matches[0] ?? '';
+
+        $this->assertNotSame('', $section);
+        $this->assertGreaterThan(
+            strpos($section, 'Первая съёмка'),
+            strpos($section, 'Вторая съёмка')
+        );
+    }
+
+    public function test_behind_the_scenes_albums_not_shown_in_featured_works(): void
+    {
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный шедевр',
+        ]);
+
+        Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'За кадром съёмки',
+        ]);
+
+        $response = $this->get('/');
+        $html = $response->getContent();
+
+        preg_match('/<section[^>]*>.*?Избранные работы.*?<\/section>/su', $html, $matches);
+        $featured = $matches[0] ?? '';
+
+        $this->assertNotSame('', $featured);
+        $this->assertStringContainsString('Избранный шедевр', $featured);
+        $this->assertStringNotContainsString('За кадром съёмки', $featured);
+    }
+
+    public function test_home_page_shooting_works_avoid_n_plus_one(): void
+    {
+        Album::factory()->count(25)->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+        ])->each(function (Album $album) {
+            $album->update([
+                'cover_media_id' => Media::query()->create([
+                    'disk' => 'public',
+                    'file_path' => "shooting/{$album->getKey()}.jpg",
+                    'mime_type' => 'image/jpeg',
+                ])->getKey(),
+            ]);
+        });
+
+        \DB::enableQueryLog();
+        $response = $this->get('/');
+        $queryCount = count(\DB::getQueryLog());
+        \DB::disableQueryLog();
+
+        $response->assertOk();
+        $this->assertLessThanOrEqual(16, $queryCount, "Expected ≤16 queries for 25 shooting albums, got {$queryCount}. Possible N+1 issue.");
+    }
+
     public function test_home_page_shows_testimonials(): void
     {
         $testimonial = Testimonial::factory()->create([
