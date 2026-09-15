@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-09-15 — Заголовок «О студии» и SEO для главной страницы
+
+### Цель
+
+- Сделать заголовок блока «О студии» настраиваемым через CMS.
+- Вернуть возможность редактировать SEO title и description для главной страницы.
+
+### Реализация
+
+- миграция `add_about_studio_title_to_pages_table` — поле `about_studio_title`
+  (`VARCHAR(255) NULL`) в таблице `pages`;
+- модель `Page` — `about_studio_title` добавлен в `fillable`;
+- `PageForm`:
+  - в секцию «Главная страница» добавлен `TextInput::make('about_studio_title')`
+    (пусто → выводится «О студии»);
+  - секция SEO теперь видима для всех страниц, включая `slug = home`;
+- `resources/views/home.blade.php` — заголовок блока берётся из
+  `about_studio_title` с фолбэком на «О студии».
+
+## 2026-09-15 — SEO-текст «О студии» на главной странице
+
+### Цель
+
+Добавить управляемый из CMS текстовый блок внизу главной страницы (перед футером)
+с SEO-текстом о студии. Блок выводится только если поле заполнено.
+
+### Реализация
+
+- миграция `add_about_studio_text_to_pages_table` — поле `about_studio_text`
+  (`LONGTEXT NULL`) в таблице `pages`;
+- модель `Page` — `about_studio_text` добавлен в `fillable`;
+- `PageForm` — в секцию «Главная страница» (видимую только для `slug = home`)
+  добавлен `RichEditor::make('about_studio_text')` с подсказкой о выводе;
+- `resources/views/home.blade.php` — блок выводится через `{!! $page->about_studio_text !!}`
+  внутри контейнера `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12`
+  (`text-base font-semibold text-gray-700` заголовок + `text-sm text-gray-500` текст);
+  если поле пустое — блок не рендерится (`@if (filled($page->about_studio_text))`).
+
 ## 2026-09-15 — Комментарии к фотографиям (C2.9, часть)
 
 ### Цель

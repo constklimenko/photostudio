@@ -688,6 +688,8 @@ home_subtitle TEXT NULL
 show_on_home BOOLEAN DEFAULT FALSE
 home_sort_order INT DEFAULT 0
 menu_title VARCHAR(255) NULL
+about_studio_text LONGTEXT NULL
+about_studio_title VARCHAR(255) NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
@@ -707,6 +709,8 @@ updated_at TIMESTAMP
 | home_subtitle   | Подзаголовок блока на главной                   |
 | show_on_home    | Показывать блок на главной                      |
 | home_sort_order | Порядок блока на главной                        |
+| about_studio_text | SEO-текст «О студии» внизу главной страницы (пусто → блок не выводится) |
+| about_studio_title | Заголовок блока «О студии» (пусто → «О студии») |
 
 Фиксированные slug: `home`, `services`, `portfolio`, `blog`.
 

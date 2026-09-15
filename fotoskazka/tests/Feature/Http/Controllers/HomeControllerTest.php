@@ -600,6 +600,57 @@ class HomeControllerTest extends TestCase
         $response->assertSee('Оставить заявку');
     }
 
+    public function test_home_page_renders_about_studio_text(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'title' => 'Главная',
+            'about_studio_text' => '<p>Мы — студия семейной фотографии.</p>',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('О студии')
+            ->assertSee('Мы — студия семейной фотографии');
+    }
+
+    public function test_home_page_renders_custom_about_studio_title(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'title' => 'Главная',
+            'about_studio_text' => '<p>Наш текст.</p>',
+            'about_studio_title' => 'Наша студия',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('Наша студия')
+            ->assertDontSee('>О студии<');
+    }
+
+    public function test_home_page_hides_about_studio_text_when_empty(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'title' => 'Главная',
+            'about_studio_text' => null,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('О студии');
+    }
+
     public function test_store_inquiry_creates_inquiry(): void
     {
         $response = $this->post(route('inquiry.store'), [

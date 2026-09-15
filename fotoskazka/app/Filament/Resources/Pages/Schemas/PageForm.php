@@ -113,6 +113,15 @@ class PageForm
                                     ->visible(fn (callable $get) => $get('show_on_home'))
                                     ->columnSpanFull(),
                             ]),
+                        RichEditor::make('about_studio_text')
+                            ->label('SEO-текст внизу страницы (О студии)')
+                            ->helperText('Выводится в самом низу главной страницы, перед футером')
+                            ->columnSpanFull(),
+                        TextInput::make('about_studio_title')
+                            ->maxLength(255)
+                            ->label('Заголовок блока (О студии)')
+                            ->helperText('Если не заполнено — используется «О студии»')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('Альбомы')
@@ -163,7 +172,6 @@ class PageForm
                     ]),
 
                 Section::make('SEO')
-                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('seo_title')
                             ->maxLength(255),
