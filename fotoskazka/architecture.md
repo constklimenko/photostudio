@@ -105,12 +105,15 @@ app/
 │   │   │   └── LoginController.php
 │   │   ├── BlogController.php
 │   │   ├── CabinetController.php
-│   │   ├── CommentController.php        # Создание комментариев (C2.8)
+│   │   ├── CommentController.php        # Создание комментариев (C2.8/C2.9)
 │   │   ├── HomeController.php
 │   │   ├── MediaController.php        # Прокси-отдача оригиналов с удалённых дисков
 │   │   ├── PortfolioController.php
 │   │   ├── ServiceCatalogController.php  # Иерархический каталог услуг (B11)
 │   │   └── VideoController.php
+│   ├── Requests/
+│   │   ├── StoreCommentRequest.php
+│   │   └── StorePhotoCommentRequest.php
 │   └── Middleware/
 ├── Models/                     # Eloquent модели (19 шт.)
 │   ├── Album.php
@@ -217,6 +220,7 @@ resources/views/
 | GET | `/cabinet/projects` | `CabinetController@projects` | `auth` |
 | GET | `/cabinet/projects/{project}` | `CabinetController@show` | `auth` |
 | POST | `/cabinet/projects/{project}/comments` | `CommentController@storeProject` | `auth` |
+| POST | `/cabinet/photos/{photo}/comments` | `CommentController@storePhoto` | `auth` |
 | GET | `/cabinet/albums/{album}` | `CabinetController@showAlbum` (галерея; `AlbumPolicy::view`) | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
 | POST | `/login` | `Auth\LoginController@store` | `guest` |
@@ -757,7 +761,7 @@ Filament-UX (`MediaTable`, `EditMedia`):
   должен корректно подготавливать связь `photo->album` (и `album->project`);
 - Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
 
-### Policy для комментариев (C2.8)
+### Policy для комментариев (C2.8 / C2.9)
 
 `app/Policies/CommentPolicy.php` — право комментировать объект равно праву его
 видеть. Ролевая матрица **не дублируется**: единственный метод `create` целиком
@@ -771,16 +775,22 @@ Filament-UX (`MediaTable`, `EditMedia`):
   `album_user` альбом. `ProjectPolicy` намеренно не расширялся: канал
   `parent → album` (C1) действует только на альбом и не даёт доступа к проекту
   (C2.5), а комментирование проекта по отдельному правилу создало бы
-  неконсистентную матрицу. При реализации комментариев фото (C2.9) родитель
-  сможет комментировать фото внутри назначенного альбома без изменения
-  CommentPolicy (цепочка `CommentPolicy::create` → `PhotoPolicy::view` →
-  `AlbumPolicy::view`).
-- Комментарии выводятся на странице проекта (`cabinet.project`), отсортированы
-  по `created_at` ASC, `body` рендерится с корректным escaping
-  (`{{ }}` / `{!! nl2br(e($body)) !!}`), автор сохраняется из сессии.
-- IDOR закрыт двумя уровнями: маршрут страницы проекта и `StoreCommentRequest`
-  авторизует `$user->can('create', [Comment::class, $project])` до валидации.
-- N+1: страница проекта грузит `comments.user` одним eager load.
+  неконсистентную матрицу.
+- Комментарии к **Photo** (C2.9): `CommentPolicy::create` → `PhotoPolicy::view`
+  → `AlbumPolicy::view`. `parent` комментирует фото внутри назначенного
+  `client`-альбома; `client` — фото своих проектов (любой тип альбома);
+  `class_manager` — фото `client`-альбомов своего проекта.
+- Комментарии выводятся на странице проекта (`cabinet.project`) и в галерее
+  альбома (`cabinet.album`), отсортированы по `created_at` ASC, `body`
+  рендерится с корректным escaping (`{{ }}` / `{!! nl2br(e($body)) !!}`),
+  автор сохраняется из сессии.
+- IDOR закрыт двумя уровнями: маршрут авторизует
+  `$user->can('create', [Comment::class, $project|$photo])` до валидации;
+  ID фото (комментарии фото) берётся только из URL-привязки, `photo_id` формы
+  игнорируется.
+- N+1: страница проекта грузит `comments.user` одним eager load; галерея альбома
+  — `comments.user` (+ `album.project` для policy), один gate-проверка на
+  страницу (доступ по альбому однороден).
 
 ### Защита системных ролей
 

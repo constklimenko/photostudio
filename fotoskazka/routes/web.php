@@ -57,6 +57,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/cabinet/projects/{project}/comments', [CommentController::class, 'storeProject'])
         ->name('cabinet.project.comments.store');
 
+    Route::post('/cabinet/photos/{photo}/comments', [CommentController::class, 'storePhoto'])
+        ->name('cabinet.photo.comments.store');
+
     Route::get('/cabinet/albums/{album}', [CabinetController::class, 'showAlbum'])
         ->name('cabinet.album');
 });

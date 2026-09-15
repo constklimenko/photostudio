@@ -68,6 +68,7 @@ erDiagram
     USERS ||--o{ COMMENTS : author
 
     PROJECTS ||--o{ COMMENTS : commented
+    PHOTOS ||--o{ COMMENTS : commented
 
     MEDIA ||--o{ PHOTOS : source
 
@@ -1019,9 +1020,9 @@ INDEX(sort_order)
 
 ## comments
 
-Единая polymorphic-модель комментариев аудитории (C2.8). Сейчас комментарии
-пишутся к `Project`, модель рассчитана также на комментарии `Photo` (C2.9) —
-сущность задаётся парой `commentable_type` / `commentable_id` без изменения схемы.
+Единая polymorphic-модель комментариев аудитории (C2.8). Комментарии пишутся
+к `Project` (страница проекта) и `Photo` (галерея альбома, C2.9) — сущность
+задаётся парой `commentable_type` / `commentable_id` без изменения схемы.
 
 ```sql
 id BIGINT PRIMARY KEY
@@ -1056,19 +1057,21 @@ INDEX(commentable_type, commentable_id, created_at)
 (`CommentPolicy::create` делегирует в `ProjectPolicy::view` / `PhotoPolicy::view`).
 `parent` комментарии к Project не оставляет: у него нет доступа к Project
 (доступ через `album_user` действует только на альбом) — см. «Система ролей
-и доступа» в `architecture.md`.
+и доступа» в `architecture.md`. К фото внутри назначенного альбома `parent`
+комментарий оставить может (цепочка `PhotoPolicy::view` → `AlbumPolicy::view`).
 
 Связи моделей:
 
 | Модель    | Метод         | Связь                                             |
 |-----------|---------------|---------------------------------------------------|
 | Project   | `comments()`  | MorphMany (полиморфный `commentable`)             |
-| Photo     | `comments()`  | MorphMany (зарезервировано под C2.9)              |
+| Photo     | `comments()`  | MorphMany (полиморфный `commentable`)             |
 | User      | `comments()`  | HasMany к `comments.user_id`                      |
 | Comment   | `commentable()` | MorphTo → Project/Photo                         |
 | Comment   | `user()`      | BelongsTo → users                                 |
 
-Вывод комментариев на странице проекта отсортирован по `created_at` ASC.
+Вывод комментариев на странице проекта и в галерее альбома отсортирован
+по `created_at` ASC.
 
 ---
 

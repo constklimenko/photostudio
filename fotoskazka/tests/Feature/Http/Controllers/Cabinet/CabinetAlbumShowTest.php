@@ -459,6 +459,6 @@ class CabinetAlbumShowTest extends TestCase
         $queryCount = count(\DB::getQueryLog());
         \DB::disableQueryLog();
 
-        $this->assertLessThanOrEqual(10, $queryCount, "Expected ≤10 queries, got {$queryCount}. Possible N+1 issue.");
+        $this->assertLessThanOrEqual(15, $queryCount, "Expected ≤15 queries, got {$queryCount}. Possible N+1 issue.");
     }
 }
