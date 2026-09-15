@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CabinetController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PortfolioController;
@@ -52,6 +53,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/cabinet/projects/{project}', [CabinetController::class, 'show'])
         ->name('cabinet.project');
+
+    Route::post('/cabinet/projects/{project}/comments', [CommentController::class, 'storeProject'])
+        ->name('cabinet.project.comments.store');
 
     Route::get('/cabinet/albums/{album}', [CabinetController::class, 'showAlbum'])
         ->name('cabinet.album');

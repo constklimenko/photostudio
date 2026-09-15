@@ -75,4 +75,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->belongsToMany(Album::class);
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
 }

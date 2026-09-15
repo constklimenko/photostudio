@@ -65,6 +65,10 @@ erDiagram
     ALBUMS ||--o{ PHOTOS : contains
     ALBUMS }o--o{ VIDEOS : contains
 
+    USERS ||--o{ COMMENTS : author
+
+    PROJECTS ||--o{ COMMENTS : commented
+
     MEDIA ||--o{ PHOTOS : source
 
     MEDIA ||--o{ POSTS : cover
@@ -1010,6 +1014,61 @@ INDEX(album_id)
 INDEX(media_id)
 INDEX(sort_order)
 ```
+
+---
+
+## comments
+
+Единая polymorphic-модель комментариев аудитории (C2.8). Сейчас комментарии
+пишутся к `Project`, модель рассчитана также на комментарии `Photo` (C2.9) —
+сущность задаётся парой `commentable_type` / `commentable_id` без изменения схемы.
+
+```sql
+id BIGINT PRIMARY KEY
+
+user_id BIGINT UNSIGNED
+
+commentable_type VARCHAR(255)
+
+commentable_id BIGINT UNSIGNED
+
+body TEXT
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+user_id -> users.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(user_id)
+INDEX(commentable_type, commentable_id)
+INDEX(commentable_type, commentable_id, created_at)
+```
+
+Право оставить комментарий равно праву видеть комментируемый объект
+(`CommentPolicy::create` делегирует в `ProjectPolicy::view` / `PhotoPolicy::view`).
+`parent` комментарии к Project не оставляет: у него нет доступа к Project
+(доступ через `album_user` действует только на альбом) — см. «Система ролей
+и доступа» в `architecture.md`.
+
+Связи моделей:
+
+| Модель    | Метод         | Связь                                             |
+|-----------|---------------|---------------------------------------------------|
+| Project   | `comments()`  | MorphMany (полиморфный `commentable`)             |
+| Photo     | `comments()`  | MorphMany (зарезервировано под C2.9)              |
+| User      | `comments()`  | HasMany к `comments.user_id`                      |
+| Comment   | `commentable()` | MorphTo → Project/Photo                         |
+| Comment   | `user()`      | BelongsTo → users                                 |
+
+Вывод комментариев на странице проекта отсортирован по `created_at` ASC.
 
 ---
 

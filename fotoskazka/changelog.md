@@ -1,5 +1,101 @@
 # Changelog
 
+## 2026-09-15 — Комментарии к проектам (C2.8, часть)
+
+### Цель
+
+Реализовать комментарии к `Project` в личном кабинете на базе модели доступа C1.
+Использована единая polymorphic-модель `Comment`, рассчитанная также на будущие
+комментарии фотографий (C2.9), но без добавления фич сверх плана
+(редактирование/удаление и модерация в Filament не добавлялись — см. ниже).
+
+### Структура
+
+Новая таблица `comments` (миграция `2026_09_15_100000_create_comments_table`):
+
+```text
+id | user_id | commentable_type | commentable_id | body | created_at | updated_at
+```
+
+- `commentable` — полиморфная связь (morphTo): сейчас `Project`, в будущем `Photo`;
+- `user_id` — автор комментария (FK → users, ON DELETE CASCADE);
+- составной индекс `(commentable_type, commentable_id, created_at)` — выборка
+  комментариев объекта, отсортированных по времени.
+
+### Связи
+
+- `Project::comments()` — MorphMany → comments;
+- `Photo::comments()` — MorphMany → comments (зарезервировано под C2.9);
+- `User::comments()` — HasMany → comments;
+- `Comment::commentable()` — MorphTo;
+- `Comment::user()` — BelongsTo.
+
+### Авторизация
+
+`CommentPolicy::create(User, Project|Photo)` — **единственное** правило и оно
+делегировано: `$user->can('view', $commentable)` → `ProjectPolicy::view`
+(для Project) / `PhotoPolicy::view` (для Photo, будущее). Ролевая матрица
+в CommentPolicy не дублируется.
+
+- `client` — комментарии собственного Project (как право `view`);
+- `class_manager` — комментарии собственного Project;
+- `photographer` / `admin` — полный доступ (как право `view`);
+- `parent` — доступа нет.
+
+### Решение по `parent` (зафиксированное противоречие)
+
+В текущей модели доступа C1 `parent` не имеет доступа к `Project`
+(`ProjectPolicy::view` возвращает `false` даже при назначенном через `album_user`
+альбоме — `album_user` это отдельный канал доступа к альбому, не к проекту;
+C2.5: доступ parent к странице проекта отсутствует). Поэтому `parent` **не может
+комментировать Project** (`CommentPolicy::create` → `403`), даже если в проекте
+есть назначенный ему альбом. `ProjectPolicy` намеренно не расширялся: комментарий
+существует в контексте проекта, и давать роль-гонцу отдельную возможность
+комментировать целый проект без доступа к нему было бы небезопасно.
+Когда/если появятся комментарии фотографий (C2.9), `parent` сможет комментировать
+фото внутри назначенного альбома — через `PhotoPolicy::view` → `AlbumPolicy::view`
+(без изменения CommentPolicy).
+
+### Реализация
+
+- `POST /cabinet/projects/{project}/comments` (`CommentController@storeProject`,
+  middleware `auth`) — создание комментария;
+- `StoreCommentRequest` — авторизация через `CommentPolicy::create` (защита от
+  IDOR) + валидация `body`: `required|string|max:2000`;
+- автор комментария сохраняется из идентифицированного пользователя
+  (`$request->user()->id`);
+- страница проекта (`cabinet/project.blade.php`): список комментариев
+  (сортировка по `created_at` ASC, автор + дата) и форма оставления комментария;
+  вывод `body` — через `{{ }}`/`{!! nl2br(e($body)) !!}` — корректный escaping,
+  XSS исключён;
+- eager loading `project.comments.user` на странице проекта — без N+1.
+
+### Намеренно НЕ реализовано
+
+- редактирование/удаление комментариев — вне текущего плана;
+- модерация комментариев в Filament (roadmap C2.8) — отдельная, осознанно
+  выделенная задача, не входит в эту работу по инструкции «не добавлять
+  редактирование/удаление, если этого нет в текущем плане».
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/Cabinet/CabinetProjectCommentsTest.php` (новый,
+  16 тестов): гость → login; client/class_manager — свой проект (успех + IDOR
+  чужого → 403); parent — 403 даже с назначенным альбомом; photographer/admin —
+  любой проект; body required/string/max; несуществующий проект → 404;
+  сортировка по времени на странице; XSS-escaped; N+1 ≤ 15 запросов.
+- `php artisan test` — **1021 passed** (1 pre-existing risky
+  `ServiceCatalogControllerTest::test_three_level_category_page_renders_full_breadcrumb`);
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md`: модель `Comment`, связь, `CommentPolicy` (делегирование),
+  описание решения по `parent`;
+- `database.md`: таблица `comments`, связи, ER-диаграмма.
+
+---
+
 ## 2026-09-15 — Media security (C2.7/C2.10): закрыта утечка обложек приватных альбомов
 
 ### Цель
