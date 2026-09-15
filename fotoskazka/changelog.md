@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-09-15 — Media security (C2.7/C2.10): закрыта утечка обложек приватных альбомов
+
+### Цель
+
+Аудит защищённой выдачи media по прямым роутам `/media/{id}/*` для клиентских
+галерей (цепочка Media → Photo → Album → authorization). Проверялись IDOR:
+media из чужого `client`-альбома, чужого `project`, назначенная другому `parent`,
+media менеджера чужого `class_manager`, а также все варианты URL (`original`,
+`thumbnail`, `download`, `display`, `lightbox`).
+
+### Найденный дефект
+
+Обложка приватного альбома не защищалась: медиа из `albums.cover_media_id`
+создаётся отдельной записью (без строки `photos`), поэтому выпадала из цепочки
+`Media → Photo → Album` и `MediaAccessService::isPublic()` возвращал `true`.
+`/media/{coverId}/*` отдавался любому пользователю (гость → 200 вместо 404),
+хотя обложка относится к приватному `client`/`project`-альбому.
+
+### Изменено
+
+- **app/Services/MediaAccessService.php** — `privateAlbums()` учитывает обе связи
+  Media с приватными альбомами:
+  - через строки `photos` (прежняя логика, цепочка `Media → Photo → Album`);
+  - через `albums.cover_media_id` (обложка альбома).
+  Логика разрешения не дублируется: как и раньше, доступ проверяется через
+  `AlbumPolicy::view` (`$user->can('view', $album)`). Публичный интерфейс
+  сервиса (`isPublic`, `canView`) не изменился, `MediaController` не тронут.
+
+### Поведение после исправления (по всем вариантам URL `/media/{id}/*`)
+
+- гость → **404**;
+- чужой `client` / чужой `class_manager` / неназначенный `parent` → **403**;
+- свой `client` / свой `class_manager` / назначенный `parent` / admin → **200**;
+- обложка публичного (`portfolio`) альбома остаётся публичной.
+
+### Тесты
+
+- **tests/Feature/Http/Controllers/MediaCoverAccessAuthorizationTest.php** (новый,
+  17 тестов) — регрессия на обложки приватных альбомов для всех ролей и всех
+  вариантов URL + `isPublic`/`canView` на уровне сервиса. До исправления падало
+  9 из 17 тестов (200/200 вместо 404/403).
+- `php artisan test` — **1005 passed**;
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` / `database.md` — изменений, требующих фиксации, нет
+  (исправление логики существующего сервиса; структура БД не менялась).
+
+---
+
 ## 2026-09-15 — Roadmap: добавлен этап D1 «Собственный сервис „оживающих фотографий“ (WebAR)»
 
 ### Цель

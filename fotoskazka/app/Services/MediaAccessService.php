@@ -5,7 +5,8 @@ namespace App\Services;
 use App\Models\Album;
 use App\Models\Media;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class MediaAccessService
 {
@@ -33,10 +34,25 @@ class MediaAccessService
         );
     }
 
-    private function privateAlbums(Media $media): BelongsToMany
+    /**
+     * Приватные альбомы, связанные с Media:
+     * - через строки Photo (цепочка Media → Photo → Album);
+     * - через обложку альбома (Media из albums.cover_media_id).
+     */
+    private function privateAlbums(Media $media): Builder
     {
-        return $media->albums()
+        return Album::query()
             ->whereIn('albums.type', self::PRIVATE_ALBUM_TYPES)
+            ->where(function (Builder $query) use ($media): void {
+                $query
+                    ->where('albums.cover_media_id', $media->getKey())
+                    ->orWhereExists(function (QueryBuilder $photos) use ($media): void {
+                        $photos
+                            ->from('photos')
+                            ->whereColumn('photos.album_id', 'albums.id')
+                            ->where('photos.media_id', $media->getKey());
+                    });
+            })
             ->with('project');
     }
 }
