@@ -31,12 +31,22 @@
             {{ $page?->subtitle ?: 'Выпускные альбомы под ключ в Уфе — красиво, вовремя, без стресса' }}
         </p>
         <a class="inline-block px-10 py-4 bg-gold text-black font-semibold uppercase tracking-wider text-base rounded-lg shadow-xl hover:opacity-90 transition" href="#inquiry-form">
-            Узнать больше
+            Записаться на съёмку
         </a>
     </div>
 </section>
 
 <x-site.social-links variant="section" />
+
+@if ($arTeaser['enabled'])
+    <x-site.ar-teaser
+        :title="$arTeaser['title']"
+        :accent="$arTeaser['accent']"
+        :subtitle="$arTeaser['subtitle']"
+        :footer="$arTeaser['footer']"
+        :media="$arTeaser['media']"
+    />
+@endif
 
 @if ($homeCategories->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
@@ -88,54 +98,6 @@
     </section>
 @endif
 
-@if ($featuredWorks->isNotEmpty())
-    <section class="py-24 bg-[#111111]" data-aos="fade-up">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
-            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['portfolio']->home_subtitle ?? 'Наши лучшие проекты' }}</p>
-
-            <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach ($featuredWorks as $album)
-                    <a href="{{ route('portfolio.show', $album->slug) }}"
-                       class="group block relative overflow-hidden rounded-xl aspect-[4/3] bg-black shadow-lg shadow-black/30"
-                       data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
-@if ($album->cover)
-                             <img src="{{ $album->cover->getThumbnailUrl() }}"
-                                  alt="{{ $album->title }}"
-                                  class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-                        @endif
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
-                        <div class="absolute bottom-0 left-0 right-0 p-4">
-                            <h3 class="font-heading text-white font-semibold tracking-wide">{{ $album->title }}</h3>
-                        </div>
-                    </a>
-                @endforeach
-            </div>
-        </div>
-    </section>
-@endif
-
-@if ($arTeaser['enabled'])
-    <x-site.ar-teaser
-        :title="$arTeaser['title']"
-        :accent="$arTeaser['accent']"
-        :subtitle="$arTeaser['subtitle']"
-        :footer="$arTeaser['footer']"
-        :media="$arTeaser['media']"
-    />
-@endif
-
-@if ($videos->isNotEmpty())
-    <section class="py-24 bg-[#111111]" data-aos="fade-up">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Видеогалерея</h2>
-            <p class="mt-3 text-gray-400 text-center">Смотрите наши работы в движении</p>
-
-            <x-site.videos :videos="$videos" />
-        </div>
-    </section>
-@endif
-
 @if ($shootingWorks->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -170,6 +132,44 @@
                     </a>
                 @endforeach
             </div>
+        </div>
+    </section>
+@endif
+
+@if ($featuredWorks->isNotEmpty())
+    <section class="py-24 bg-[#111111]" data-aos="fade-up">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['portfolio']->home_subtitle ?? 'Наши лучшие проекты' }}</p>
+
+            <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                @foreach ($featuredWorks as $album)
+                    <a href="{{ route('portfolio.show', $album->slug) }}"
+                       class="group block relative overflow-hidden rounded-xl aspect-[4/3] bg-black shadow-lg shadow-black/30"
+                       data-aos="fade-up" data-aos-delay="{{ $loop->index * 100 }}">
+@if ($album->cover)
+                             <img src="{{ $album->cover->getThumbnailUrl() }}"
+                                  alt="{{ $album->title }}"
+                                  class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        @endif
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-4">
+                            <h3 class="font-heading text-white font-semibold tracking-wide">{{ $album->title }}</h3>
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </section>
+@endif
+
+@if ($videos->isNotEmpty())
+    <section class="py-24 bg-[#111111]" data-aos="fade-up">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Видеогалерея</h2>
+            <p class="mt-3 text-gray-400 text-center">Смотрите наши работы в движении</p>
+
+            <x-site.videos :videos="$videos" />
         </div>
     </section>
 @endif
