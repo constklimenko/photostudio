@@ -84,7 +84,7 @@
 
         <div class="absolute inset-0 flex flex-col items-center justify-center px-4 pt-20 pb-32 z-[3]">
             <img id="lightboxImage" src="" alt=""
-                 class="max-h-[46vh] max-w-[92vw] object-contain rounded-lg shadow-2xl select-none">
+                 class="max-h-[46vh] max-w-[92vw] sm:max-h-[calc(100vh-13rem)] sm:max-w-[calc(100vw-4rem)] object-contain rounded-lg shadow-2xl select-none">
 
             <p id="lightboxCaption"
                class="hidden mt-4 max-w-[min(80vw,40rem)] text-center text-sm text-gray-300">
