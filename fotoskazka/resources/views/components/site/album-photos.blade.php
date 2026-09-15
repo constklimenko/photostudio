@@ -5,11 +5,18 @@
     $commenter = auth()->user();
     $canCommentOnPhotos = $comments && $commenter && $galleryPhotos->isNotEmpty()
         && $commenter->can('create', [\App\Models\Comment::class, $galleryPhotos->first()]);
+    $albumTitle = $album->title ?? '';
 @endphp
 
 @if ($galleryPhotos->isNotEmpty())
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="portfolioGrid">
         @foreach ($galleryPhotos as $photo)
+            @php
+                $photoTitle = $photo->caption ?? $photo->media->title ?? '';
+                $photoAlt = $photoTitle
+                    ? $photoTitle . ' — ' . $albumTitle . ' Фотосказка Уфа'
+                    : 'Фото ' . $loop->iteration . ' — ' . $albumTitle . ' | Профессиональная фотосъемка в Уфе';
+            @endphp
             <a href="{{ $photo->media->getLightboxUrl() }}"
                class="rounded-xl overflow-hidden bg-[#1a1a1a] block cursor-pointer group lightbox-trigger shadow-lg shadow-black/30 hover:bg-[#242424] transition"
                data-index="{{ $loop->index }}"
@@ -19,7 +26,7 @@
                data-caption="{{ $photo->caption }}"
                data-aos="{{ $loop->even ? 'flip-left' : 'flip-right' }}">
                  <img src="{{ $photo->media->getDisplayUrl() }}"
-                      alt="{{ $photo->caption ?? $album->title }}"
+                      alt="{{ $photoAlt }}"
                       class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       loading="lazy">
                  @if ($comments && $photo->comments->isNotEmpty())
