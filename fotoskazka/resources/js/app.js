@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    AOS.refresh();
+
     document.querySelectorAll('video[data-video-forbid-sound]').forEach((video) => {
         const enforceMuted = () => {
             if (!video.muted) video.muted = true;
