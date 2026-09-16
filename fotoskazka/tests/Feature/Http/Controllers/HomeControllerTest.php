@@ -406,7 +406,7 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
         $html = $response->getContent();
 
-        preg_match('/<section[^>]*>.*?Фото со съёмок.*?<\/section>/su', $html, $matches);
+        preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*Фото со съёмок\s*<\/h2>.*?<\/section>/su', $html, $matches);
         $section = $matches[0] ?? '';
 
         $this->assertNotSame('', $section);
@@ -435,7 +435,7 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
         $html = $response->getContent();
 
-        preg_match('/<section[^>]*>.*?Избранные работы.*?<\/section>/su', $html, $matches);
+        preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*Избранные работы\s*<\/h2>.*?<\/section>/su', $html, $matches);
         $featured = $matches[0] ?? '';
 
         $this->assertNotSame('', $featured);
