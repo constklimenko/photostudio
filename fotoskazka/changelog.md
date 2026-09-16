@@ -1,5 +1,72 @@
 # Changelog
 
+## 2026-09-15 — SEO микроразметка JSON-LD (breadcrumbs, услуги, категории)
+
+### Цель
+
+Добавить валидную семантическую микроразметку `Schema.org` для улучшения
+выдачи поисковых систем: `BreadcrumbList` на всех страницах с хлебными
+крошками, `Product` + `Offer` на странице услуги и `Product` +
+`AggregateOffer` на странице категории.
+
+### Реализация
+
+- `resources/views/components/site/breadcrumbs.blade.php` — компонент теперь
+  дополнительно выводит `<script type="application/ld+json">` с разметкой
+  `BreadcrumbList`:
+  - каждый элемент `$items` получает `position` (начиная с 1), `name` (из
+    `label`) и `item` — абсолютный URL через `url()`, для текущей страницы
+    (элемент без `url`) — `url()->current()`;
+  - JSON рендерится через `@json` с HEX-флагами (XSS-безопасно, даже если
+    текст содержит `</script>`) и `JSON_UNESCAPED_UNICODE`;
+  - скрипт выводится только если массив `$items` не пуст.
+- `resources/views/services/category.blade.php` — блок JSON-LD `Product`:
+  - `name` — `$category->name`;
+  - `description` — `seo_description ?: description`, очищенное через
+    `strip_tags`, с фоллбэком на `name`;
+  - `image` — `$category->cover->getUrl()` (прокси-роут `media.original`);
+  - `offers` тип `AggregateOffer`: `lowPrice`/`highPrice`/`offerCount` по
+    ценам дочерних услуг, дочерних категорий и собственной `price_from`
+    (только если есть хотя бы одна цена), `priceCurrency = "RUB"`,
+    `availability = "https://schema.org/InStock"`.
+- `resources/views/services/show.blade.php` — блок JSON-LD `Product`:
+  - `name` — `$service->title`;
+  - `description` — `seo_description ?: short_description ?: description`
+    (через `strip_tags`), фоллбэк на `title`;
+  - `image` — `$service->cover->getUrl()`;
+  - `offers` тип `Offer`: `price` из `price_from` (приводится к числу через
+    `(float)`), `priceCurrency = "RUB"`,
+    `availability = "https://schema.org/InStock"` — блок рендерится только
+    при заполненной цене.
+
+### НЕ изменено
+
+- Структура БД, модели, контроллеры — без изменений (миграции не создавались).
+- `services/index.blade.php` и остальные страницы (портфолио, блог, видео) —
+  HTML-разметка хлебных крошек не тронута; BreadcrumbList для них
+  подхватывается автоматически из общего компонента.
+
+### Проверка
+
+- Рендер реальных страниц: категория `/services/vypusknye-albomy` (Product +
+  AggregateOffer + BreadcrumbList), услуга `/services/individualnye-fotosessii/koty`
+  (Product + Offer + BreadcrumbList с position 1–4 и абсолютными URL).
+- `php artisan test tests/Feature/Components/BreadcrumbsTest.php
+  tests/Feature/Http/Controllers/PortfolioControllerTest.php
+  tests/Feature/Http/Controllers/VideoControllerTest.php` — passed;
+  `ServiceCatalogControllerTest` — 46 passed; 3 фейла по `services/index` и
+  1 risky — предсуществующие, воспроизводятся на чистом `HEAD` (пустой ответ
+  страницы `/services` в текущем окружении, не связаны с задачей, подтверждено
+  через `git stash`).
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` / `database.md` — изменений, требующих фиксации, нет
+  (только вывод разметки во Blade; структура БД не менялась).
+
+---
+
 ## 2026-09-15 — Крупнее фото в lightbox на десктопе
 
 ### Цель

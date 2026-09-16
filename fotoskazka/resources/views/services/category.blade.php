@@ -5,6 +5,41 @@
 
 @section('content')
 
+@php
+    $categorySchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $category->name,
+        'description' => trim(strip_tags($category->seo_description ?: $category->description ?: '')) ?: $category->name,
+    ];
+
+    if ($category->cover) {
+        $categorySchema['image'] = $category->cover->getUrl();
+    }
+
+    $categoryPrices = $category->services
+        ->pluck('price_from')
+        ->concat($category->children->pluck('price_from'))
+        ->concat([$category->price_from])
+        ->filter()
+        ->map(fn ($price) => (float) $price);
+
+    if ($categoryPrices->isNotEmpty()) {
+        $categorySchema['offers'] = [
+            '@type' => 'AggregateOffer',
+            'priceCurrency' => 'RUB',
+            'lowPrice' => $categoryPrices->min(),
+            'highPrice' => $categoryPrices->max(),
+            'offerCount' => $categoryPrices->count(),
+            'availability' => 'https://schema.org/InStock',
+        ];
+    }
+@endphp
+
+<script type="application/ld+json">
+    @json($categorySchema, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+</script>
+
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <x-site.breadcrumbs :items="array_merge([

@@ -5,6 +5,32 @@
 
 @section('content')
 
+@php
+    $serviceSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $service->title,
+        'description' => trim(strip_tags($service->seo_description ?: $service->short_description ?: $service->description ?: '')) ?: $service->title,
+    ];
+
+    if ($service->cover) {
+        $serviceSchema['image'] = $service->cover->getUrl();
+    }
+
+    if ($service->price_from) {
+        $serviceSchema['offers'] = [
+            '@type' => 'Offer',
+            'price' => (float) $service->price_from,
+            'priceCurrency' => 'RUB',
+            'availability' => 'https://schema.org/InStock',
+        ];
+    }
+@endphp
+
+<script type="application/ld+json">
+    @json($serviceSchema, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+</script>
+
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <x-site.breadcrumbs :items="array_merge([
