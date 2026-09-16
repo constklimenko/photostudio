@@ -1,5 +1,71 @@
 # Changelog
 
+## 2026-09-16 — robots.txt и sitemap.xml
+
+### Цель
+
+Генерация `robots.txt` и `sitemap.xml` без сторонних SEO-пакетов: полностью
+кастомные роуты и контроллер, полный контроль над иерархическими URL каталога
+услуг (`catalogPath()`), динамическое построение карты сайта из БД и
+кэширование результата на 24 часа со сбросом при изменении сущностей.
+
+### Реализация
+
+- `app/Services/SitemapService.php` — сервис построения XML-карты сайта:
+  - `render()` — `Cache::remember('sitemap.xml', now()->addHours(24))`;
+  - `build()` — собирает URL:
+    - `/` (главная), `/services`, `/portfolio`, `/blog`;
+    - все опубликованные категории услуг (`type='service'`,
+      `is_published = true`) через `Category::catalogPath()`;
+    - все опубликованные услуги через `Service::catalogPath()`;
+    - статьи блога (`is_published = true`, `published_at` не пустой и не
+      позже текущего момента) → `/blog/{slug}`;
+    - публичные альбомы портфолио (`type='portfolio'`,
+      `is_published = true`) → `/portfolio/{slug}`;
+  - `<lastmod>` = `updated_at` сущности (для статических разделов — текущая
+    дата), формат дат по спецификации sitemap (`YYYY-MM-DD`);
+  - XML рендерится вручную (urlset 0.9), значения экранируются через `e()`.
+- `app/Http/Controllers/SitemapController.php`:
+  - `robots()` — `Response::make($content, 200, ['Content-Type' => 'text/plain'])`;
+  - `sitemap()` — `Response::make($xml, 200, ['Content-Type' => 'application/xml'])`.
+- `routes/web.php` — маршруты `GET /robots.txt` и `GET /sitemap.xml`.
+- `app/Observers/SitemapCacheObserver.php` + атрибут `#[ObservedBy]` на
+  моделях `Category`, `Service`, `Post`, `Album` — сброс кэша карты сайта
+  при `saved`/`deleted`.
+- `public/robots.txt` — удалён статический файл, чтобы отдачей управлял маршрут
+  (статический файл перехватывал бы запрос на веб-сервере).
+
+### robots.txt
+
+```
+User-agent: *
+Disallow: /admin
+Disallow: /cabinet
+Disallow: /login
+Disallow: /logout
+Disallow: /media/*/original
+
+Sitemap: {url}/sitemap.xml
+```
+
+Директива `Sitemap` генерируется через `url('/sitemap.xml')` и подставляет
+текущий `APP_URL` (домен в проде `https://fotoskazkaufa.ru`).
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/SitemapControllerTest.php` — контент и
+  заголовки `robots.txt`, состав `sitemap.xml` (включая иерархические пути
+  категорий/услуг, исключение неопубликованных и запланированных записей,
+  `lastmod` из `updated_at`, кэширование).
+- `tests/Unit/Observers/SitemapCacheObserverTest.php` — сброс кэша при
+  создании/обновлении/удалении Category, Service, Post, Album.
+
+### Примечание
+
+Существующие 9 падающих тестов (`HeaderMenuTest`, `HomeControllerTest`,
+`ServiceCatalogControllerTest`, `ServiceControllerTest`) и 1 risky-тест не
+связаны с данной задачей — воспроизводятся на чистом `HEAD`.
+
 ## 2026-09-15 — SEO микроразметка JSON-LD (breadcrumbs, услуги, категории)
 
 ### Цель

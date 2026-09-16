@@ -7,10 +7,14 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ServiceCatalogController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VideoController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
+
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('robots.txt');
+Route::get('/sitemap.xml', [SitemapController::class, 'sitemap'])->name('sitemap.xml');
 
 Route::controller(ServiceCatalogController::class)->prefix('services')->name('services.')->group(function () {
     Route::get('/', 'index')->name('index');
