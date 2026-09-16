@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-09-16 — Тексты блоков главной и пункта меню через сущность Page
+
+### Цель
+
+Сущность `Page` должна централизованно управлять заголовками, подзаголовками и
+текстовыми описаниями как на тематических страницах (блог, портфолио, услуги,
+видеогалерея), так и в соответствующих блоках на главной. Цепочка фоллбэка:
+текст блока на главной → текст тематической страницы → текст по умолчанию.
+Дополнительно — в админке можно выбирать, отображать ли пункт верхнего меню.
+
+### Реализация
+
+- Миграция `2026_09_16_100000_add_show_in_menu_and_home_content_to_pages_table.php`:
+  - `pages.show_in_menu` (bool, default `true`) — показывать пункт верхнего меню;
+  - `pages.home_content` (longText) — описание блока на главной.
+- `app/Models/Page.php` — новые поля в `$fillable`, `show_in_menu` в `casts`.
+- `app/Services/PageContentService.php`:
+  - `getMenuItems()` — убран жёсткий whitelist слогов; в меню попадают все
+    опубликованные страницы с `show_in_menu = true` (url `/{slug}`, `home` → `/`);
+  - `clearCache($slug)` — при сохранении страницы дополнительно сбрасывает
+    `pages_home_sections` и `pages_menu` (раньше — только `page_content_{slug}`).
+- `app/Filament/Resources/Pages/Schemas/PageForm.php`:
+  - переключатель «Показывать пункт верхнего меню» в «Основной информации»;
+  - секция «Блок на главной» перенесена на не-главные страницы (`show_on_home`,
+    `home_title`, `home_subtitle`, `home_content`, `home_sort_order`) с
+    helperText про фоллбэк к странице;
+  - на главной секция переименована в «О студии»; подзаголовок и описание
+    (hero) теперь редактируются на странице `home` в секции «Заголовок страницы».
+- `resources/views/home.blade.php` — общая цепочка фоллбэка для всех блоков
+  (`home_title ?: title ?: default` и аналогично для подзаголовков/описаний);
+  блоки «Фото со съёмок», «Видеогалерея», «Часто задаваемые вопросы»,
+  «Оставить заявку» привязаны к страницам `shooting`, `video`, `faq`, `inquiry`
+  (были жёстко зашиты); описание блока выводится абзацем под подзаголовком.
+- Тематические страницы (`services`, `portfolio`, `blog`, `video` index) —
+  выводится `page->content` как текстовое описание под заголовком.
+- `database/seeders/PageSeeder.php` — новые записи `video`, `shooting`,
+  `testimonials`, `faq`, `inquiry`; `show_in_menu = true` только для страниц
+  с реальным роутом (`home`, `services`, `portfolio`, `blog`, `video`).
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/HomeSectionTextTest.php` — фоллбэк
+  `home_* → страница → default` и вывод описаний на блоке услуг.
+- `tests/Feature/Http/Controllers/HeaderMenuTest.php` — скрытие пункта при
+  `show_in_menu = false`, отображение кастомной страницы, скрытие
+  неопубликованных.
+- `tests/Feature/Filament/PageResourceTest.php` — обновлены ожидания формы:
+  «Блок на главной» на обычных страницах, «О студии» на главной, поля
+  `show_in_menu`, `home_title`, `home_subtitle`, `home_content`, `home_sort_order`.
+
 ## 2026-09-16 — robots.txt и sitemap.xml
 
 ### Цель

@@ -30,6 +30,69 @@ class HeaderMenuTest extends TestCase
         View::share('menuItems', app(PageContentService::class)->getMenuItems());
     }
 
+    public function test_page_hidden_from_menu_when_show_in_menu_false(): void
+    {
+        $this->seedMenuPages();
+
+        Page::factory()->create([
+            'slug' => 'gallery',
+            'title' => 'Галерея',
+            'menu_title' => 'Галерея',
+            'is_published' => true,
+            'show_in_menu' => false,
+            'sort_order' => 10,
+        ]);
+
+        Cache::flush();
+        View::share('menuItems', app(PageContentService::class)->getMenuItems());
+
+        $html = $this->get('/')->getContent();
+
+        $this->assertStringNotContainsString('href="/gallery"', $html);
+    }
+
+    public function test_custom_page_shown_in_menu_when_enabled(): void
+    {
+        $this->seedMenuPages();
+
+        Page::factory()->create([
+            'slug' => 'about',
+            'title' => 'О нас',
+            'menu_title' => 'О нас',
+            'is_published' => true,
+            'show_in_menu' => true,
+            'sort_order' => 9,
+        ]);
+
+        Cache::flush();
+        View::share('menuItems', app(PageContentService::class)->getMenuItems());
+
+        $html = $this->get('/')->getContent();
+
+        $this->assertStringContainsString('href="/about"', $html);
+    }
+
+    public function test_unpublished_page_hidden_from_menu(): void
+    {
+        $this->seedMenuPages();
+
+        Page::factory()->create([
+            'slug' => 'drafts',
+            'title' => 'Черновик',
+            'menu_title' => 'Черновик',
+            'is_published' => false,
+            'show_in_menu' => true,
+            'sort_order' => 11,
+        ]);
+
+        Cache::flush();
+        View::share('menuItems', app(PageContentService::class)->getMenuItems());
+
+        $html = $this->get('/')->getContent();
+
+        $this->assertStringNotContainsString('href="/drafts"', $html);
+    }
+
     public function test_current_page_link_is_hidden_on_section_pages(): void
     {
         $this->seedMenuPages();

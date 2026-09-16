@@ -685,9 +685,11 @@ excerpt TEXT NULL
 content LONGTEXT NULL
 home_title VARCHAR(255) NULL
 home_subtitle TEXT NULL
+home_content LONGTEXT NULL
 show_on_home BOOLEAN DEFAULT FALSE
 home_sort_order INT DEFAULT 0
 menu_title VARCHAR(255) NULL
+show_in_menu BOOLEAN DEFAULT TRUE
 about_studio_text LONGTEXT NULL
 about_studio_title VARCHAR(255) NULL
 seo_title VARCHAR(255) NULL
@@ -705,14 +707,20 @@ updated_at TIMESTAMP
 | title           | Заголовок страницы                              |
 | subtitle        | Подзаголовок страницы                           |
 | menu_title      | Название пункта меню (если пусто → title)       |
-| home_title      | Заголовок блока на главной                      |
-| home_subtitle   | Подзаголовок блока на главной                   |
+| show_in_menu    | Показывать пункт верхнего меню (url `/{slug}`, для `home` — `/`) |
+| home_title      | Заголовок блока на главной (если пусто → title) |
+| home_subtitle   | Подзаголовок блока на главной (если пусто → subtitle) |
+| home_content    | Описание блока на главной (если пусто → content) |
 | show_on_home    | Показывать блок на главной                      |
 | home_sort_order | Порядок блока на главной                        |
 | about_studio_text | SEO-текст «О студии» внизу главной страницы (пусто → блок не выводится) |
 | about_studio_title | Заголовок блока «О студии» (пусто → «О студии») |
 
-Фиксированные slug: `home`, `services`, `portfolio`, `blog`.
+Цепочка фоллбэка текстов блоков главной: `home_title/home_subtitle/home_content` →
+`title/subtitle/content` → тексты по умолчанию в шаблоне.
+
+Фиксированные slug: `home`, `services`, `portfolio`, `blog`, `video`,
+`testimonials`, `faq`, `inquiry`, `shooting`.
 
 Foreign keys:
 

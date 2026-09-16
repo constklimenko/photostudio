@@ -5,6 +5,36 @@
 
 @section('content')
 
+@php
+    $plainText = function (?string $html): ?string {
+        if (! $html) {
+            return null;
+        }
+        $text = trim(strip_tags($html));
+        return $text === '' ? null : $text;
+    };
+
+    $blockTexts = function (string $slug, string $defaultTitle, string $defaultSubtitle) use ($homeSections, $plainText) {
+        $page = $homeSections[$slug] ?? null;
+        $content = $plainText($page?->home_content ?: $page?->content);
+
+        return [
+            'title' => $page?->home_title ?: $page?->title ?: $defaultTitle,
+            'subtitle' => $page?->home_subtitle ?: $page?->subtitle ?: $defaultSubtitle,
+            'content' => $content ? Str::limit($content, 200) : null,
+        ];
+    };
+
+    $servicesBlock = $blockTexts('services', 'Наши услуги', 'Выберите подходящий формат съёмки');
+    $shootingBlock = $blockTexts('shooting', 'Фото со съёмок', 'Загляните на съёмочную площадку');
+    $portfolioBlock = $blockTexts('portfolio', 'Избранные работы', 'Наши лучшие проекты');
+    $videoBlock = $blockTexts('video', 'Видеогалерея', 'Смотрите наши работы в движении');
+    $testimonialsBlock = $blockTexts('testimonials', 'Отзывы', 'Что говорят наши клиенты');
+    $blogBlock = $blockTexts('blog', 'Последние статьи', 'Полезная информация из мира фотографии');
+    $faqBlock = $blockTexts('faq', 'Часто задаваемые вопросы', 'Ответы на популярные вопросы');
+    $inquiryBlock = $blockTexts('inquiry', 'Оставить заявку', 'Заполните форму, и мы свяжемся с вами');
+@endphp
+
 <section class="relative min-h-screen flex items-center justify-center overflow-hidden bg-black" id="hero-block">
     @if ($heroImages && $heroImages->isNotEmpty())
         @php
@@ -51,8 +81,11 @@
 @if ($homeCategories->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['services']->home_title ?? 'Наши услуги' }}</h2>
-            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['services']->home_subtitle ?? 'Выберите подходящий формат съёмки' }}</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $servicesBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $servicesBlock['subtitle'] }}</p>
+            @if ($servicesBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $servicesBlock['content'] }}</p>
+            @endif
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($homeCategories as $category)
@@ -101,8 +134,11 @@
 @if ($shootingWorks->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Фото со съёмок</h2>
-            <p class="mt-3 text-gray-400 text-center">Загляните на съёмочную площадку</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $shootingBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $shootingBlock['subtitle'] }}</p>
+            @if ($shootingBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $shootingBlock['content'] }}</p>
+            @endif
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($shootingWorks as $album)
@@ -139,8 +175,11 @@
 @if ($featuredWorks->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['portfolio']->home_title ?? 'Избранные работы' }}</h2>
-            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['portfolio']->home_subtitle ?? 'Наши лучшие проекты' }}</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $portfolioBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $portfolioBlock['subtitle'] }}</p>
+            @if ($portfolioBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $portfolioBlock['content'] }}</p>
+            @endif
 
             <div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach ($featuredWorks as $album)
@@ -166,8 +205,11 @@
 @if ($videos->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Видеогалерея</h2>
-            <p class="mt-3 text-gray-400 text-center">Смотрите наши работы в движении</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $videoBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $videoBlock['subtitle'] }}</p>
+            @if ($videoBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $videoBlock['content'] }}</p>
+            @endif
 
             <x-site.videos :videos="$videos" />
         </div>
@@ -177,8 +219,11 @@
 @if ($testimonials->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['testimonials']->home_title ?? 'Отзывы' }}</h2>
-            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['testimonials']->home_subtitle ?? 'Что говорят наши клиенты' }}</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $testimonialsBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $testimonialsBlock['subtitle'] }}</p>
+            @if ($testimonialsBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $testimonialsBlock['content'] }}</p>
+            @endif
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 @foreach ($testimonials as $testimonial)
@@ -211,8 +256,11 @@
 @if ($latestPosts->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $homeSections['blog']->home_title ?? 'Последние статьи' }}</h2>
-            <p class="mt-3 text-gray-400 text-center">{{ $homeSections['blog']->home_subtitle ?? 'Полезная информация из мира фотографии' }}</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $blogBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $blogBlock['subtitle'] }}</p>
+            @if ($blogBlock['content'])
+                <p class="mt-4 text-sm text-gray-400 text-center max-w-2xl mx-auto">{{ $blogBlock['content'] }}</p>
+            @endif
 
             <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
                 @foreach ($latestPosts as $post)
@@ -245,8 +293,8 @@
 @if ($faqItems->isNotEmpty())
     <section class="py-24 bg-[#111111]" data-aos="fade-up">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Часто задаваемые вопросы</h2>
-            <p class="mt-3 text-gray-400 text-center">Ответы на популярные вопросы</p>
+            <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $faqBlock['title'] }}</h2>
+            <p class="mt-3 text-gray-400 text-center">{{ $faqBlock['subtitle'] }}</p>
 
             <div class="mt-12 space-y-0 divide-y divide-[#2a2a2a]" id="faq-accordion">
                 @foreach ($faqItems as $item)
@@ -302,8 +350,8 @@
 
 <section id="inquiry-form" class="py-24" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Оставить заявку</h2>
-        <p class="mt-3 text-gray-400 text-center">Заполните форму, и мы свяжемся с вами</p>
+        <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $inquiryBlock['title'] }}</h2>
+        <p class="mt-3 text-gray-400 text-center">{{ $inquiryBlock['subtitle'] }}</p>
 
         @if (session('success'))
             <div class="mt-6 p-4 bg-green-900/30 border border-green-800 text-green-400 rounded-lg text-sm">

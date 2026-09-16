@@ -44,16 +44,13 @@ class PageContentService
     {
         return Cache::rememberForever('pages_menu', function () {
             return Page::where('is_published', true)
-                ->whereIn('slug', ['home', 'services', 'portfolio', 'blog', 'video'])
+                ->where('show_in_menu', true)
                 ->orderBy('sort_order')
                 ->get(['slug', 'title', 'menu_title'])
                 ->map(fn (Page $page) => [
                     'slug' => $page->slug,
                     'title' => $page->menu_title ?: $page->title,
-                    'url' => match ($page->slug) {
-                        'home' => '/',
-                        default => "/{$page->slug}",
-                    },
+                    'url' => $page->slug === 'home' ? '/' : "/{$page->slug}",
                 ])
                 ->all();
         });
@@ -63,6 +60,8 @@ class PageContentService
     {
         if ($slug) {
             Cache::forget("page_content_{$slug}");
+            Cache::forget('pages_home_sections');
+            Cache::forget('pages_menu');
         } else {
             Cache::flush();
         }

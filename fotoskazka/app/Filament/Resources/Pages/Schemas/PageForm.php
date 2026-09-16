@@ -57,6 +57,9 @@ class PageForm
                             ->maxLength(255)
                             ->label('Название в меню')
                             ->helperText('Если не заполнено — используется заголовок'),
+                        Toggle::make('show_in_menu')
+                            ->label('Показывать пункт верхнего меню')
+                            ->default(true),
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true)
@@ -75,11 +78,11 @@ class PageForm
 
                 Section::make('Заголовок страницы')
                     ->columns(2)
-                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         TextInput::make('subtitle')
                             ->maxLength(255)
-                            ->label('Подзаголовок'),
+                            ->label('Подзаголовок')
+                            ->helperText('На тематической странице выводится под заголовком, на главной — на первом экране'),
                         Select::make('cover_media_id')
                             ->relationship('cover', 'title')
                             ->getOptionLabelFromRecordUsing(fn (Media $record): string => $record->title ?? "Медиа #{$record->id}")
@@ -91,17 +94,19 @@ class PageForm
                             ->label('Описание'),
                     ]),
 
-                Section::make('Главная страница')
-                    ->visible(fn (callable $get) => self::isHomePage($get))
+                Section::make('Блок на главной')
+                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         Toggle::make('show_on_home')
                             ->label('Показывать блок на главной')
+                            ->helperText('Тексты блока на главной, если не заданы явно, берутся из этой страницы')
                             ->live(true),
                         Grid::make(2)
                             ->schema([
                                 TextInput::make('home_title')
                                     ->maxLength(255)
                                     ->label('Заголовок блока на главной')
+                                    ->helperText('Если пусто — используется заголовок страницы')
                                     ->visible(fn (callable $get) => $get('show_on_home')),
                                 TextInput::make('home_sort_order')
                                     ->integer()
@@ -110,17 +115,26 @@ class PageForm
                                     ->visible(fn (callable $get) => $get('show_on_home')),
                                 Textarea::make('home_subtitle')
                                     ->label('Подзаголовок блока на главной')
+                                    ->helperText('Если пусто — используется подзаголовок страницы')
+                                    ->visible(fn (callable $get) => $get('show_on_home')),
+                                RichEditor::make('home_content')
+                                    ->label('Описание блока на главной')
+                                    ->helperText('Если пусто — используется описание страницы')
                                     ->visible(fn (callable $get) => $get('show_on_home'))
                                     ->columnSpanFull(),
                             ]),
-                        RichEditor::make('about_studio_text')
-                            ->label('SEO-текст внизу страницы (О студии)')
-                            ->helperText('Выводится в самом низу главной страницы, перед футером')
-                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('О студии')
+                    ->visible(fn (callable $get) => self::isHomePage($get))
+                    ->schema([
                         TextInput::make('about_studio_title')
                             ->maxLength(255)
                             ->label('Заголовок блока (О студии)')
-                            ->helperText('Если не заполнено — используется «О студии»')
+                            ->helperText('Если не заполнено — используется «О студии»'),
+                        RichEditor::make('about_studio_text')
+                            ->label('SEO-текст внизу страницы (О студии)')
+                            ->helperText('Выводится в самом низу главной страницы, перед футером; пусто → блок не показывается')
                             ->columnSpanFull(),
                     ]),
 

@@ -168,7 +168,9 @@ class PageResourceTest extends TestCase
         $response = $this->get("/admin/pages/{$page->id}/edit");
 
         $response->assertSuccessful()
-            ->assertDontSee('Главная страница');
+            ->assertDontSee('Главная страница')
+            ->assertSee('Блок на главной')
+            ->assertSee('show_on_home');
     }
 
     public function test_regular_page_shows_common_fields(): void
@@ -201,8 +203,9 @@ class PageResourceTest extends TestCase
         $response = $this->get("/admin/pages/{$home->id}/edit");
 
         $response->assertSuccessful()
-            ->assertSee('Главная страница')
-            ->assertSee('show_on_home');
+            ->assertSee('О студии')
+            ->assertSee('about_studio_text')
+            ->assertDontSee('Блок на главной');
     }
 
     public function test_home_page_saves_ar_teaser_settings(): void
@@ -255,5 +258,32 @@ class PageResourceTest extends TestCase
         $response->assertSuccessful()
             ->assertSee('disabled')
             ->assertSee('slug');
+    }
+
+    public function test_regular_page_shows_menu_toggle(): void
+    {
+        $page = Page::factory()->create(['slug' => 'services']);
+
+        $response = $this->get("/admin/pages/{$page->id}/edit");
+
+        $response->assertSuccessful()
+            ->assertSee('show_in_menu')
+            ->assertSee('Показывать пункт верхнего меню');
+    }
+
+    public function test_regular_page_shows_home_block_fields_when_shown_on_home(): void
+    {
+        $page = Page::factory()->create([
+            'slug' => 'services',
+            'show_on_home' => true,
+        ]);
+
+        $response = $this->get("/admin/pages/{$page->id}/edit");
+
+        $response->assertSuccessful()
+            ->assertSee('home_title')
+            ->assertSee('home_subtitle')
+            ->assertSee('home_content')
+            ->assertSee('home_sort_order');
     }
 }

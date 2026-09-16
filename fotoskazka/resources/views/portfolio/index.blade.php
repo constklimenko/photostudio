@@ -15,6 +15,11 @@
         <p class="mt-4 text-lg text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Избранные проекты, которые рассказывают истории' }}
         </p>
+        @if (filled($page?->content))
+            <div class="mt-6 max-w-3xl mx-auto text-left text-sm text-gray-400 leading-relaxed [&_a]:text-[#d4af37] [&_p]:mb-4">
+                {!! $page->content !!}
+            </div>
+        @endif
     </div>
 </section>
 
