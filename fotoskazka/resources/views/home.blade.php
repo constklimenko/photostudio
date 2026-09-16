@@ -21,7 +21,7 @@
         return [
             'title' => $page?->home_title ?: $page?->title ?: $defaultTitle,
             'subtitle' => $page?->home_subtitle ?: $page?->subtitle ?: $defaultSubtitle,
-            'content' => $content ? Str::limit($content, 200) : null,
+            'content' => $content,
         ];
     };
 
