@@ -489,6 +489,36 @@ media:check [--fix-thumbnails] [--media-id=ID] [--limit=N]
 - `app/Actions/Media/MediaCheckResult.php` — результат проверки
 - `app/Console/Commands/MediaCheck.php` — Artisan-команда
 
+## Бэкап и перенос базы данных (db:backup / db:restore)
+
+Перенос базы между копиями сайта без сторонних пакетов (в Laravel 13 встроенных
+`db:dump`/`db:restore` нет — остался `schema:dump` без данных). Используются
+штатные бинарники `mysqldump`/`mysql` и файловая копия для SQLite.
+
+```text
+копия А: php artisan db:backup
+    ↓
+storage/app/backups/fotoskazka-2026-09-19_081852.sql.gz  (структура + данные)
+    ↓ (файл копируется на копию Б)
+копия Б: php artisan db:restore [файл]
+```
+
+- `app/Services/DatabaseTransferService.php` — единая логика: `backup()`
+  (дамп → проверка успешности → gzip), `restore()` (полная замена данных целевой
+  БД), `backups()`/`latestBackup()`/`prune()`.
+- MySQL: `mysqldump --no-tablespaces --single-transaction --quick
+  --default-character-set=utf8mb4`; пароль — через env `MYSQL_PWD`
+  (не попадает в `ps`); подключение по `config/database.php`
+  (`unix_socket`/`host`/`port`/`username`/`password`); проверка наличия
+  бинарников через `which`.
+- SQLite: бэкап — копия файла, восстановление — `cat`/`gzip -dc >`.
+- `db:backup` — опции `--database=`, `--path=`, `--no-compress`,
+  `--prune=N` (по умолчанию 7 — хранятся N последних бэкапов, `0` — без очистки).
+- `db:restore` — аргумент `dump` (путь или имя файла из стандартной директории),
+  без аргумента — последний бэкап либо интерактивный выбор; подтверждение перед
+  заменой, `--force` пропускает его.
+- Тесты: `tests/Feature/Console/DatabaseTransferTest.php` (SQLite-путь, 4 теста).
+
 ## Удаление Media — DeleteMedia (`app/Actions/Media/DeleteMedia.php`) — этапы B6/B7
 
 Удаление записи Media не всегда означает удаление оригинального файла.

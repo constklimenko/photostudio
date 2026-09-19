@@ -1,5 +1,70 @@
 # Changelog
 
+## 2026-09-19 — Бэкап и перенос базы данных между копиями (db:backup / db:restore)
+
+### Цель
+
+Появилась возможность переносить базу сайта между копиями (dev/staging/prod)
+без сторонних пакетов: полный дамп БД (структура + данные) в один файл и его
+восстановление. Используются штатные бинарники `mysqldump`/`mysql`
+(MySQL/MariaDB) и файловая копия для SQLite; новая зависимость не добавлялась
+(в Laravel 13 встроенных `db:dump`/`db:restore` нет — остался только
+`schema:dump` без данных).
+
+### Реализация
+
+- `app/Services/DatabaseTransferService.php` — единая логика переноса:
+  - `backup()` — дамп в `.sql` с последующей gzip-компрессией при необходимости
+    (запись во временный файл → проверка успешности → переименование; битый дамп
+    не оставляет файл);
+  - `restore()` — восстановление из `.sql` / `.sql.gz` (полная замена данных
+    целевой БД);
+  - `backups()`/`latestBackup()`/`prune()` — список, последний бэкап и очистка
+    старых файлов;
+  - MySQL: аргументы `--no-tablespaces --single-transaction --quick`,
+    `--default-character-set=utf8mb4`, пароль передаётся через env `MYSQL_PWD`
+    (не светится в `ps`); поддержка `unix_socket`/`host`/`port` из
+    `config/database.php`; отсутствующие бинарники дают понятную ошибку
+    (проверка через `which`);
+  - SQLite: копирование файла для бэкапа, `cat`/`gzip -dc >` для восстановления;
+    in-memory БД не поддерживается (явная ошибка).
+- `app/Console/Commands/BackupDatabase.php` — `php artisan db:backup`:
+  - по умолчанию файл `storage/app/backups/{db}-{Y-m-d_His}.sql.gz`;
+  - опции `--database=`, `--path=`, `--no-compress`, `--prune=N` (по умолчанию 7 —
+    остаются N последних бэкапов в стандартной директории; `--prune=0` — без очистки).
+- `app/Console/Commands/RestoreDatabase.php` — `php artisan db:restore`:
+  - аргумент `dump` (путь к `.sql`/`.sql.gz`; если аргумент в стандартной
+    директории — подхватывается по имени); без аргумента — используется последний
+    бэкап либо интерактивный выбор из списка;
+  - подтверждение перед заменой БД, `--force` пропускает его;
+  - `--database=` — целевое соединение.
+
+### Сценарий переноса между копиями
+
+```text
+копия А: php artisan db:backup
+копируем storage/app/backups/fotoskazka-*.sql.gz на копию Б
+копия Б: php artisan db:restore
+```
+
+### Проверка
+
+- Полный цикл на живой MySQL (эталонное окружение): `db:backup` (83.9 KB,
+  40 таблиц) → `gzip -t` OK → `db:restore --force` → данные на месте
+  (users 3, albums 17, 40 таблиц).
+- `tests/Feature/Console/DatabaseTransferTest.php` (новый, 4 теста на SQLite-пути,
+  т.к. окружение тестов — SQLite): бэкап без сжатия, gzip-бэкап, восстановление
+  в целевую БД, ошибка при отсутствующем файле.
+- `php artisan test` — 1081 passed / 2787 assertions (1 pre-existing risky);
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` — добавлен раздел «Бэкап и перенос базы данных»;
+- `database.md` — без изменений (структура БД не менялась).
+
+---
+
 ## 2026-09-16 — Тексты блоков главной и пункта меню через сущность Page
 
 ### Цель
