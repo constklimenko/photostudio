@@ -32,6 +32,7 @@ class Category extends Model
         'seo_title',
         'seo_description',
         'is_published',
+        'is_graduation_albums',
         'sort_order',
         'show_album_photos',
         'featured_album_id',
@@ -45,6 +46,7 @@ class Category extends Model
     {
         return [
             'is_published' => 'boolean',
+            'is_graduation_albums' => 'boolean',
             'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
             'shooting_album_display' => ShootingAlbumDisplay::class,

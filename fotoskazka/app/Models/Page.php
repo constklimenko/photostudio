@@ -18,6 +18,7 @@ class Page extends Model
         'cover_media_id', 'title', 'subtitle', 'slug', 'excerpt', 'content',
         'home_title', 'home_subtitle', 'home_content', 'show_on_home', 'home_sort_order', 'menu_title', 'show_in_menu',
         'ar_teaser_enabled', 'ar_teaser_title', 'ar_teaser_subtitle', 'ar_teaser_accent', 'ar_teaser_footer', 'ar_teaser_media_id',
+        'ar_price',
         'about_studio_text',
         'about_studio_title',
         'seo_title', 'seo_description', 'is_published', 'sort_order',
@@ -29,6 +30,7 @@ class Page extends Model
             'show_on_home' => 'boolean',
             'show_in_menu' => 'boolean',
             'ar_teaser_enabled' => 'boolean',
+            'ar_price' => 'integer',
         ];
     }
 

@@ -1,5 +1,78 @@
 # Changelog
 
+## 2026-09-19 — Плашка «AR + N руб.» в блоке «Стоимость альбомов»
+
+### Цель
+
+Рядом с ценой услуги в блоке «Стоимость альбомов» на главной вывести плашку
+«AR + 500 руб.» по образцу референса `references/Strana_znaniy.html`
+(кнопка `elementor-button` с иконкой `fa-magic`). Цена AR-фото управляется
+из админки, fallback — 500 руб.
+
+### Реализация
+
+- Миграция `2026_09_19_144759_add_ar_price_to_pages_table.php`:
+  - `pages.ar_price` (unsigned int, nullable) — цена AR-фото.
+- `app/Models/Page.php` — `ar_price` в `$fillable` + cast `integer`.
+- `app/Filament/Resources/Pages/Schemas/PageForm.php` — поле «Цена AR-фото (₽)»
+  в секции «Оживающие фотографии» (только для главной, видно при
+  включённом `ar_teaser_enabled`). NULL → на сайте используется 500 ₽.
+- `app/Http/Controllers/HomeController.php` — в `$arTeaser` добавлен ключ
+  `ar_price` (`$page?->ar_price ?? 500`).
+- `resources/views/home.blade.php` — рядом с ценой услуги (если `price_from`
+  задан) плашка: иконка-«палочка» + «AR + N руб.», равняется по содержимому
+  карточки, на мобильных переносится на новую строку.
+- `tests/Feature/Http/Controllers/HomeGraduationAlbumsTest.php` — тесты
+  fallback 500 ₽ и кастомной цены (750 ₽) из главной страницы.
+- `tests/Feature/Filament/PageResourceTest.php` — поле `ar_price` видно и
+  сохраняется.
+
+## 2026-09-19 — Блок «Стоимость альбомов» на главной
+
+### Цель
+
+Вывести на главной странице тёмный блок по образцу референса
+`references/Strana_znaniy.html` (data-id="40b09f7"): сверху — табы
+(категории второго уровня из категории выпускных альбомов), в каждой
+вкладке — карточки отдельных услуг с ценой, списком «Что входит» и
+слайдером фотографий привязанного к услуге фотоальбома.
+
+### Реализация
+
+- Миграция `2026_09_19_100000_add_is_graduation_albums_to_categories_table.php`:
+  - `categories.is_graduation_albums` (bool, default `false`, index) —
+    признак «категория является услугой выпускных альбомов». Флаг ставится
+    на корневую категорию, её опубликованные подкатегории становятся табами.
+- `app/Models/Category.php` — `is_graduation_albums` в `$fillable` + `casts`.
+- `app/Filament/Resources/Categories/Schemas/CategoryForm.php` — переключатель
+  «Услуга “Выпускные альбомы”» (виден только для типа «Услуга»).
+- `app/Filament/Resources/Categories/Tables/CategoriesTable.php` — колонка
+  `ToggleColumn` «Выпускные альбомы».
+- `app/Http/Controllers/HomeController.php` — выборка корневых категорий с
+  `is_graduation_albums = true` → подкатегории (с услугами) → услуги с
+  `items`, `category.parent`, `featuredAlbum.photos.media` (без N+1).
+- `resources/views/home.blade.php` — секция между блоками «Услуги» и
+  «Фото со съёмок»: заголовок/подзаголовок через `$blockTexts`
+  (`graduation-albums`, по умолчанию «Стоимость альбомов» / «Выберите свою
+  возрастную категорию и комплектацию»), табы `data-graduation-tabs`,
+  карточки услуг (заголовок, «Цена: N ₽», пункты «Что входит» с иконками
+  `ServiceItem.icon` и золотой галочкой-фоллбэком, кнопка «Заказать» →
+  `#inquiry-form`, ссылка «Подробнее об услуге») и слайдер
+  `data-album-slider` из фото привязанного альбома. Заголовок услуги —
+  ссылка на страницу услуги (`services.show`); список «Что входит»
+  выравнивается по левому краю и на мобильных. Блок размещён выше блока
+  «Наши услуги».
+- `resources/js/app.js` — ленивая инициализация slick-слайдеров в активной
+  вкладке и `slick('setPosition')` при переключении; `resources/css/app.css` —
+  стили табов, стрелок и буллетов слайдера в тёмной теме.
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/HomeGraduationAlbumsTest.php` — вывод блока
+  для помеченной категории, скрытие без флага и неопубликованных, слайдер,
+  пункты «Что входит», ссылка на услугу, тексты блока из страницы
+  `graduation-albums`.
+
 ## 2026-09-19 — Бэкап и перенос базы данных между копиями (db:backup / db:restore)
 
 ### Цель

@@ -100,6 +100,10 @@ class CategoryForm
                         Toggle::make('is_published')
                             ->label('Опубликована')
                             ->default(true),
+                        Toggle::make('is_graduation_albums')
+                            ->label('Услуга «Выпускные альбомы»')
+                            ->helperText('Категория и её подкатегории выводятся блоком «Стоимость альбомов» на главной')
+                            ->visible(fn (Get $get): bool => (string) $get('type') === 'service'),
                     ]),
                 Section::make('Описание')
                     ->schema([

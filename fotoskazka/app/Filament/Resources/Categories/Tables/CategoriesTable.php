@@ -43,6 +43,11 @@ class CategoriesTable
                     ->label('Опубликована')
                     ->onColor('success')
                     ->offColor('gray'),
+                ToggleColumn::make('is_graduation_albums')
+                    ->label('Выпускные альбомы')
+                    ->onColor('success')
+                    ->offColor('gray')
+                    ->tooltip('Категория и её подкатегории выводятся блоком «Стоимость альбомов» на главной'),
                 TextColumn::make('sort_order')
                     ->sortable(),
                 TextColumn::make('created_at')

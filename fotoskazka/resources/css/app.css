@@ -179,6 +179,87 @@ section.bg-gray-900 {
     opacity: 1;
 }
 
+/* Табы блока «Стоимость альбомов» */
+.graduation-tab {
+    padding: 0.625rem 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid #2a2a2a;
+    background-color: #1a1a1a;
+    color: #9ca3af;
+    font-weight: 500;
+    transition: background-color .2s, color .2s, border-color .2s;
+    cursor: pointer;
+}
+
+.graduation-tab:hover:not(.is-active) {
+    background-color: #242424;
+    color: #d4af37;
+}
+
+.graduation-tab.is-active {
+    background-color: #d4af37;
+    border-color: #d4af37;
+    color: #000;
+}
+
+/* Слайдер фотоальбома услуги (slick) */
+.album-slider {
+    padding-bottom: 2.75rem;
+}
+
+.album-slider .slick-slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.album-slider .slick-prev,
+.album-slider .slick-next {
+    width: 40px;
+    height: 40px;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.album-slider .slick-prev:hover,
+.album-slider .slick-next:hover {
+    background: #2a2a2a;
+}
+
+.album-slider .slick-prev {
+    left: 10px;
+}
+
+.album-slider .slick-next {
+    right: 10px;
+}
+
+.album-slider .slick-prev::before,
+.album-slider .slick-next::before {
+    color: #d4af37;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 1;
+}
+
+.album-slider .slick-dots {
+    bottom: 0;
+}
+
+.album-slider .slick-dots li button:before {
+    color: #d4af37;
+    opacity: 0.5;
+}
+
+.album-slider .slick-dots li.slick-active button:before {
+    color: #d4af37;
+    opacity: 1;
+}
+
 /* Hero — полноэкранное фото + overlay */
 #hero-block img {
     animation: heroZoom 12s ease-in-out infinite alternate;

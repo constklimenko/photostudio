@@ -60,6 +60,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const initAlbumSlider = ($slider) => {
+        if ($slider.hasClass('slick-initialized')) return;
+        $slider.slick({
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            infinite: true,
+            arrows: true,
+            dots: true,
+        });
+    };
+
+    document.querySelectorAll('[data-graduation-tabs]').forEach((tabs) => {
+        const buttons = Array.from(tabs.querySelectorAll('[data-tab-button]'));
+        const panels = Array.from(tabs.querySelectorAll('[data-tab-panel]'));
+
+        const syncPanels = (index) => {
+            buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === index));
+            panels.forEach((panel, i) => {
+                const show = i === index;
+                panel.classList.toggle('hidden', !show);
+                if (!show) return;
+
+                const $sliders = $(panel).find('[data-album-slider]');
+                $sliders.each(function () {
+                    initAlbumSlider($(this));
+                });
+                if ($sliders.length) {
+                    $sliders.slick('setPosition');
+                }
+            });
+        };
+
+        const initial = panels.findIndex((panel) => !panel.classList.contains('hidden'));
+        syncPanels(initial >= 0 ? initial : 0);
+
+        buttons.forEach((btn) => {
+            btn.addEventListener('click', () => syncPanels(parseInt(btn.dataset.tabButton, 10)));
+        });
+    });
+
     AOS.refresh();
 
     document.querySelectorAll('video[data-video-forbid-sound]').forEach((video) => {

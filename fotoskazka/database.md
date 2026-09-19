@@ -484,6 +484,7 @@ price_note TEXT NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
+is_graduation_albums BOOLEAN DEFAULT FALSE INDEX
 sort_order INT DEFAULT 0
 show_album_photos BOOLEAN DEFAULT FALSE
 featured_album_id BIGINT NULL
@@ -690,6 +691,13 @@ show_on_home BOOLEAN DEFAULT FALSE
 home_sort_order INT DEFAULT 0
 menu_title VARCHAR(255) NULL
 show_in_menu BOOLEAN DEFAULT TRUE
+ar_teaser_enabled BOOLEAN DEFAULT TRUE
+ar_teaser_title VARCHAR(255) NULL
+ar_teaser_subtitle TEXT NULL
+ar_teaser_accent VARCHAR(255) NULL
+ar_teaser_footer VARCHAR(255) NULL
+ar_teaser_media_id BIGINT NULL
+ar_price INT UNSIGNED NULL
 about_studio_text LONGTEXT NULL
 about_studio_title VARCHAR(255) NULL
 seo_title VARCHAR(255) NULL
@@ -715,6 +723,13 @@ updated_at TIMESTAMP
 | home_sort_order | Порядок блока на главной                        |
 | about_studio_text | SEO-текст «О студии» внизу главной страницы (пусто → блок не выводится) |
 | about_studio_title | Заголовок блока «О студии» (пусто → «О студии») |
+| ar_teaser_enabled | Показывать секцию «Оживающие фотографии» на главной (default TRUE) |
+| ar_teaser_title | Заголовок секции AR                          |
+| ar_teaser_subtitle | Описание секции AR                           |
+| ar_teaser_accent | Акцент заголовка AR (золотая строка)         |
+| ar_teaser_footer | Нижняя строка секции AR                      |
+| ar_teaser_media_id | Изображение секции AR                        |
+| ar_price | Цена AR-фото для плашки «AR + N руб.» в блоке «Стоимость альбомов» (NULL → fallback 500 ₽) |
 
 Цепочка фоллбэка текстов блоков главной: `home_title/home_subtitle/home_content` →
 `title/subtitle/content` → тексты по умолчанию в шаблоне.
@@ -726,6 +741,7 @@ Foreign keys:
 
 ```sql
 cover_media_id -> media.id ON DELETE SET NULL
+ar_teaser_media_id -> media.id ON DELETE SET NULL
 ```
 
 Indexes:

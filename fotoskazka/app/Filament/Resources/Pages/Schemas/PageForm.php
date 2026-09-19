@@ -182,6 +182,14 @@ class PageForm
                                     ->label('Нижняя строка')
                                     ->helperText('Текст под описанием')
                                     ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
+                                TextInput::make('ar_price')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->nullable()
+                                    ->label('Цена AR-фото (₽)')
+                                    ->placeholder('500')
+                                    ->helperText('Плашка «AR + N руб.» в блоке «Стоимость альбомов». По умолчанию 500 ₽')
+                                    ->visible(fn (callable $get) => $get('ar_teaser_enabled')),
                             ]),
                     ]),
 

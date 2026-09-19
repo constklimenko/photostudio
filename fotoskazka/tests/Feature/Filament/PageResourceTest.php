@@ -118,7 +118,8 @@ class PageResourceTest extends TestCase
 
         $response->assertSuccessful()
             ->assertSee('Оживающие фотографии')
-            ->assertSee('ar_teaser_enabled');
+            ->assertSee('ar_teaser_enabled')
+            ->assertSee('ar_price');
     }
 
     public function test_services_page_does_not_show_ar_teaser_fields(): void
@@ -221,6 +222,7 @@ class PageResourceTest extends TestCase
             'ar_teaser_enabled' => true,
             'ar_teaser_title' => 'Оживающие фото',
             'ar_teaser_subtitle' => 'Будущее уже здесь',
+            'ar_price' => 750,
         ]);
 
         $this->assertDatabaseHas('pages', [
@@ -228,6 +230,7 @@ class PageResourceTest extends TestCase
             'ar_teaser_enabled' => true,
             'ar_teaser_title' => 'Оживающие фото',
             'ar_teaser_subtitle' => 'Будущее уже здесь',
+            'ar_price' => 750,
         ]);
     }
 
