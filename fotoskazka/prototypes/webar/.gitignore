@@ -1,0 +1,15 @@
+# node_modules / npm caches
+node_modules/
+tools/compile-target/node_modules/
+
+# generated certificates
+certs/
+
+# logs
+*.log
+npm-debug.log*
+
+# editor/OS
+.DS_Store
+.idea/
+.vscode/

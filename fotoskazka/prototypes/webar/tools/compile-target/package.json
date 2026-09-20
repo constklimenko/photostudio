@@ -1,0 +1,20 @@
+{
+  "name": "webar-compile-target",
+  "private": true,
+  "type": "module",
+  "description": "Offline MindAR Image Target compiler (pure JS, no native canvas needed)",
+  "scripts": {
+    "compile": "node compile.mjs",
+    "compile:print": "node compile.mjs ../../targets/sample-photo-print.png /tmp/targets-print.mind"
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^2.8.0",
+    "@tensorflow/tfjs": "^4.16.0",
+    "jpeg-js": "^0.4.4",
+    "mathjs": "^11.6.0",
+    "pngjs": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

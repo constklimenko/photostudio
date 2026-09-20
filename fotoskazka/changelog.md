@@ -1,5 +1,81 @@
 # Changelog
 
+## 2026-09-20 — D1.2: первый технический прототип WebAR (MindAR)
+
+### Цель
+
+Получить минимальный запускаемый standalone WebAR-прототип «фотография →
+распознавание → заглушечный контент», открываемый на смартфоне. Изолированный
+каталог `prototypes/webar/`; Laravel, БД, Filament, авторизация, загрузки,
+production routes и интеграция с Media/Video не затрагивались.
+
+### Реализация
+
+- **Выбор первой технологии: MindAR v1.2.5 (MIT)** — только на основании
+  `docs/AR-TECHNOLOGY-RESEARCH.md` (§4 shortlist: первым назван «самый зрелый
+  активный открытый SDK под image-to-video»; MIT, self-host, без облачной
+  зависимости, работает на iOS Safari/Android Chrome) и
+  `docs/AR-PROTOTYPE-TEST-PLAN.md` (§0). Причина зафиксирована в README
+  прототипа. 8th Wall остаётся для D1.3, AR.js — B-план.
+- `prototypes/webar/` (новый изолированный проект):
+  - `server.mjs` + `scripts/make-cert.mjs` — локальный HTTPS static dev server
+    на встроенных модулях Node (ноль npm-зависимостей для запуска); при
+    старте генерируется локальный CA + серверный сертификат (openssl) с SAN
+    для `localhost` и LAN IP; `scripts/start-tunnel.mjs` — опция публичного
+    HTTPS-туннеля (cloudflared) для телефона без установки CA.
+  - `public/index.html`, `public/app.js`, `public/camera.html`, `styles.css` —
+    AR-страница (MindARThree image tracking + stub-оверлей + журнал
+    `targetFound/targetLost` с длительностью удержания — метрики критерия
+    D1.2) и изолированный тест `getUserMedia`.
+  - `public/vendor/` — self-hosted MindAR 1.2.5 dist (входная точка, чанки
+    `controller-*`/`ui-*`), three r141 ESM (import map), three example
+    CSS3DRenderer; MIT-атрибуция в `LICENSE.txt`. Страница собирается
+    средствами браузера (import map + ESM), сборщик не используется.
+  - `targets/` — тестовая фотография `sample-photo.jpg` (1648×1248, сгенерирована:
+    сцена «небо–холмы», коллаж блоков, подпись, текстурированная подложка —
+    высокий контраст и детализация для tracking), `sample-photo-print.png`
+    (та же фотография для печати 20×30, кроп 1:1) и подготовленный
+    `targets.mind`.
+  - `tools/compile-target/` — офлайн-компилятор `.mind` из JPEG/PNG на чистом
+    JS (TensorFlow.js CPU-кернелы; без нативного `canvas`), с диагностикой
+    числа feature points по пирамиде шкал. Осознанные патчи исходников MindAR
+    (CPU-кернелы, убран импорт `canvas`) описаны в README инструмента.
+    Детерминизм проверен (md5 повторного прогона совпадает).
+- Проверено локально: `npm start` → все страницы и `targets.mind` отдаются по
+  HTTPS (200); синтаксис и загрузка модулей — в headless Chrome 153; полный
+  путь «Старт → камера on» и `camera.html` — через CDP с fake camera, ошибок
+  консоли нет.
+
+### НЕ изменено
+
+- `roadmap.md`, `architecture.md`, `database.md`, код Laravel, миграции,
+  модели, конфигурация — без изменений.
+- Production routes, Media/Video, Filament, БД, загрузка файлов — не
+  реализовывались (граница D1.2).
+- Эксперимент D1.2 на реальных смартфонах и печати не прогонялся — прототип
+  подготовлен, критерии готовности D1.2 фиксируются прогоном по
+  `docs/AR-PROTOTYPE-TEST-PLAN.md`.
+
+### Дополнение: разворачивание на публичной копии сайта — адрес `/webar`
+
+Публичная копия лежит на другом сервере и обновляется через git, поэтому для
+теста со смартфона не нужен локальный сервер/CA:
+
+- Прототип переведён на **относительные пути** (import map, `app.js`,
+  `targets.mind`) — стал работать из любого подкаталога (`/webar/`) и из корня
+  локального dev server без изменений.
+- `prototypes/webar/scripts/sync-public.mjs` (`npm run sync:public`) вычищает и
+  генерирует `public/webar/` (HTML/JS/CSS + `vendor/` + `targets/`) — копия
+  **коммитится** и попадает на публичный сервер обычным git pull.
+- Проверено: все ресурсы `/webar/` отдаются через Laravel webroot (static 200);
+  headless Chrome — модульный граф (`index.html` → import map → three/MindAR
+  чанки → CSS3DRenderer) загружается без ошибок на пути `/webar/`.
+- Примечание: `getUserMedia` работает только по HTTPS — при доступе к
+  `fotoskazkaufa.ru/webar` в браузере, у которого вызывает доверие
+  HTTP (без перенаправления на HTTPS), камера не сможет запуститься.
+
+---
+
 ## 2026-09-20 — D1.1: план минимального эксперимента для D1.2–D1.3
 
 ### Цель

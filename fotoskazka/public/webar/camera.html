@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Camera test — WebAR prototype</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    #video {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover; transform: scaleX(-1); background: #000;
+    }
+    #camera-state { background: rgba(255,255,255,0.12); }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="hud">
+      <div class="hud-top">
+        <div class="title">Camera test <span class="dim">· getUsermMedia без AR</span></div>
+        <span id="camera-state" class="pill">camera: —</span>
+      </div>
+      <div id="status" class="status">Проверка доступа к камере. Нажмите «Запустить камеру».</div>
+      <div class="hud-row">
+        <button id="btn-start" class="btn primary">Запустить камеру</button>
+        <button id="btn-stop" class="btn" disabled>Стоп</button>
+      </div>
+      <div class="note">
+        Если камера не запускается — открыт http (нужен HTTPS), заблокировано
+        разрешение, камера занята, или страница открыта во встроенном webview
+        (Instagram/VK/Telegram → «открыть в браузере»).
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById('video');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const state = document.getElementById('camera-state');
+    const status = document.getElementById('status');
+    let stream = null;
+
+    btnStart.addEventListener('click', async () => {
+      btnStart.disabled = true;
+      status.textContent = 'Запрашиваю камеру…';
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        video.srcObject = stream;
+        state.textContent = 'camera: on';
+        state.style.background = 'rgba(34,224,90,0.25)';
+        state.style.color = '#22e05a';
+        status.textContent = 'Камера работает. Разрешение: ' +
+          (stream.getVideoTracks()[0].getSettings().width || '?') + 'x' +
+          (stream.getVideoTracks()[0].getSettings().height || '?');
+        btnStop.disabled = false;
+      } catch (err) {
+        state.textContent = 'camera: error';
+        state.style.background = 'rgba(224,85,85,0.25)';
+        state.style.color = '#e05555';
+        status.textContent = err.name + ': ' + err.message;
+        btnStart.disabled = false;
+      }
+    });
+
+    btnStop.addEventListener('click', () => {
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      video.srcObject = null;
+      state.textContent = 'camera: off';
+      state.style.background = '';
+      state.style.color = '';
+      status.textContent = 'Камера остановлена.';
+      btnStop.disabled = true;
+      btnStart.disabled = false;
+    });
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      status.textContent = 'getUserMedia не поддерживается (только http/https? старый браузер?).';
+      btnStart.disabled = true;
+    }
+  </script>
+</body>
+</html>

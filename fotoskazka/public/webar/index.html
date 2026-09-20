@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>WebAR prototype — Фотосказка D1.2</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+  <div id="app">
+    <div id="ar-container"></div>
+
+    <div id="hud">
+      <div class="hud-top">
+        <div class="title">WebAR prototype <span class="dim">· D1.2 · MindAR</span></div>
+        <div id="camera-state" class="pill">camera: —</div>
+      </div>
+
+      <div id="status" class="status">Нажмите «Старт» и наведите камеру на напечатанную фотографию <b>sample-photo</b>.</div>
+
+      <div class="hud-row">
+        <button id="btn-start" class="btn primary">Старт</button>
+        <button id="btn-stop" class="btn" disabled>Стоп</button>
+        <button id="btn-grid" class="btn">Сетка совмещения</button>
+      </div>
+
+      <div class="hud-row">
+        <span id="target-state" class="pill target">target: —</span>
+        <span id="hold" class="pill hold">удержание: —</span>
+      </div>
+      <div id="measurements-wrap" class="hud-row">
+        <span class="pill">удержания за сессию: </span><span id="measurements" class="pill dim"></span>
+      </div>
+
+      <details id="logwrap">
+        <summary>Журнал событий (удержание ≥ 5 сек = критерий D1.2)</summary>
+        <ol id="log"></ol>
+      </details>
+
+      <div class="note">
+        Требуется HTTPS и обычный браузер (Safari / Chrome). Если открыто в
+        Instagram/VK/Telegram — нажмите «открыть в браузере». Камера запрашивается
+        только по жесту (кнопка «Старт»).
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/renderers/CSS3DRenderer.js": "./vendor/three-addons/renderers/CSS3DRenderer.js"
+      }
+    }
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

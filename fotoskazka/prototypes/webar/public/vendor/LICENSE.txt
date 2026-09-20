@@ -1,0 +1,19 @@
+Vendored libraries in this directory are self-hosted copies (MIT) used by the
+WebAR prototype. Attribution:
+
+## MindAR — mindar-image-three.prod.js
+- Author: Hiu Kim Yuen (hiukim)
+- Source: https://github.com/hiukim/mind-ar-js (v1.2.5)
+- License: MIT — Copyright (c) Hiu Kim Yuen. Full license text:
+  https://github.com/hiukim/mind-ar-js/blob/master/LICENSE
+- Used for image-target WebAR (this prototype targets sample-photo targets.mind).
+
+## three.js — three.min.js (r141)
+- Source: https://github.com/mrdoob/three.js (r141 build)
+- License: MIT — Copyright (c) 2010-2022 three.js authors.
+  Full license text: https://github.com/mrdoob/three.js/blob/r141/LICENSE
+
+MIT License summary: permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation files, to deal in
+the Software without restriction, including the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software.
