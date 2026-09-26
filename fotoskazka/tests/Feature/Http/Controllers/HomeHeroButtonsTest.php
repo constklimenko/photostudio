@@ -2,10 +2,15 @@
 
 namespace Tests\Feature\Http\Controllers;
 
+use App\Models\Album;
 use App\Models\Category;
+use App\Models\Page;
 use App\Models\Service;
 use App\Services\HomeContentService;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class HomeHeroButtonsTest extends TestCase
@@ -239,6 +244,114 @@ class HomeHeroButtonsTest extends TestCase
 
         $this->assertNotSame('', $hero);
         $this->assertStringNotContainsString('data-hero-button', $hero);
+    }
+
+    public function test_page_show_on_home_flag_does_not_create_hero_buttons(): void
+    {
+        Page::factory()->create([
+            'slug' => 'portfolio',
+            'title' => 'Портфолио',
+            'is_published' => true,
+            'show_on_home' => true,
+        ]);
+
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный проект',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $this->assertStringNotContainsString(
+            'data-hero-button',
+            $this->heroSection($response->getContent())
+        );
+        $this->assertStringContainsString(
+            'data-home-block="featured-works"',
+            $response->getContent()
+        );
+    }
+
+    public function test_hero_buttons_are_loaded_without_n_plus_one_in_deep_tree(): void
+    {
+        $deepest = $this->serviceCategoryChain(4);
+
+        Service::factory()->create([
+            'category_id' => $deepest->getKey(),
+            'title' => 'Единственная услуга',
+            'slug' => 'edinostvennaya-usluga',
+            'is_published' => true,
+            'show_on_home' => true,
+        ]);
+
+        $before = $this->countCategoryQueriesForHome();
+
+        foreach (range(1, 5) as $index) {
+            Category::factory()->create([
+                'type' => 'service',
+                'parent_id' => $deepest->getKey(),
+                'name' => 'Категория '.$index,
+                'slug' => 'kategoriya-'.$index,
+                'is_published' => true,
+                'show_on_home' => true,
+            ]);
+
+            Service::factory()->create([
+                'category_id' => $deepest->getKey(),
+                'title' => 'Услуга '.$index,
+                'slug' => 'usluga-'.$index,
+                'is_published' => true,
+                'show_on_home' => true,
+            ]);
+        }
+
+        $after = $this->countCategoryQueriesForHome();
+
+        $this->assertLessThanOrEqual(5, $before, 'Цепочка предков должна дочитываться по одному запросу на уровень, а не по запросу на кнопку.');
+        $this->assertLessThanOrEqual($before, $after, 'Число запросов к категориям не должно расти вместе с числом кнопок Hero.');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(route('services.show', 'uroven-1/uroven-2/uroven-3/uroven-4'), false)
+            ->assertSee(route('services.show', 'uroven-1/uroven-2/uroven-3/uroven-4/edinostvennaya-usluga'), false);
+    }
+
+    private function serviceCategoryChain(int $depth): Category
+    {
+        $category = null;
+
+        foreach (range(1, $depth) as $level) {
+            $category = Category::factory()->create([
+                'type' => 'service',
+                'parent_id' => $category?->getKey(),
+                'name' => 'Уровень '.$level,
+                'slug' => 'uroven-'.$level,
+                'is_published' => true,
+                'show_on_home' => $level === $depth,
+                'sort_order' => $level,
+            ]);
+        }
+
+        return $category;
+    }
+
+    private function countCategoryQueriesForHome(): int
+    {
+        $queries = [];
+
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            $queries[] = $query->sql;
+        });
+
+        $this->get('/')->assertOk();
+
+        return collect($queries)
+            ->filter(fn (string $sql): bool => (bool) preg_match('/from\s+["`]?categories["`]?/i', $sql))
+            ->count();
     }
 
     private function heroSection(string $html): string

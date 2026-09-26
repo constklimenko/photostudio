@@ -377,6 +377,42 @@ class HomeControllerTest extends TestCase
         $this->assertStringContainsString('fetchpriority="high"', $hero);
     }
 
+    public function test_home_hero_uses_first_photo_of_homepage_album(): void
+    {
+        $album = Album::factory()->create([
+            'type' => 'homepage',
+            'is_published' => true,
+            'title' => 'Главная',
+        ]);
+
+        $media = collect(['second', 'first', 'third'])->map(fn (string $name) => Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'hero/'.$name.'.jpg',
+            'mime_type' => 'application/octet-stream',
+        ]));
+
+        foreach ([[1, $media[1]], [2, $media[0]], [3, $media[2]]] as [$sortOrder, $item]) {
+            Photo::factory()->create([
+                'album_id' => $album->getKey(),
+                'media_id' => $item->getKey(),
+                'sort_order' => $sortOrder,
+            ]);
+        }
+
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+
+        preg_match('/<section[^>]*id="hero-block".*?<\/section>/s', $response->getContent(), $matches);
+
+        $hero = $matches[0] ?? '';
+
+        $this->assertNotSame('', $hero);
+        $this->assertStringContainsString($media[1]->getUrl(), $hero);
+        $this->assertStringNotContainsString($media[0]->getUrl(), $hero);
+        $this->assertStringNotContainsString($media[2]->getUrl(), $hero);
+    }
+
     public function test_store_inquiry_creates_inquiry(): void
     {
         $response = $this->post(route('inquiry.store'), [

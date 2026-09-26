@@ -154,10 +154,87 @@ class Category extends Model
     /**
      * Иерархический slug-путь для URL каталога: "родитель/подкатегория".
      * Для корневой категории — просто её slug.
+     *
+     * Требует загруженной цепочки предков: либо `with('parent.…')`,
+     * либо `Category::loadAncestorChains()` для дерева любой глубины.
      */
     public function catalogPath(): string
     {
         return collect($this->path(true))->pluck('slug')->implode('/');
+    }
+
+    /**
+     * Загрузить цепочки предков указанных категорий целиком, без ограничения
+     * глубины: каждый уровень дочитывается одним запросом на все категории
+     * сразу, поэтому `catalogPath()` не порождает N+1 в глубоком дереве.
+     *
+     * Из моделей выбираются только поля, нужные для построения пути.
+     */
+    public static function loadAncestorChains(iterable $categories): void
+    {
+        $instances = [];
+        $byId = [];
+
+        foreach ($categories as $category) {
+            if (! $category instanceof self) {
+                continue;
+            }
+
+            $instances[spl_object_id($category)] = $category;
+            $byId[(int) $category->getKey()] ??= $category;
+        }
+
+        $requested = [];
+
+        while (true) {
+            $missing = [];
+
+            foreach ($byId as $parentId => $category) {
+                $candidate = $category->parent_id;
+
+                if ($candidate === null) {
+                    continue;
+                }
+
+                $candidate = (int) $candidate;
+
+                if (isset($byId[$candidate]) || isset($requested[$candidate])) {
+                    continue;
+                }
+
+                $missing[$candidate] = true;
+            }
+
+            if ($missing === []) {
+                break;
+            }
+
+            $requested += $missing;
+
+            $parents = self::query()
+                ->whereIn('id', array_keys($missing))
+                ->get(['id', 'parent_id', 'slug']);
+
+            foreach ($parents as $parent) {
+                $id = (int) $parent->getKey();
+
+                if (isset($byId[$id])) {
+                    continue;
+                }
+
+                $byId[$id] = $parent;
+                $instances[spl_object_id($parent)] = $parent;
+            }
+        }
+
+        foreach ($instances as $category) {
+            $parentId = $category->parent_id;
+
+            $category->setRelation(
+                'parent',
+                $parentId === null ? null : ($byId[(int) $parentId] ?? null),
+            );
+        }
     }
 
     /**

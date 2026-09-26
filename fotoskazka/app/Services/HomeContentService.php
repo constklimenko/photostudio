@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Album;
 use App\Models\Category;
 use App\Models\FaqItem;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\Service;
 use App\Models\SocialLink;
@@ -30,18 +31,33 @@ class HomeContentService
     ) {}
 
     /**
-     * Изображения фона Hero: фотографии первого опубликованного альбома
+     * Фон Hero: media первой фотографии первого опубликованного альбома
      * типа `homepage`.
+     *
+     * Компонент `x-site.hero` использует только первое изображение, поэтому
+     * загружается одна фотография вместо всех фотографий альбома.
+     *
+     * @return Collection<int, Media>
      */
     public function heroImages(): Collection
     {
         $album = Album::query()
             ->where('type', 'homepage')
             ->where('is_published', true)
-            ->with(['photos' => fn ($query) => $query->orderBy('sort_order')->with('media')])
-            ->first();
+            ->first(['id']);
 
-        return $album?->photos->pluck('media') ?? collect();
+        if ($album === null) {
+            return collect();
+        }
+
+        $photo = $album->photos()
+            ->with('media')
+            ->orderBy('sort_order')
+            ->first(['media_id']);
+
+        return $photo?->media instanceof Media
+            ? collect([$photo->media])
+            : collect();
     }
 
     /**
@@ -57,7 +73,30 @@ class HomeContentService
      */
     public function heroButtons(): array
     {
-        $buttons = $this->heroCategoryButtons()->concat($this->heroServiceButtons())->all();
+        $categories = $this->heroCategoryButtons();
+        $services = $this->heroServiceButtons();
+
+        Category::loadAncestorChains(
+            $categories
+                ->concat($services->map(fn (Service $service): ?Category => $service->category))
+                ->filter()
+                ->all()
+        );
+
+        $buttons = $categories
+            ->map(fn (Category $category): array => [
+                'label' => $category->name,
+                'url' => route('services.show', $category->catalogPath()),
+                'type' => 'category',
+                'sort_order' => (int) $category->sort_order,
+            ])
+            ->concat($services->map(fn (Service $service): array => [
+                'label' => $service->title,
+                'url' => route('services.show', $service->catalogPath()),
+                'type' => 'service',
+                'sort_order' => (int) $service->sort_order,
+            ]))
+            ->all();
 
         usort($buttons, function (array $left, array $right): int {
             return [$left['sort_order'], $left['type'], mb_strtolower($left['label'])]
@@ -188,14 +227,7 @@ class HomeContentService
             ->where('show_on_home', true)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->with(['parent.parent.parent'])
-            ->get(['id', 'parent_id', 'name', 'slug', 'sort_order'])
-            ->map(fn (Category $category): array => [
-                'label' => $category->name,
-                'url' => route('services.show', $category->catalogPath()),
-                'type' => 'category',
-                'sort_order' => (int) $category->sort_order,
-            ]);
+            ->get(['id', 'parent_id', 'name', 'slug', 'sort_order']);
     }
 
     private function heroServiceButtons(): Collection
@@ -205,14 +237,8 @@ class HomeContentService
             ->where('show_on_home', true)
             ->orderBy('sort_order')
             ->orderBy('title')
-            ->with(['category.parent.parent'])
-            ->get(['id', 'category_id', 'title', 'slug', 'sort_order'])
-            ->map(fn (Service $service): array => [
-                'label' => $service->title,
-                'url' => route('services.show', $service->catalogPath()),
-                'type' => 'service',
-                'sort_order' => (int) $service->sort_order,
-            ]);
+            ->with(['category' => fn ($query) => $query->select(['id', 'parent_id', 'slug'])])
+            ->get(['id', 'category_id', 'title', 'slug', 'sort_order']);
     }
 
     private function plainText(?string $html): ?string
