@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Models\Page;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PageResourceTest extends TestCase
@@ -288,5 +290,33 @@ class PageResourceTest extends TestCase
             ->assertSee('home_subtitle')
             ->assertSee('home_content')
             ->assertSee('home_sort_order');
+    }
+
+    public function test_can_create_page_with_system_slug_via_form(): void
+    {
+        Livewire::test(CreatePage::class)
+            ->fillForm([
+                'title' => 'Портфолио',
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('pages', [
+            'title' => 'Портфолио',
+            'slug' => 'portfolio',
+        ]);
+    }
+
+    public function test_system_slug_is_saved_even_though_field_is_disabled(): void
+    {
+        Livewire::test(CreatePage::class)
+            ->fillForm([
+                'title' => 'Портфолио',
+                'slug' => 'portfolio',
+            ])
+            ->call('create')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('pages', ['slug' => 'portfolio']);
     }
 }

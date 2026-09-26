@@ -65,6 +65,7 @@ class PageForm
                             ->unique(ignoreRecord: true)
                             ->maxLength(255)
                             ->disabled(fn (callable $get) => self::isSystemPage($get))
+                            ->dehydrated()
                             ->live(true)
                             ->afterStateUpdated(function ($state, callable $set) {
                                 $set('_slug_manual', '1');
