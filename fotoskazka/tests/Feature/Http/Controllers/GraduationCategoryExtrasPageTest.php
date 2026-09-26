@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Media;
 use App\Models\Page;
 use App\Models\Service;
+use App\Models\ServiceItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -396,6 +397,50 @@ class GraduationCategoryExtrasPageTest extends TestCase
             'оживающие фотографии',
             'Фото со съёмок',
         ]);
+    }
+
+    public function test_graduation_category_page_hides_description_price_and_items(): void
+    {
+        $root = $this->createGraduationTree();
+
+        $root->update([
+            'description' => '<p>Видимое описание категории</p>',
+            'seo_description' => 'SEO описание категории',
+            'price_from' => 19900,
+            'price_note' => 'Цена указана за комплект',
+        ]);
+
+        $item = ServiceItem::factory()->create(['label' => 'Ретушь всех фото']);
+        $root->items()->attach($item->id, ['is_included' => true, 'sort_order' => 0]);
+
+        $response = $this->get(route('services.show', $root->catalogPath()));
+
+        $response->assertOk()
+            ->assertDontSee('Видимое описание категории')
+            ->assertDontSee('19 900')
+            ->assertDontSee('Цена указана за комплект')
+            ->assertDontSee('Что входит')
+            ->assertDontSee('Ретушь всех фото')
+            ->assertSee('SEO описание категории');
+    }
+
+    public function test_graduation_category_page_keeps_other_page_blocks(): void
+    {
+        $root = $this->createGraduationTree();
+
+        $root->update([
+            'description' => '<p>Видимое описание категории</p>',
+            'seo_description' => 'SEO описание категории',
+            'price_from' => 19900,
+        ]);
+
+        $response = $this->get(route('services.show', $root->catalogPath()));
+
+        $response->assertOk()
+            ->assertSee('Выпускные альбомы')
+            ->assertSee('Стоимость альбомов')
+            ->assertSee('Оставить заявку')
+            ->assertSee('Цена: 1 650');
     }
 
     public function test_category_page_without_graduation_flag_keeps_standard_layout(): void

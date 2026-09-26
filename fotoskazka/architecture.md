@@ -192,7 +192,7 @@ resources/views/
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
-│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums — «Стоимость альбомов» (x-site.graduation-pricing), AR-тизер (x-site.ar-teaser), «Фото со съёмок» (x-site.shooting-works)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, «Что входит», дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums описание/цена/«Что входит» не выводятся, вместо них — «Стоимость альбомов» (x-site.graduation-pricing), AR-тизер (x-site.ar-teaser), «Фото со съёмок» (x-site.shooting-works)
 │   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
