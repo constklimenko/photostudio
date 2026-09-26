@@ -32,25 +32,28 @@
                                 <div class="space-y-10">
                                     @foreach ($child->services as $service)
                                         @php
-                                            $servicePhotos = $service->featuredAlbum?->photos ?? collect();
+                                            $serviceSlides = ($service->featuredAlbum?->photos ?? collect())
+                                                ->filter(fn ($photo) => $photo->media)
+                                                ->values();
                                         @endphp
                                         <article class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center rounded-3xl border border-[#2a2a2a] bg-[#1a1a1a] p-6 sm:p-10">
                                             <div class="order-1">
-                                                @if ($servicePhotos->isNotEmpty())
+                                                @if ($serviceSlides->isNotEmpty())
                                                     <div class="album-slider" data-album-slider>
-                                                        @foreach ($servicePhotos as $servicePhoto)
-                                                            @if ($servicePhoto->media)
-                                                                <div>
-                                                                    <div class="aspect-[4/3] rounded-xl overflow-hidden bg-black">
-                                                                        <img src="{{ $servicePhoto->media->getDisplayUrl() ?: $servicePhoto->media->getUrl() }}"
-                                                                             alt="{{ $service->title }}"
-                                                                             {{ $loop->first ? 'fetchpriority="high"' : 'loading="lazy"' }}
-                                                                             class="w-full h-full object-cover">
-                                                                    </div>
+                                                        @foreach ($serviceSlides as $servicePhoto)
+                                                            <div data-slide-thumb="{{ $servicePhoto->media->getThumbnailUrl() }}">
+                                                                <div class="aspect-[4/3] rounded-xl overflow-hidden bg-black">
+                                                                    <img src="{{ $servicePhoto->media->getDisplayUrl() ?: $servicePhoto->media->getUrl() }}"
+                                                                         alt="{{ $service->title }}"
+                                                                         {{ $loop->first ? 'fetchpriority="high"' : 'loading="lazy"' }}
+                                                                         class="w-full h-full object-cover">
                                                                 </div>
-                                                            @endif
+                                                            </div>
                                                         @endforeach
                                                     </div>
+                                                    @if ($serviceSlides->count() > 1)
+                                                        <div class="album-slider-thumbs" data-album-thumbs></div>
+                                                    @endif
                                                 @else
                                                     <div class="aspect-[4/3] rounded-xl bg-[#0a0a0a] flex items-center justify-center text-gray-500">
                                                         <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">

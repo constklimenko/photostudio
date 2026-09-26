@@ -129,6 +129,42 @@ class GraduationPricingCategoryPageTest extends TestCase
         $response->assertSee($data['media']->getDisplayUrl(), false);
     }
 
+    public function test_graduation_category_page_renders_slider_thumbs_and_thumbnail_urls(): void
+    {
+        $data = $this->createGraduationTree();
+
+        $thumbMedia = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'albums/graduation-2.jpg',
+            'thumbnail_path' => 'albums/thumbs/graduation-2.webp',
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        Photo::factory()->create([
+            'album_id' => $data['album']->id,
+            'media_id' => $thumbMedia->id,
+            'sort_order' => 2,
+        ]);
+
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
+
+        $response->assertOk();
+        $response->assertSee('data-album-thumbs', false);
+        $response->assertSee($thumbMedia->getThumbnailUrl(), false);
+        $this->assertSame(2, substr_count((string) $response->getContent(), 'data-slide-thumb'));
+    }
+
+    public function test_graduation_category_page_omits_slider_thumbs_for_single_photo(): void
+    {
+        $data = $this->createGraduationTree();
+
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
+
+        $response->assertOk();
+        $response->assertSee('data-album-slider', false);
+        $response->assertDontSee('data-album-thumbs', false);
+    }
+
     public function test_graduation_category_page_renders_ar_price_badge_with_default(): void
     {
         $data = $this->createGraduationTree();

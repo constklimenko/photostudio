@@ -203,10 +203,6 @@ section.bg-gray-900 {
 }
 
 /* Слайдер фотоальбома услуги (slick) */
-.album-slider {
-    padding-bottom: 2.75rem;
-}
-
 .album-slider .slick-slide img {
     display: block;
     width: 100%;
@@ -246,18 +242,42 @@ section.bg-gray-900 {
     opacity: 1;
 }
 
-.album-slider .slick-dots {
-    bottom: 0;
+/* Миниатюры слайдера: текущая фотография и две соседние */
+.album-slider-thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.75rem;
 }
 
-.album-slider .slick-dots li button:before {
-    color: #d4af37;
-    opacity: 0.5;
+.album-slider-thumb {
+    display: block;
+    padding: 0;
+    aspect-ratio: 4 / 3;
+    border: 1px solid #2a2a2a;
+    border-radius: 0.75rem;
+    background-color: #0a0a0a;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity .2s, border-color .2s, box-shadow .2s;
 }
 
-.album-slider .slick-dots li.slick-active button:before {
-    color: #d4af37;
+.album-slider-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.album-slider-thumb:hover {
+    opacity: 0.75;
+}
+
+.album-slider-thumb.is-active {
     opacity: 1;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 1px #d4af37;
 }
 
 /* Hero — полноэкранное фото + overlay */
