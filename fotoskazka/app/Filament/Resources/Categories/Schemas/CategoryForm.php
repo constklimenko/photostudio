@@ -105,6 +105,14 @@ class CategoryForm
                             ->helperText('Категория и её подкатегории выводятся блоком «Стоимость альбомов» на главной')
                             ->visible(fn (Get $get): bool => (string) $get('type') === 'service'),
                     ]),
+                Section::make('Главная страница')
+                    ->visible(fn (Get $get): bool => (string) $get('type') === 'service')
+                    ->schema([
+                        Toggle::make('show_on_home')
+                            ->label('Выводить в виде кнопки на главной')
+                            ->helperText('Управляет отображением ссылки-кнопки в Hero главной страницы. Учитываются только опубликованные категории, порядок — по полю «Порядок сортировки»')
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Описание')
                     ->schema([
                         RichEditor::make('description')

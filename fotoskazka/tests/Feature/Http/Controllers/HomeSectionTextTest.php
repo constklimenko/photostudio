@@ -2,8 +2,9 @@
 
 namespace Tests\Feature\Http\Controllers;
 
-use App\Models\Category;
+use App\Models\Album;
 use App\Models\Page;
+use App\Services\HomeContentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -12,54 +13,45 @@ class HomeSectionTextTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createServicesCategory(): Category
-    {
-        return Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => true,
-            'name' => 'Выпускные альбомы',
-        ]);
-    }
-
     public function test_block_uses_page_title_when_home_title_empty(): void
     {
-        $this->createServicesCategory();
-
-        Page::factory()->create([
-            'slug' => 'services',
-            'title' => 'Услуги студии',
-            'subtitle' => 'Подзаголовок тематической страницы',
+        $this->enablePortfolioSection([
+            'title' => 'Портфолио студии',
+            'subtitle' => 'Подборка лучших кадров',
             'home_title' => null,
             'home_subtitle' => null,
-            'show_on_home' => true,
-            'is_published' => true,
         ]);
 
-        Cache::flush();
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный кадр',
+        ]);
 
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('Услуги студии')
-            ->assertSee('Подзаголовок тематической страницы');
+            ->assertSee('Портфолио студии')
+            ->assertSee('Подборка лучших кадров')
+            ->assertSee('Избранный кадр');
     }
 
     public function test_block_prefers_home_title_over_page_title(): void
     {
-        $this->createServicesCategory();
-
-        Page::factory()->create([
-            'slug' => 'services',
+        $this->enablePortfolioSection([
             'title' => 'Заголовок страницы',
             'subtitle' => 'Подзаголовок страницы',
             'home_title' => 'Заголовок блока на главной',
             'home_subtitle' => 'Подзаголовок блока на главной',
-            'show_on_home' => true,
-            'is_published' => true,
         ]);
 
-        Cache::flush();
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный кадр',
+        ]);
 
         $response = $this->get('/');
 
@@ -71,59 +63,120 @@ class HomeSectionTextTest extends TestCase
 
     public function test_block_uses_default_text_when_page_missing(): void
     {
-        $this->createServicesCategory();
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный кадр',
+        ]);
 
         Cache::flush();
 
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('Наши услуги')
-            ->assertSee('Выберите подходящий формат съёмки');
+            ->assertDontSee('Избранный кадр')
+            ->assertDontSee('data-home-block="featured-works"', false);
     }
 
     public function test_block_renders_home_content_description(): void
     {
-        $this->createServicesCategory();
-
-        Page::factory()->create([
-            'slug' => 'services',
-            'title' => 'Услуги',
-            'home_title' => null,
-            'home_subtitle' => null,
-            'home_content' => '<p>Индивидуальные форматы съёмки под ваш праздник</p>',
-            'show_on_home' => true,
-            'is_published' => true,
+        $this->enablePortfolioSection([
+            'title' => 'Портфолио',
+            'home_content' => '<p>Лучшие кадры нашей студии</p>',
         ]);
 
-        Cache::flush();
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный кадр',
+        ]);
 
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('Индивидуальные форматы съёмки под ваш праздник');
+            ->assertSee('Лучшие кадры нашей студии');
     }
 
     public function test_block_description_falls_back_to_page_content(): void
     {
-        $this->createServicesCategory();
-
-        Page::factory()->create([
-            'slug' => 'services',
-            'title' => 'Услуги',
-            'home_title' => null,
-            'home_subtitle' => null,
+        $this->enablePortfolioSection([
+            'title' => 'Портфолио',
             'home_content' => null,
             'content' => '<p>Описание тематической страницы</p>',
-            'show_on_home' => true,
-            'is_published' => true,
         ]);
 
-        Cache::flush();
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный кадр',
+        ]);
 
         $response = $this->get('/');
 
         $response->assertOk()
             ->assertSee('Описание тематической страницы');
+    }
+
+    public function test_block_text_strips_html_from_page_content(): void
+    {
+        $this->enablePortfolioSection([
+            'title' => 'Портфолио',
+            'home_content' => null,
+            'content' => '<p>Текст <strong>описания</strong></p>',
+        ]);
+
+        $text = app(HomeContentService::class)->blockText('portfolio', 'Избранные работы');
+
+        $this->assertSame('Текст описания', $text['content']);
+    }
+
+    public function test_block_text_returns_defaults_for_unknown_page(): void
+    {
+        Cache::flush();
+
+        $text = app(HomeContentService::class)->blockText(
+            'services',
+            'Наши услуги',
+            'Выберите подходящий формат съёмки',
+        );
+
+        $this->assertSame([
+            'title' => 'Наши услуги',
+            'subtitle' => 'Выберите подходящий формат съёмки',
+            'content' => null,
+        ], $text);
+    }
+
+    public function test_block_text_ignores_pages_hidden_on_home(): void
+    {
+        Page::factory()->create([
+            'slug' => 'services',
+            'title' => 'Услуги студии',
+            'show_on_home' => true,
+            'is_published' => false,
+        ]);
+
+        Cache::flush();
+
+        $text = app(HomeContentService::class)->blockText('services', 'Наши услуги');
+
+        $this->assertSame('Наши услуги', $text['title']);
+    }
+
+    private function enablePortfolioSection(array $attributes = []): Page
+    {
+        $page = Page::factory()->create(array_merge([
+            'slug' => 'portfolio',
+            'title' => 'Портфолио',
+            'is_published' => true,
+            'show_on_home' => true,
+        ], $attributes));
+
+        Cache::flush();
+
+        return $page;
     }
 }

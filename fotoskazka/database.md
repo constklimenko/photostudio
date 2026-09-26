@@ -487,6 +487,7 @@ is_published BOOLEAN DEFAULT TRUE
 is_graduation_albums BOOLEAN DEFAULT FALSE INDEX
 sort_order INT DEFAULT 0
 show_album_photos BOOLEAN DEFAULT FALSE
+show_on_home BOOLEAN DEFAULT FALSE INDEX
 featured_album_id BIGINT NULL
 
 cta_album_id BIGINT NULL
@@ -569,6 +570,14 @@ enum `App\Enums\ShootingAlbumDisplay` (методы `label()`, `options()`).
 | cta_album_id      | Альбом, на который ведёт кнопка (BelongsTo → albums)                     |
 | cta_button_text   | Текст кнопки (например, «Посмотреть варианты обложек»)                   |
 
+`show_on_home` — переключатель показа категории в виде кнопки в первом экране
+(`Hero`) главной страницы. Учитывается только для `type = service` и только для
+опубликованных категорий; в админке поле видно при выбранном типе `service`.
+Порядок кнопок на главной: `sort_order` по возрастанию, при равенстве — сначала
+категории, затем услуги, при равенстве типа — по названию (алфавит, без учёта
+регистра). Ссылка кнопки строится из полного пути категории
+(`services/{путь категории}`).
+
 При `show_album_photos = true` выбранный альбом исключается из списка
 альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
 с lightbox (как на странице услуги). Если список карточек остаётся непустым
@@ -586,6 +595,7 @@ INDEX(is_published)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
 INDEX(shooting_album_id)
+INDEX(show_on_home)
 ```
 
 ---
@@ -776,6 +786,8 @@ examples_title VARCHAR(255) NULL
 
 show_album_photos BOOLEAN DEFAULT FALSE
 
+show_on_home BOOLEAN DEFAULT FALSE INDEX
+
 featured_album_id BIGINT NULL
 
 cta_album_id BIGINT NULL
@@ -821,6 +833,7 @@ INDEX(sort_order)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
 INDEX(shooting_album_id)
+INDEX(show_on_home)
 ```
 
 `shooting_album_id` — необязательная привязка одного альбома «Фото со съёмок»
@@ -847,6 +860,14 @@ INDEX(shooting_album_id)
 с lightbox (как на странице альбома). Если список карточек остаётся непустым
 (осталось ≥ 1 альбом), он рендерится перед сеткой. Настройка доступна только
 для услуги (категории не затрагиваются).
+
+`show_on_home` — переключатель показа услуги в виде кнопки в первом экране
+(`Hero`) главной страницы. Учитывается только для опубликованных услуг; в
+админке переключатель находится в секции публикации. Ссылка кнопки строится из
+полного пути услуги (`services/{путь категории/услуги}`), у услуги без категории —
+`services/{slug}`. Порядок кнопок общий с категориями: `sort_order` по
+возрастанию, при равенстве — категории раньше услуг, затем по названию (алфавит,
+без учёта регистра).
 
 ---
 

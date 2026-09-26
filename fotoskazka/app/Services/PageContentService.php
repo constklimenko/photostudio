@@ -56,6 +56,14 @@ class PageContentService
             ->all();
     }
 
+    /**
+     * Отмечена ли страница в `Pages → Отображать на главной`.
+     */
+    public function isHomeSection(string $slug): bool
+    {
+        return array_key_exists($slug, $this->getHomeSections());
+    }
+
     public function getMenuItems(): array
     {
         return Cache::rememberForever('pages_menu', function () {

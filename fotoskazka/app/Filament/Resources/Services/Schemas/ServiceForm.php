@@ -78,6 +78,13 @@ class ServiceForm
                             ->integer()
                             ->default(0),
                     ]),
+                Section::make('Главная страница')
+                    ->schema([
+                        Toggle::make('show_on_home')
+                            ->label('Выводить в виде кнопки на главной')
+                            ->helperText('Управляет отображением ссылки-кнопки в Hero главной страницы. Учитываются только опубликованные услуги, порядок — по полю «Порядок сортировки»')
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')

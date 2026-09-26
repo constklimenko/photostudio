@@ -3,7 +3,6 @@
 namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Album;
-use App\Models\Category;
 use App\Models\FaqItem;
 use App\Models\Media;
 use App\Models\NotificationSetting;
@@ -11,6 +10,7 @@ use App\Models\Page;
 use App\Models\Photo;
 use App\Models\Post;
 use App\Models\Service;
+use App\Models\SocialLink;
 use App\Models\Testimonial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -33,6 +33,20 @@ class HomeControllerTest extends TestCase
         ]);
     }
 
+    private function enablePortfolioSection(bool $showOnHome = true): Page
+    {
+        $page = Page::factory()->create([
+            'slug' => 'portfolio',
+            'title' => 'Портфолио',
+            'is_published' => true,
+            'show_on_home' => $showOnHome,
+        ]);
+
+        Cache::flush();
+
+        return $page;
+    }
+
     public function test_home_page_returns_successful_response(): void
     {
         $response = $this->get('/');
@@ -45,6 +59,86 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertSee('ФОТОСКАЗКА УФА');
+    }
+
+    public function test_home_page_shows_page_title_from_database(): void
+    {
+        Page::factory()->create([
+            'slug' => 'home',
+            'title' => 'Фотосказка — Главная',
+            'is_published' => true,
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertSee('Фотосказка — Главная');
+    }
+
+    public function test_home_page_contains_hero_and_social_links_only(): void
+    {
+        Testimonial::factory()->create([
+            'is_published' => true,
+            'client_name' => 'Анна С.',
+            'content' => 'Отличный фотограф!',
+        ]);
+
+        Post::factory()->create([
+            'is_published' => true,
+            'published_at' => now()->subDay(),
+            'title' => 'Как подготовиться к съёмке',
+        ]);
+
+        FaqItem::create([
+            'is_active' => true,
+            'question' => 'Сколько стоят услуги?',
+            'answer' => 'Всё индивидуально',
+            'sort_order' => 1,
+        ]);
+
+        Page::factory()->create([
+            'slug' => 'home',
+            'about_studio_text' => '<p>Мы — студия семейной фотографии.</p>',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('id="hero-block"', false)
+            ->assertDontSee('Анна С.')
+            ->assertDontSee('Как подготовиться к съёмке')
+            ->assertDontSee('Сколько стоят услуги?')
+            ->assertDontSee('Мы — студия семейной фотографии')
+            ->assertDontSee('Наши услуги');
+    }
+
+    public function test_home_page_shows_social_links(): void
+    {
+        SocialLink::create([
+            'name' => 'Telegram',
+            'url' => 'https://t.me/fotoskazka',
+            'icon' => 'telegram',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('https://t.me/fotoskazka')
+            ->assertSee('Telegram');
+    }
+
+    public function test_home_page_shows_inquiry_button_in_header(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('data-open-modal="inquiry"', false)
+            ->assertSee('Оставить заявку');
     }
 
     public function test_home_page_does_not_render_ar_teaser(): void
@@ -100,87 +194,10 @@ class HomeControllerTest extends TestCase
             ->assertDontSee(route('portfolio.show', $album->slug), false);
     }
 
-    public function test_home_page_shows_page_title_from_database(): void
+    public function test_home_page_shows_featured_works_when_portfolio_page_enabled(): void
     {
-        Page::factory()->create([
-            'slug' => 'home',
-            'title' => 'Фотосказка — Главная',
-            'is_published' => true,
-        ]);
+        $this->enablePortfolioSection();
 
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertSee('Фотосказка — Главная');
-    }
-
-    public function test_home_page_shows_service_categories(): void
-    {
-        $category = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => true,
-            'name' => 'Выпускные альбомы',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Выпускные альбомы');
-    }
-
-    public function test_home_page_hides_unpublished_categories(): void
-    {
-        $category = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => false,
-            'name' => 'Скрытая категория',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertDontSee('Скрытая категория');
-    }
-
-    public function test_home_page_hides_child_categories(): void
-    {
-        $parent = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => true,
-            'name' => 'Родитель',
-        ]);
-
-        $child = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => $parent->id,
-            'is_published' => true,
-            'name' => 'Дочерняя',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Родитель');
-        $response->assertDontSee('Дочерняя');
-    }
-
-    public function test_home_page_shows_all_services_link(): void
-    {
-        Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => true,
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Все услуги');
-        $response->assertSee(route('services.index'), false);
-    }
-
-    public function test_home_page_shows_featured_portfolio(): void
-    {
         $album = Album::factory()->create([
             'type' => 'portfolio',
             'is_featured' => true,
@@ -190,11 +207,71 @@ class HomeControllerTest extends TestCase
 
         $response = $this->get('/');
 
-        $response->assertSee('Избранный проект');
+        $response->assertOk()
+            ->assertSee('data-home-block="featured-works"', false)
+            ->assertSee('Портфолио')
+            ->assertSee('Избранный проект')
+            ->assertSee(route('portfolio.show', $album->slug), false);
+    }
+
+    public function test_home_page_hides_featured_works_when_portfolio_page_disabled(): void
+    {
+        $this->enablePortfolioSection(false);
+
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный проект',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('data-home-block="featured-works"', false)
+            ->assertDontSee('Избранный проект');
+    }
+
+    public function test_home_page_hides_featured_works_without_portfolio_page(): void
+    {
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный проект',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('data-home-block="featured-works"', false)
+            ->assertDontSee('Избранный проект');
+    }
+
+    public function test_home_page_hides_featured_works_without_featured_albums(): void
+    {
+        $this->enablePortfolioSection();
+
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => false,
+            'is_published' => true,
+            'title' => 'Обычный проект',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('data-home-block="featured-works"', false)
+            ->assertDontSee('Обычный проект');
     }
 
     public function test_behind_the_scenes_albums_not_shown_in_featured_works(): void
     {
+        $this->enablePortfolioSection();
+
         Album::factory()->create([
             'type' => 'portfolio',
             'is_featured' => true,
@@ -210,56 +287,11 @@ class HomeControllerTest extends TestCase
         ]);
 
         $response = $this->get('/');
-        $html = $response->getContent();
-
-        preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*Избранные работы\s*<\/h2>.*?<\/section>/su', $html, $matches);
-        $featured = $matches[0] ?? '';
+        $featured = $this->featuredWorksSection($response->getContent());
 
         $this->assertNotSame('', $featured);
         $this->assertStringContainsString('Избранный шедевр', $featured);
         $this->assertStringNotContainsString('За кадром съёмки', $featured);
-    }
-
-    public function test_home_page_shows_testimonials(): void
-    {
-        $testimonial = Testimonial::factory()->create([
-            'is_published' => true,
-            'client_name' => 'Анна С.',
-            'content' => 'Отличный фотограф!',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Анна С.');
-        $response->assertSee('Отличный фотограф!');
-    }
-
-    public function test_home_page_shows_latest_posts(): void
-    {
-        $post = Post::factory()->create([
-            'is_published' => true,
-            'published_at' => now()->subDay(),
-            'title' => 'Как подготовиться к съёмке',
-            'excerpt' => 'Полезные советы',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Как подготовиться к съёмке');
-    }
-
-    public function test_home_page_shows_faq(): void
-    {
-        $faq = FaqItem::create([
-            'is_active' => true,
-            'question' => 'Сколько стоят услуги?',
-            'answer' => 'Всё индивидуально',
-            'sort_order' => 1,
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertSee('Сколько стоят услуги?');
     }
 
     public function test_home_hero_loads_cached_version_first_then_original(): void
@@ -343,64 +375,6 @@ class HomeControllerTest extends TestCase
         $this->assertStringContainsString($media->getUrl(), $hero);
         $this->assertStringNotContainsString('data-original="'.$media->getUrl().'"', $hero);
         $this->assertStringContainsString('fetchpriority="high"', $hero);
-    }
-
-    public function test_home_page_shows_inquiry_form(): void
-    {
-        $response = $this->get('/');
-
-        $response->assertSee('Оставить заявку');
-    }
-
-    public function test_home_page_renders_about_studio_text(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'title' => 'Главная',
-            'about_studio_text' => '<p>Мы — студия семейной фотографии.</p>',
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('О студии')
-            ->assertSee('Мы — студия семейной фотографии');
-    }
-
-    public function test_home_page_renders_custom_about_studio_title(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'title' => 'Главная',
-            'about_studio_text' => '<p>Наш текст.</p>',
-            'about_studio_title' => 'Наша студия',
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Наша студия')
-            ->assertDontSee('>О студии<');
-    }
-
-    public function test_home_page_hides_about_studio_text_when_empty(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'title' => 'Главная',
-            'about_studio_text' => null,
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertDontSee('О студии');
     }
 
     public function test_store_inquiry_creates_inquiry(): void
@@ -514,5 +488,12 @@ class HomeControllerTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['agreed_to_terms']);
+    }
+
+    private function featuredWorksSection(string $html): string
+    {
+        preg_match('/<section[^>]*data-home-block="featured-works".*?<\/section>/s', $html, $matches);
+
+        return $matches[0] ?? '';
     }
 }

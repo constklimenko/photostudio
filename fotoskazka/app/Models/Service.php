@@ -21,7 +21,7 @@ class Service extends Model
     protected $fillable = [
         'category_id', 'cover_media_id', 'title', 'slug',
         'short_description', 'description', 'examples_title', 'price_from', 'price_note',
-        'is_published', 'sort_order', 'seo_title', 'seo_description',
+        'is_published', 'show_on_home', 'sort_order', 'seo_title', 'seo_description',
         'show_album_photos', 'featured_album_id', 'cta_album_id', 'cta_button_text',
         'shooting_album_id', 'shooting_album_display',
     ];
@@ -30,6 +30,7 @@ class Service extends Model
     {
         return [
             'is_published' => 'boolean',
+            'show_on_home' => 'boolean',
             'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
             'shooting_album_display' => ShootingAlbumDisplay::class,

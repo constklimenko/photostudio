@@ -48,6 +48,11 @@ class CategoriesTable
                     ->onColor('success')
                     ->offColor('gray')
                     ->tooltip('Категория и её подкатегории выводятся блоком «Стоимость альбомов» на главной'),
+                ToggleColumn::make('show_on_home')
+                    ->label('Кнопка на главной')
+                    ->onColor('success')
+                    ->offColor('gray')
+                    ->tooltip('Ссылка-кнопка в Hero главной страницы'),
                 TextColumn::make('sort_order')
                     ->sortable(),
                 TextColumn::make('created_at')

@@ -1,5 +1,90 @@
 # Changelog
 
+## 2026-09-26 — Главная страница: Hero с управляемыми кнопками, соцсети, «Избранные работы»
+
+### Цель
+
+Оставить на главной только первый экран, соцсети и «Избранные работы», а кнопки
+первого экрана сделать управляемыми из админки — без новой таблицы или сущности.
+Кнопки Hero берутся из самих услуг и категорий по флагу `show_on_home` (паттерн
+уже используется страницами и видео).
+
+Отдельная кнопка «Записаться на съёмку» из Hero удалена: заявка отправляется
+через модальное окно из шапки, которое осталось на месте. Остальные блоки главной
+(услуги, видео, отзывы, блог, вопросы, «О студии», форма заявки) не удалены —
+компоненты и методы данных сохранены, вывод отключён.
+
+### Реализация
+
+- `database/migrations/2026_09_26_100000_add_show_on_home_to_categories_and_services_table.php`
+  (новая) — колонка `show_on_home BOOLEAN DEFAULT FALSE` + индексы в `categories`
+  и `services`. Существующие данные не затронуты (значение по умолчанию `false`).
+- `app/Models/Category.php`, `app/Models/Service.php` — `show_on_home` в
+  `$fillable` и приведение к `boolean`.
+- `app/Filament/Resources/Categories/Schemas/CategoryForm.php` — переключатель
+  «Выводить в виде кнопки на главной», видимый только при `type = service`.
+- `app/Filament/Resources/Categories/Tables/CategoriesTable.php`,
+  `app/Filament/Resources/Services/Tables/ServicesTable.php` — колонка-переключатель
+  в таблице; в `ServiceForm` — такой же переключатель.
+- `app/Services/HomeContentService.php` (новый) — слой данных главной:
+  `heroImages()` (фото первого опубликованного альбома `type = homepage`),
+  `heroButtons()` (опубликованные категории услуг любого уровня и опубликованные
+  услуги с `show_on_home = true`; порядок `sort_order` ASC → категории раньше услуг
+  → название без учёта регистра; ссылки через `catalogPath()`),
+  `featuredWorks()` (`null`, если блок выключен, иначе опубликованные
+  `is_featured` альбомы портфолио), `socialLinks()` и `blockText()` (фоллбэк
+  `home_*` → `title`/`subtitle`/`content` → значения по умолчанию). Методы
+  сохранённых блоков (`servicesGrid()`, `videos()`, `testimonials()`,
+  `latestPosts()`, `faqItems()`, `inquiryServices()`) оставлены без изменений.
+- `app/Services/PageContentService.php` — `isHomeSection(string $slug): bool`
+  поверх уже кэшируемого списка `getHomeSections()`.
+- `resources/views/components/site/hero.blade.php` (новый) — первый экран:
+  фон из фото альбома `homepage` (кэш + оригинал, `fetchpriority="high"`),
+  заголовок/подзаголовок из страницы `home`, кнопки услуг и категорий
+  (`data-hero-button`). Кнопки заявки нет.
+- `resources/views/components/site/home/*.blade.php` (новые) — блоки главной,
+  вынесенные из `home.blade.php`: `featured-works`, `services`, `videos`,
+  `testimonials`, `blog`, `faq`, `about-studio`, `inquiry`. В блоке
+  «Избранные работы» добавлен маркер `data-home-block="featured-works"`.
+- `resources/views/home.blade.php` — Hero, `x-site.social-links`, условный
+  `x-site.home.featured-works` (только при `Pages → Отображать на главной` у
+  страницы `portfolio`).
+- `app/Http/Controllers/HomeController.php` — контроллер оставлен тонким:
+  получает `$page`, `$heroImages`, `$heroButtons`, `$socialLinks`, `$featuredWorks`
+  и тексты блока. Метод `storeInquiry()` не изменён.
+- `resources/views/components/site/social-links.blade.php` — блок принимает
+  ссылки пропом (по умолчанию — общая переменная `$socialLinks`); главная
+  передаёт актуальные данные, чтобы правки из админки не ждали перезапуска
+  приложения (`ViewComposerServiceProvider` собирает их один раз при старте).
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/HomeHeroButtonsTest.php` (новый) — кнопки из
+  опубликованных категорий и услуг с флагом, полный путь вложенной категории,
+  отсутствие неопубликованных и категорий блога, детерминированный порядок,
+  отсутствие кнопки заявки в Hero.
+- `tests/Feature/Http/Controllers/HomeControllerTest.php` — переписан под новую
+  структуру: Hero и фоновые изображения, соцсети, кнопка заявки в шапке, блоки
+  главной не выводятся, «Избранные работы» показываются только при включённой
+  странице `portfolio` и опубликованных избранных альбомах портфолио, заявка
+  не отправляется повторно в AR-тизер и «Фото со съёмок» (тесты прежних блоков
+  удалены как неактуальные).
+- `tests/Feature/Http/Controllers/HomeSectionTextTest.php` — фоллбэки текстов
+  через блок «Избранные работы» и напрямую через `blockText()`, включая
+  игнорирование страниц, скрытых на главной.
+- `tests/Feature/Filament/HeroButtonSettingTest.php` (новый) — переключатель
+  виден только у категорий типа `service`, сохраняется и снимается через форму.
+- `tests/Feature/Components/HomeBlocksTest.php` (новый) — сохранённые блоки
+  `x-site.home.*` продолжают рендериться со своими данными.
+
+### Документация
+
+- `architecture.md` — состав главной, управление кнопками Hero, привязка
+  «Избранных работ» к странице `portfolio`, список сохранённых блоков.
+- `database.md` — `show_on_home` в `categories` и `services` (поле, назначение,
+  правило порядка кнопок, индексы).
+- `roadmap.md` — отметка о составе главной.
+
 ## 2026-09-26 — Исправлена ошибка сохранения страницы с системным slug
 
 ### Проблема
