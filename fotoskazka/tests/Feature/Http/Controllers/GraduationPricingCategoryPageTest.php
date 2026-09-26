@@ -14,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
-class HomeGraduationAlbumsTest extends TestCase
+class GraduationPricingCategoryPageTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -71,38 +71,11 @@ class HomeGraduationAlbumsTest extends TestCase
         return 'Стоимость альбомов';
     }
 
-    public function test_home_page_does_not_render_block_without_flagged_category(): void
+    public function test_graduation_category_page_renders_pricing_block(): void
     {
-        $root = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => null,
-            'is_published' => true,
-            'is_graduation_albums' => false,
-            'name' => 'Обычные услуги',
-        ]);
+        $data = $this->createGraduationTree();
 
-        $child = Category::factory()->create([
-            'type' => 'service',
-            'parent_id' => $root->id,
-            'is_published' => true,
-            'name' => 'Скрытая непомеченная подкатегория',
-        ]);
-
-        $service = Service::factory()->create(['is_published' => true]);
-        $service->category()->associate($child)->save();
-
-        $response = $this->get('/');
-
-        $response->assertOk();
-        $response->assertDontSee(self::blockHeading());
-        $response->assertDontSee('Скрытая непомеченная подкатегория');
-    }
-
-    public function test_home_page_renders_graduation_albums_block(): void
-    {
-        $this->createGraduationTree();
-
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee(self::blockHeading());
@@ -112,20 +85,20 @@ class HomeGraduationAlbumsTest extends TestCase
         $response->assertSee('Цена: 1 650 ₽');
     }
 
-    public function test_home_page_renders_service_items(): void
+    public function test_graduation_category_page_renders_service_items(): void
     {
         $data = $this->createGraduationTree();
 
         $item = ServiceItem::factory()->create(['label' => 'Портрет на обложку']);
         $data['service']->items()->attach($item, ['is_included' => true, 'sort_order' => 1]);
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee('Портрет на обложку');
     }
 
-    public function test_home_page_renders_service_item_icons(): void
+    public function test_graduation_category_page_renders_service_item_icons(): void
     {
         $data = $this->createGraduationTree();
 
@@ -138,37 +111,37 @@ class HomeGraduationAlbumsTest extends TestCase
         $item = ServiceItem::factory()->create(['label' => 'Студийная съёмка', 'icon_id' => $icon->id]);
         $data['service']->items()->attach($item, ['is_included' => true, 'sort_order' => 1]);
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee($icon->getUrl(), false);
         $response->assertSee('alt="Камера"', false);
     }
 
-    public function test_home_page_renders_album_slider_images(): void
+    public function test_graduation_category_page_renders_album_slider_images(): void
     {
         $data = $this->createGraduationTree();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee('data-album-slider');
         $response->assertSee($data['media']->getDisplayUrl(), false);
     }
 
-    public function test_home_page_renders_ar_price_badge_with_default(): void
+    public function test_graduation_category_page_renders_ar_price_badge_with_default(): void
     {
-        $this->createGraduationTree();
+        $data = $this->createGraduationTree();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee('AR + 500 руб.');
     }
 
-    public function test_home_page_renders_configurable_ar_price(): void
+    public function test_graduation_category_page_renders_configurable_ar_price(): void
     {
-        $this->createGraduationTree();
+        $data = $this->createGraduationTree();
 
         Page::factory()->create([
             'slug' => 'home',
@@ -180,18 +153,18 @@ class HomeGraduationAlbumsTest extends TestCase
 
         Cache::flush();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee('AR + 750 руб.');
         $response->assertDontSee('AR + 500 руб.');
     }
 
-    public function test_home_page_links_service_detail_page(): void
+    public function test_graduation_category_page_links_service_detail_page(): void
     {
         $data = $this->createGraduationTree();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee(route('services.show', $data['service']->catalogPath()), false);
@@ -203,7 +176,7 @@ class HomeGraduationAlbumsTest extends TestCase
         ], false);
     }
 
-    public function test_home_page_hides_unpublished_child_category(): void
+    public function test_graduation_category_page_hides_unpublished_child_category(): void
     {
         $root = Category::factory()->create([
             'type' => 'service',
@@ -222,14 +195,14 @@ class HomeGraduationAlbumsTest extends TestCase
         Service::factory()->create(['is_published' => true])->category()
             ->associate($child)->save();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $root->catalogPath()));
 
         $response->assertOk();
         $response->assertSee(self::blockHeading());
         $response->assertDontSee('Скрытая подкатегория');
     }
 
-    public function test_home_page_hides_service_of_unpublished_category_via_has(): void
+    public function test_graduation_category_page_hides_service_of_unpublished_category_via_has(): void
     {
         $root = Category::factory()->create([
             'type' => 'service',
@@ -248,16 +221,16 @@ class HomeGraduationAlbumsTest extends TestCase
         $service = Service::factory()->create(['is_published' => false, 'title' => 'Скрытая услуга']);
         $service->category()->associate($child)->save();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $root->catalogPath()));
 
         $response->assertOk();
         $response->assertDontSee('Категория без услуг');
         $response->assertDontSee('Скрытая услуга');
     }
 
-    public function test_home_page_hides_unpublished_service(): void
+    public function test_graduation_category_page_hides_unpublished_service(): void
     {
-        $this->createGraduationTree();
+        $data = $this->createGraduationTree();
 
         $system = Category::factory()->create([
             'type' => 'service',
@@ -279,17 +252,17 @@ class HomeGraduationAlbumsTest extends TestCase
 
         $service->category()->associate($child)->save();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertDontSee('Неопубликованная услуга');
     }
 
-    public function test_home_page_orders_services_by_sort_order(): void
+    public function test_graduation_category_page_orders_services_by_sort_order(): void
     {
-        $this->createGraduationTree();
+        $data = $this->createGraduationTree();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
         $html = $response->getContent();
 
         preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*'.preg_quote(self::blockHeading(), '/').'\s*<\/h2>.*?<\/section>/su', $html, $matches);
@@ -299,9 +272,9 @@ class HomeGraduationAlbumsTest extends TestCase
         $this->assertStringContainsString('2 страницы (младшая школа)', $section);
     }
 
-    public function test_home_page_shows_block_texts_from_graduation_albums_page(): void
+    public function test_graduation_category_page_shows_block_texts_from_graduation_albums_page(): void
     {
-        $this->createGraduationTree();
+        $data = $this->createGraduationTree();
 
         Page::factory()->create([
             'slug' => 'graduation-albums',
@@ -316,7 +289,7 @@ class HomeGraduationAlbumsTest extends TestCase
 
         Cache::flush();
 
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
 
         $response->assertOk();
         $response->assertSee('Кастомное название');
@@ -325,54 +298,104 @@ class HomeGraduationAlbumsTest extends TestCase
         $response->assertDontSee(self::blockHeading());
     }
 
-    public function test_graduation_block_avoid_n_plus_one(): void
+    public function test_graduation_category_page_without_flag_keeps_standard_layout(): void
     {
-        foreach (['Первый раздел', 'Второй раздел'] as $i => $rootName) {
-            $root = Category::factory()->create([
+        $root = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => true,
+            'is_graduation_albums' => false,
+            'name' => 'Обычные услуги',
+        ]);
+
+        $child = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => $root->id,
+            'is_published' => true,
+            'name' => 'Обычная подкатегория',
+        ]);
+
+        $service = Service::factory()->create(['is_published' => true]);
+        $service->category()->associate($child)->save();
+
+        $response = $this->get(route('services.show', $root->catalogPath()));
+
+        $response->assertOk();
+        $response->assertDontSee(self::blockHeading());
+        $response->assertSee('Обычная подкатегория');
+    }
+
+    public function test_unpublished_graduation_category_returns_404(): void
+    {
+        $root = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => false,
+            'is_graduation_albums' => true,
+        ]);
+
+        $this->get(route('services.show', $root->catalogPath()))
+            ->assertNotFound();
+    }
+
+    public function test_home_page_does_not_render_graduation_pricing_block(): void
+    {
+        $this->createGraduationTree();
+
+        $response = $this->get('/');
+
+        $response->assertOk();
+        $response->assertDontSee(self::blockHeading());
+        $response->assertDontSee('Младшая школа');
+        $response->assertDontSee('AR + 500 руб.');
+    }
+
+    public function test_graduation_category_page_avoid_n_plus_one(): void
+    {
+        $root = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => true,
+            'is_graduation_albums' => true,
+            'name' => 'Выпускные альбомы',
+        ]);
+
+        foreach (['Подраздел А', 'Подраздел Б'] as $childName) {
+            $child = Category::factory()->create([
                 'type' => 'service',
-                'parent_id' => null,
+                'parent_id' => $root->id,
                 'is_published' => true,
-                'is_graduation_albums' => true,
-                'name' => $rootName,
+                'name' => $childName,
             ]);
 
-            foreach (['Подраздел А', 'Подраздел Б'] as $childName) {
-                $child = Category::factory()->create([
-                    'type' => 'service',
-                    'parent_id' => $root->id,
-                    'is_published' => true,
-                    'name' => $childName,
+            foreach (range(1, 3) as $n) {
+                $album = Album::factory()->create(['is_published' => true]);
+                $media = Media::query()->create([
+                    'disk' => 'public',
+                    'file_path' => "albums/{$childName}-{$n}.jpg",
+                    'mime_type' => 'image/jpeg',
+                ]);
+                Photo::factory()->create([
+                    'album_id' => $album->id,
+                    'media_id' => $media->id,
+                    'sort_order' => 1,
                 ]);
 
-                foreach (range(1, 3) as $n) {
-                    $album = Album::factory()->create(['is_published' => true]);
-                    $media = Media::query()->create([
-                        'disk' => 'public',
-                        'file_path' => "albums/{$i}-{$childName}-{$n}.jpg",
-                        'mime_type' => 'image/jpeg',
-                    ]);
-                    Photo::factory()->create([
-                        'album_id' => $album->id,
-                        'media_id' => $media->id,
-                        'sort_order' => 1,
-                    ]);
-
-                    $service = Service::factory()->create([
-                        'is_published' => true,
-                        'title' => "Услуга {$i} {$childName} {$n}",
-                        'featured_album_id' => $album->id,
-                    ]);
-                    $service->category()->associate($child)->save();
-                }
+                $service = Service::factory()->create([
+                    'is_published' => true,
+                    'title' => "Услуга {$childName} {$n}",
+                    'featured_album_id' => $album->id,
+                ]);
+                $service->category()->associate($child)->save();
             }
         }
 
         \DB::enableQueryLog();
-        $response = $this->get('/');
+        $response = $this->get(route('services.show', $root->catalogPath()));
         $queryCount = count(\DB::getQueryLog());
         \DB::disableQueryLog();
 
         $response->assertOk();
-        $this->assertLessThanOrEqual(26, $queryCount, "Expected ≤26 queries for graduation block, got {$queryCount}. Possible N+1 issue.");
+        $this->assertLessThanOrEqual(30, $queryCount, "Expected ≤30 queries for graduation category page, got {$queryCount}. Possible N+1 issue.");
     }
 }

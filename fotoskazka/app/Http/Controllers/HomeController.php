@@ -37,32 +37,6 @@ class HomeController extends Controller
             ->with('cover')
             ->get(['id', 'cover_media_id', 'title', 'slug']);
 
-        $graduationAlbumsCategories = Category::query()
-            ->where('type', 'service')
-            ->where('parent_id', null)
-            ->where('is_graduation_albums', true)
-            ->where('is_published', true)
-            ->orderBy('sort_order')
-            ->with([
-                'children' => fn ($q) => $q
-                    ->where('is_published', true)
-                    ->whereHas('services', fn ($sq) => $sq->where('is_published', true))
-                    ->orderBy('sort_order')
-                    ->with([
-                        'services' => fn ($q) => $q
-                            ->where('is_published', true)
-                            ->orderBy('sort_order')
-                            ->with([
-                                'items.icon',
-                                'category.parent',
-                                'featuredAlbum' => fn ($q) => $q
-                                    ->where('is_published', true)
-                                    ->with(['photos' => fn ($q) => $q->orderBy('sort_order')->with('media')]),
-                            ]),
-                    ]),
-            ])
-            ->get(['id', 'name', 'slug', 'sort_order']);
-
         $shootingWorks = Album::query()
             ->where('type', 'behind_the_scenes')
             ->where('is_featured', true)
@@ -112,7 +86,6 @@ class HomeController extends Controller
             'subtitle' => $page?->ar_teaser_subtitle,
             'footer' => $page?->ar_teaser_footer,
             'media' => $page?->arTeaserMedia,
-            'ar_price' => $page?->ar_price ?? 500,
         ];
 
         $heroAlbum = Album::query()
@@ -127,7 +100,6 @@ class HomeController extends Controller
             'page',
             'homeSections',
             'homeCategories',
-            'graduationAlbumsCategories',
             'featuredWorks',
             'shootingWorks',
             'testimonials',

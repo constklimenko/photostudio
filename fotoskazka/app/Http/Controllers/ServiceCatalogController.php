@@ -111,10 +111,31 @@ class ServiceCatalogController extends Controller
     {
         $page = $this->pageContent->get('services');
 
+        $isGraduation = (bool) $category->is_graduation_albums;
+
         $category->load([
             'cover',
             'parent',
-            'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover']),
+            'children' => function ($query) use ($isGraduation) {
+                $query->where('is_published', true)->orderBy('sort_order')->with(['cover']);
+
+                if ($isGraduation) {
+                    $query
+                        ->whereHas('services', fn ($sq) => $sq->where('is_published', true))
+                        ->with([
+                            'services' => fn ($sq) => $sq
+                                ->where('is_published', true)
+                                ->orderBy('sort_order')
+                                ->with([
+                                    'items.icon',
+                                    'category.parent',
+                                    'featuredAlbum' => fn ($fq) => $fq
+                                        ->where('is_published', true)
+                                        ->with(['photos' => fn ($pq) => $pq->orderBy('sort_order')->with('media')]),
+                                ]),
+                        ]);
+                }
+            },
             'services' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'items']),
             'videos',
             'items.icon',
@@ -149,6 +170,45 @@ class ServiceCatalogController extends Controller
             }
         }
 
-        return view('services.category', compact('page', 'category'));
+        $graduationCategories = $isGraduation ? collect([$category]) : collect();
+        $graduationBlock = [
+            'title' => 'Стоимость альбомов',
+            'subtitle' => 'Выберите свою возрастную категорию и комплектацию',
+            'content' => null,
+        ];
+        $arPrice = 500;
+
+        if ($isGraduation) {
+            $graduationPage = $this->pageContent->get('graduation-albums');
+
+            if ($graduationPage) {
+                $graduationBlock = [
+                    'title' => $graduationPage->home_title ?: ($graduationPage->title ?: $graduationBlock['title']),
+                    'subtitle' => $graduationPage->home_subtitle ?: ($graduationPage->subtitle ?: $graduationBlock['subtitle']),
+                    'content' => $this->plainText($graduationPage->home_content ?: $graduationPage->content),
+                ];
+            }
+
+            $arPrice = (int) ($this->pageContent->get('home')?->ar_price ?? $arPrice);
+        }
+
+        return view('services.category', compact(
+            'page',
+            'category',
+            'graduationCategories',
+            'graduationBlock',
+            'arPrice',
+        ));
+    }
+
+    private function plainText(?string $html): ?string
+    {
+        if (! $html) {
+            return null;
+        }
+
+        $text = trim(strip_tags($html));
+
+        return $text === '' ? null : $text;
     }
 }

@@ -1,5 +1,77 @@
 # Changelog
 
+## 2026-09-26 — Блок «Стоимость альбомов» перенесён с главной на страницу категории
+
+### Цель
+
+Вывести блок «Стоимость альбомов» на странице корневой категории услуг,
+помеченной `categories.is_graduation_albums = true` (URL каталога не меняется,
+например `/services/vypusknye-albomy`). С главной страницы блок убран. Вторая
+независимая реализация блока не создавалась: разметка вынесена в общий Blade-компонент.
+
+### Реализация
+
+- `resources/views/components/site/graduation-pricing.blade.php` (новый) —
+  переиспользуемый компонент `x-site.graduation-pricing` с разметкой блока
+  «Стоимость альбомов», перенесённой из `home.blade.php` без изменений:
+  табы по опубликованным подкатегориям (`data-graduation-tabs`), карточки услуг
+  (цена, «Что входит» с иконками `ServiceItem.icon`, слайдер фото привязанного
+  альбома `data-album-slider`, кнопка «Заказать», ссылка «Подробнее об услуге»),
+  плашка «AR + N руб.». Props: `graduationRoots` (корневые категории с
+  загруженными `children.services`), `title`, `subtitle`, `content`, `arPrice`
+  (fallback 500). Пустая коллекция → компонент не рендерит ничего.
+- `app/Http/Controllers/ServiceCatalogController.php` — `showCategory()`:
+  - при `$category->is_graduation_albums` дочерние категории загружаются
+    constraints на уровне запроса (published + `whereHas` опубликованных услуг,
+    сортировка) с eager loading `services.items.icon`, `services.category.parent`,
+    `featuredAlbum` (published) → `photos` (по `sort_order`) → `media` — без N+1;
+  - тексты блока — цепочка фоллбэка из страницы `graduation-albums`
+    (`home_title ?: title ?: default`, аналогично подзаголовок; контент —
+    plain-text из `home_content ?: content`), как это было на главной;
+  - цена AR — `Page 'home'.ar_price` (настройка из админки), fallback 500 ₽;
+  - в view передаются `graduationCategories` (пустая коллекция для обычных
+    категорий), `graduationBlock`, `arPrice`.
+- `resources/views/services/category.blade.php` — после основной секции категории
+  подключён `x-site.graduation-pricing`; для обычных категорий вывод не меняется.
+- `app/Http/Controllers/HomeController.php` — убраны запрос
+  `$graduationAlbumsCategories` и неиспользуемый ключ `ar_price` в `$arTeaser`.
+- `resources/views/home.blade.php` — секция блока удалена (компонент на главной
+  больше не подключается); остальные блоки главной не тронуты.
+
+### Исправление попутно найденного дефекта
+
+- `resources/views/services/category.blade.php` — `@section('meta_description', ...)`
+  с цепочкой `seo_description ?: description` давал `null`, если оба поля пусты.
+  Inline `@section` с `null` Blade обрабатывает как блочную секцию: `ob_start()`
+  без закрытия — утечка выходного буфера на каждый запрос страницы категории
+  (в тестах проявлялась как «risky: did not close its own output buffers»).
+  Добавлен фоллбэк `?: config('app.name')` — вывод в HTML не изменился
+  (раньше срабатывал дефолт `@yield`).
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/GraduationPricingCategoryPageTest.php` (новый,
+  16 тестов) — перенос покрытий `HomeGraduationAlbumsTest` на страницу категории:
+  рендер блока (заголовок, табы, услуга, цена), пункты «Что входит» и иконки,
+  слайдер фото альбома, плашка AR (дефолт 500 ₽ и кастомная цена из `Page home`),
+  ссылка на страницу услуги, скрытие неопубликованных категорий/услуг (включая
+  `whereHas`), тексты блока из страницы `graduation-albums`, стандартный layout
+  категории без флага, 404 неопубликованной категории, отсутствие блока на
+  главной, бюджет запросов ≤30 (защита от N+1).
+- `tests/Feature/Http/Controllers/HomeGraduationAlbumsTest.php` — удалён
+  (покрытие перенесено в новый файл); Blade-шаблоны и компоненты не удалялись.
+
+### Проверка
+
+- `php artisan test` — 1097 passed / 2836 assertions, 0 risky;
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` — компонент `graduation-pricing` и состав страницы категории.
+
+---
+
 ## 2026-09-20 — D1.2: первый технический прототип WebAR (MindAR)
 
 ### Цель

@@ -160,6 +160,7 @@ resources/views/
 ├── components/site/
 │   ├── album-photos.blade.php # Сетка фото альбома + lightbox (страница альбома и блок в услуге)
 │   ├── shooting-album.blade.php # Блок «Фото со съёмок» (card-карточка либо grid через album-photos; используется на страницах услуги и категории)
+│   ├── graduation-pricing.blade.php # Блок «Стоимость альбомов» (страница корневой категории с флагом is_graduation_albums)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
 │   ├── footer.blade.php        # Подвал (контакты, политика)
@@ -180,7 +181,7 @@ resources/views/
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
-│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums — блок «Стоимость альбомов» (x-site.graduation-pricing)
 │   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)

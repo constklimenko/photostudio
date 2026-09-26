@@ -1,7 +1,7 @@
 @extends('layouts.site')
 
 @section('title', $category->seo_title ?: ($category->name . ' — Фотосказка'))
-@section('meta_description', $category->seo_description ?: $category->description)
+@section('meta_description', $category->seo_description ?: $category->description ?: config('app.name'))
 
 @section('content')
 
@@ -121,6 +121,14 @@
         @endif
     </div>
 </section>
+
+<x-site.graduation-pricing
+    :graduation-roots="$graduationCategories"
+    :title="$graduationBlock['title']"
+    :subtitle="$graduationBlock['subtitle']"
+    :content="$graduationBlock['content']"
+    :ar-price="$arPrice"
+/>
 
 @if ($category->children->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
