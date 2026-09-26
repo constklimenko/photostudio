@@ -47,78 +47,7 @@ class HomeControllerTest extends TestCase
         $response->assertSee('ФОТОСКАЗКА УФА');
     }
 
-    public function test_home_page_renders_ar_teaser(): void
-    {
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
-            ->assertSee('оживающие фотографии')
-            ->assertSee('ar-teaser')
-            ->assertSee('images/ar-teaser.jpg');
-    }
-
-    public function test_ar_teaser_hidden_when_disabled(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_enabled' => false,
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertDontSee('ar-teaser')
-            ->assertDontSee('Скоро в&nbsp;Фотосказке&nbsp;—', false);
-    }
-
-    public function test_ar_teaser_title_and_subtitle_from_database(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_enabled' => true,
-            'ar_teaser_title' => 'Тестовый заголовок AR',
-            'ar_teaser_subtitle' => 'Тестовое описание AR',
-            'ar_teaser_accent' => 'Тестовый акцент AR',
-            'ar_teaser_footer' => 'Тестовый футер AR',
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Тестовый заголовок AR')
-            ->assertSee('Тестовый акцент AR')
-            ->assertSee('Тестовое описание AR')
-            ->assertSee('Тестовый футер AR');
-    }
-
-    public function test_ar_teaser_accent_and_footer_defaults_when_null(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_title' => null,
-            'ar_teaser_accent' => null,
-            'ar_teaser_subtitle' => null,
-            'ar_teaser_footer' => null,
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('оживающие фотографии')
-            ->assertSee('Следите за&nbsp;новостями&nbsp;— подробности скоро появятся на&nbsp;сайте.', false);
-    }
-
-    public function test_ar_teaser_image_from_selected_media(): void
+    public function test_home_page_does_not_render_ar_teaser(): void
     {
         $media = Media::query()->create([
             'disk' => 'public',
@@ -138,69 +67,37 @@ class HomeControllerTest extends TestCase
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('/media/'.$media->getKey().'/', false)
+            ->assertDontSee('ar-teaser')
+            ->assertDontSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
+            ->assertDontSee('оживающие фотографии')
             ->assertDontSee('images/ar-teaser.jpg');
     }
 
-    public function test_ar_teaser_without_media_shows_fallback(): void
+    public function test_home_page_does_not_render_shooting_works_block(): void
     {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_enabled' => true,
-            'ar_teaser_media_id' => null,
+        $media = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'shooting/card.jpg',
+            'mime_type' => 'image/jpeg',
         ]);
 
-        Cache::flush();
+        $album = Album::factory()->create([
+            'type' => 'behind_the_scenes',
+            'is_featured' => true,
+            'is_published' => true,
+            'cover_media_id' => $media->getKey(),
+            'title' => 'За кадром',
+            'description' => 'Как проходила съёмка',
+            'sort_order' => 1,
+        ]);
 
         $response = $this->get('/');
 
         $response->assertOk()
-            ->assertSee('ar-teaser')
-            ->assertSee('images/ar-teaser.jpg');
-    }
-
-    public function test_ar_teaser_default_values_when_fields_null(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_title' => null,
-            'ar_teaser_subtitle' => null,
-            'ar_teaser_media_id' => null,
-        ]);
-
-        Cache::flush();
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Скоро в&nbsp;Фотосказке&nbsp;—', false)
-            ->assertSee('оживающие фотографии')
-            ->assertSee('images/ar-teaser.jpg');
-    }
-
-    public function test_ar_teaser_page_saved_clears_cache(): void
-    {
-        Page::factory()->create([
-            'slug' => 'home',
-            'is_published' => true,
-            'ar_teaser_title' => 'Original Title',
-        ]);
-
-        Cache::flush();
-        $this->get('/');
-
-        $page = Page::where('slug', 'home')->first();
-        $page->ar_teaser_title = 'Updated Title';
-        $page->save();
-
-        Cache::flush();
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Updated Title')
-            ->assertDontSee('Original Title');
+            ->assertDontSee('Фото со съёмок')
+            ->assertDontSee('За кадром')
+            ->assertDontSee('Как проходила съёмка')
+            ->assertDontSee(route('portfolio.show', $album->slug), false);
     }
 
     public function test_home_page_shows_page_title_from_database(): void
@@ -296,126 +193,6 @@ class HomeControllerTest extends TestCase
         $response->assertSee('Избранный проект');
     }
 
-    public function test_home_page_shows_shooting_works_block(): void
-    {
-        $album = Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => true,
-            'title' => 'За кадром выпускного',
-            'description' => 'Как проходила съёмка',
-            'sort_order' => 1,
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('Фото со съёмок')
-            ->assertSee('За кадром выпускного')
-            ->assertSee('Как проходила съёмка')
-            ->assertSee(route('portfolio.show', $album->slug), false);
-    }
-
-    public function test_home_page_hides_unfeatured_shooting_albums(): void
-    {
-        Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => false,
-            'is_published' => true,
-            'title' => 'Неизбранный закадровый',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertDontSee('Фото со съёмок')
-            ->assertDontSee('Неизбранный закадровый');
-    }
-
-    public function test_home_page_hides_unpublished_shooting_albums(): void
-    {
-        Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => false,
-            'title' => 'Неопубликованный закадровый',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertDontSee('Фото со съёмок')
-            ->assertDontSee('Неопубликованный закадровый');
-    }
-
-    public function test_home_page_ignores_other_album_types_in_shooting_block(): void
-    {
-        Album::factory()->create([
-            'type' => 'portfolio',
-            'is_featured' => true,
-            'is_published' => true,
-            'title' => 'Обычное портфолио',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertDontSee('Фото со съёмок');
-    }
-
-    public function test_home_page_shows_shooting_work_cover(): void
-    {
-        $media = Media::query()->create([
-            'disk' => 'public',
-            'file_path' => 'shooting/card.jpg',
-            'mime_type' => 'image/jpeg',
-        ]);
-
-        Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => true,
-            'cover_media_id' => $media->getKey(),
-            'title' => 'За кадром',
-        ]);
-
-        $response = $this->get('/');
-
-        $response->assertOk()
-            ->assertSee('/media/'.$media->getKey().'/', false);
-    }
-
-    public function test_home_page_orders_shooting_works_by_sort_order(): void
-    {
-        Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => true,
-            'title' => 'Первая съёмка',
-            'sort_order' => 1,
-        ]);
-
-        Album::factory()->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => true,
-            'title' => 'Вторая съёмка',
-            'sort_order' => 2,
-        ]);
-
-        $response = $this->get('/');
-        $html = $response->getContent();
-
-        preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*Фото со съёмок\s*<\/h2>.*?<\/section>/su', $html, $matches);
-        $section = $matches[0] ?? '';
-
-        $this->assertNotSame('', $section);
-        $this->assertGreaterThan(
-            strpos($section, 'Первая съёмка'),
-            strpos($section, 'Вторая съёмка')
-        );
-    }
-
     public function test_behind_the_scenes_albums_not_shown_in_featured_works(): void
     {
         Album::factory()->create([
@@ -441,31 +218,6 @@ class HomeControllerTest extends TestCase
         $this->assertNotSame('', $featured);
         $this->assertStringContainsString('Избранный шедевр', $featured);
         $this->assertStringNotContainsString('За кадром съёмки', $featured);
-    }
-
-    public function test_home_page_shooting_works_avoid_n_plus_one(): void
-    {
-        Album::factory()->count(25)->create([
-            'type' => 'behind_the_scenes',
-            'is_featured' => true,
-            'is_published' => true,
-        ])->each(function (Album $album) {
-            $album->update([
-                'cover_media_id' => Media::query()->create([
-                    'disk' => 'public',
-                    'file_path' => "shooting/{$album->getKey()}.jpg",
-                    'mime_type' => 'image/jpeg',
-                ])->getKey(),
-            ]);
-        });
-
-        \DB::enableQueryLog();
-        $response = $this->get('/');
-        $queryCount = count(\DB::getQueryLog());
-        \DB::disableQueryLog();
-
-        $response->assertOk();
-        $this->assertLessThanOrEqual(16, $queryCount, "Expected ≤16 queries for 25 shooting albums, got {$queryCount}. Possible N+1 issue.");
     }
 
     public function test_home_page_shows_testimonials(): void

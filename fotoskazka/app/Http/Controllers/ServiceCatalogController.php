@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ShootingAlbumDisplay;
+use App\Models\Album;
 use App\Models\Category;
 use App\Models\Service;
 use App\Services\PageContentService;
 use App\Services\ServiceCatalogResolver;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class ServiceCatalogController extends Controller
@@ -177,6 +179,9 @@ class ServiceCatalogController extends Controller
             'content' => null,
         ];
         $arPrice = 500;
+        $arTeaser = ['enabled' => false];
+        $shootingWorks = collect();
+        $shootingBlock = [];
 
         if ($isGraduation) {
             $graduationPage = $this->pageContent->get('graduation-albums');
@@ -190,6 +195,9 @@ class ServiceCatalogController extends Controller
             }
 
             $arPrice = (int) ($this->pageContent->get('home')?->ar_price ?? $arPrice);
+            $arTeaser = $this->pageContent->arTeaser();
+            $shootingWorks = $this->shootingWorks();
+            $shootingBlock = $this->shootingBlock();
         }
 
         return view('services.category', compact(
@@ -198,7 +206,42 @@ class ServiceCatalogController extends Controller
             'graduationCategories',
             'graduationBlock',
             'arPrice',
+            'arTeaser',
+            'shootingWorks',
+            'shootingBlock',
         ));
+    }
+
+    private function shootingWorks(): Collection
+    {
+        return Album::query()
+            ->where('type', 'behind_the_scenes')
+            ->where('is_featured', true)
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->with('cover')
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'description', 'sort_order']);
+    }
+
+    private function shootingBlock(): array
+    {
+        $block = [
+            'title' => 'Фото со съёмок',
+            'subtitle' => 'Загляните на съёмочную площадку',
+            'content' => null,
+        ];
+
+        $shootingPage = $this->pageContent->get('shooting');
+
+        if (! $shootingPage) {
+            return $block;
+        }
+
+        return [
+            'title' => $shootingPage->home_title ?: ($shootingPage->title ?: $block['title']),
+            'subtitle' => $shootingPage->home_subtitle ?: ($shootingPage->subtitle ?: $block['subtitle']),
+            'content' => $this->plainText($shootingPage->home_content ?: $shootingPage->content),
+        ];
     }
 
     private function plainText(?string $html): ?string

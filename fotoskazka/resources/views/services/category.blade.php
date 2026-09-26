@@ -130,6 +130,23 @@
     :ar-price="$arPrice"
 />
 
+@if ($arTeaser['enabled'])
+    <x-site.ar-teaser
+        :title="$arTeaser['title'] ?? null"
+        :accent="$arTeaser['accent'] ?? null"
+        :subtitle="$arTeaser['subtitle'] ?? null"
+        :footer="$arTeaser['footer'] ?? null"
+        :media="$arTeaser['media'] ?? null"
+    />
+@endif
+
+<x-site.shooting-works
+    :albums="$shootingWorks"
+    :title="$shootingBlock['title'] ?? null"
+    :subtitle="$shootingBlock['subtitle'] ?? null"
+    :content="$shootingBlock['content'] ?? null"
+/>
+
 @if ($category->children->isNotEmpty())
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">

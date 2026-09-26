@@ -159,7 +159,9 @@ resources/views/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
 │   ├── album-photos.blade.php # Сетка фото альбома + lightbox (страница альбома и блок в услуге)
+│   ├── ar-teaser.blade.php    # AR-тизер «оживающие фотографии» (страница корневой категории is_graduation_albums)
 │   ├── shooting-album.blade.php # Блок «Фото со съёмок» (card-карточка либо grid через album-photos; используется на страницах услуги и категории)
+│   ├── shooting-works.blade.php # Блок «Фото со съёмок» из избранных behind_the_scenes альбомов (страница корневой категории is_graduation_albums)
 │   ├── graduation-pricing.blade.php # Блок «Стоимость альбомов» (страница корневой категории с флагом is_graduation_albums)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
@@ -172,7 +174,7 @@ resources/views/
 │   └── videos.blade.php        # Блок видео (через x-site.video-player) (через x-site.video-player)
 ├── emails/
 │   └── new-inquiry.blade.php   # Шаблон письма о новой заявке
-├── home.blade.php              # Главная (hero, услуги, портфолио, избранные работы, AR-тизер, видео, фото со съёмок, отзывы, блог, форма)
+├── home.blade.php              # Главная (hero, услуги, портфолио, избранные работы, видео, отзывы, блог, форма)
 ├── blog/
 │   ├── index.blade.php         # Список статей (сетка 2 колонки, сайдбар, пагинация)
 │   └── show.blade.php          # Детальная (контент, альбомы-слайдер, форма заявки)
@@ -181,7 +183,7 @@ resources/views/
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
-│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums — блок «Стоимость альбомов» (x-site.graduation-pricing)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums — «Стоимость альбомов» (x-site.graduation-pricing), AR-тизер (x-site.ar-teaser), «Фото со съёмок» (x-site.shooting-works)
 │   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
@@ -297,11 +299,19 @@ resources/views/
 | Метод            | Кэш                  | Назначение                                |
 |------------------|----------------------|-------------------------------------------|
 | `get(slug)`      | `page_content_{slug}` | Опубликованная страница по slug           |
+| `arTeaser()`     | через `page_content_home` | Данные AR-тизера из страницы `home` (`enabled`, `title`, `accent`, `subtitle`, `footer`, `media`) |
 | `getHomeSections`| `pages_home_sections` | Все страницы с show_on_home = true        |
 | `getMenuItems`   | `pages_menu`          | Пункты меню (menu_title ?? title)         |
 | `clearCache(slug?)` | —                  | Сброс кэша (одной страницы или всего)     |
 
 Кэш инвалидируется `PageObserver` при сохранении или удалении страницы.
+
+`arTeaser()` — единственное место, собирающее массив настроек AR-тизера из
+страницы `home`; используется страницей корневой категории выпускных альбомов
+(`ServiceCatalogController::showCategory`). Отсутствие страницы `home` даёт
+`enabled = true` с пустыми текстами — компонент подставляет собственные
+значения по умолчанию. Связь `arTeaserMedia` загружается явно (`loadMissing`),
+чтобы не плодить ленивые запросы.
 
 ## Наблюдатели (`app/Observers/`)
 
@@ -1311,19 +1321,34 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
   после `<x-site.videos>`, в `services/category.blade.php` — после секции видео
   перед формой заявки).
 
-### Блок «Фото со съёмок» на главной странице
+### Блок «Фото со съёмок» на странице выпускных альбомов
 
-Главная (`HomeController::__invoke`) выводит опубликованные альбомы
-`type = 'behind_the_scenes'` с `is_featured = true` и `is_published = true`
-переменной `$shootingWorks`, отсортированные по `sort_order`, с eager load
-`cover` одним IN-запросом (без N+1). Секция `home.blade.php` рендерится
-карточками (обложка через `cover->getThumbnailUrl()` либо плейсхолдер,
-название, описание при наличии), ссылка ведёт на `route('portfolio.show')`.
-Секция выводится **только** при непустом `$shootingWorks` — пустые блоки не
-создаются. Блок «Избранные работы» не зависит от этого перечисления и по
+`ServiceCatalogController::showCategory()` для категории с флагом
+`is_graduation_albums` выводит опубликованные альбомы `type = 'behind_the_scenes'`
+с `is_featured = true` и `is_published = true` переменной `$shootingWorks`,
+отсортированные по `sort_order`, с eager load `cover` одним IN-запросом (без N+1).
+Разметка вынесена в переиспользуемый компонент
+`<x-site.shooting-works :albums="…" :title="…" :subtitle="…" :content="…" />`
+(обложка через `cover->getThumbnailUrl()` либо плейсхолдер, название, описание
+при наличии, ссылка ведёт на `route('portfolio.show')`). Компонент выводится
+**только** при непустом `$shootingWorks` — пустые блоки не создаются.
+
+Тексты блока — цепочка фоллбэка из страницы `shooting`
+(`home_title ?: title ?: 'Фото со съёмок'`, аналогично подзаголовок; контент —
+plain-text из `home_content ?: content`), по тому же принципу, что и тексты
+блока «Стоимость альбомов».
+
+Блок «Избранные работы» на главной не зависит от этого перечисления и по
 прежнему фильтрует `type = 'portfolio'`, поэтому `behind_the_scenes` туда
-не попадают. Схема БД не изменялась (используются существующие
-`albums.type`, `is_featured`, `is_published`, `sort_order`).
+не попадают. Схема БД не изменялась (используются существующие `albums.type`,
+`is_featured`, `is_published`, `sort_order`).
+
+Этот блок — отдельный от `<x-site.shooting-album>`: последний отвечает за один
+явно привязанный альбом (`shooting_album_id`) и остаётся на страницах услуги и
+категории, `shooting-works` — за подборку избранных `behind_the_scenes` альбомов
+на странице выпускных альбомов. Блок с главной страницы перенесён, а не
+продублирован: разметка переехала в компонент и на главной больше не
+выводится.
 
 Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
 принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`
@@ -1434,8 +1459,12 @@ Slug генерируется уникальным сразу (base + `-N`), в�
 `Page` остаётся единой моделью CMS, но `PageForm` контекстно разделяет
 настройки главной страницы (`slug = home`) и обычных страниц.
 Общие поля: `title`, `menu_title`, `slug` (locked для системных slug).
-Для `home`: секции «Главная страница» и «Оживающие фотографии».
-Для остальных: «Заголовок страницы», «Альбомы», «SEO».
+Для `home`: секции «Главная страница» и «Оживающие фотографии»
+(`ar_teaser_*`, `ar_price`). Для остальных: «Заголовок страницы», «Альбомы», «SEO».
+
+Секция «Оживающие фотографии» по-прежнему редактируется у страницы `home` —
+это единый источник настроек AR-тизера, — но сам блок выводится на странице
+корневой категории выпускных альбомов, а не на главной.
 
 ## Правила разработки
 

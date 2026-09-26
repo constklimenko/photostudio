@@ -22,6 +22,22 @@ class PageContentService
         return $data ? Page::hydrate([$data])->first() : null;
     }
 
+    public function arTeaser(): array
+    {
+        $page = $this->get('home');
+
+        $page?->loadMissing('arTeaserMedia');
+
+        return [
+            'enabled' => $page?->ar_teaser_enabled ?? true,
+            'title' => $page?->ar_teaser_title,
+            'accent' => $page?->ar_teaser_accent,
+            'subtitle' => $page?->ar_teaser_subtitle,
+            'footer' => $page?->ar_teaser_footer,
+            'media' => $page?->arTeaserMedia,
+        ];
+    }
+
     public function getHomeSections(): array
     {
         $data = Cache::rememberForever('pages_home_sections', function () {

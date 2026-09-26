@@ -1,5 +1,124 @@
 # Changelog
 
+## 2026-09-26 — AR-тизер и блок «Фото со съёмок» перенесены с главной на страницу категории
+
+### Цель
+
+Перенести два блока с главной страницы на страницу корневой категории
+«Выпускные альбомы» (`categories.is_graduation_albums = true`, URL каталога не
+меняется, например `/services/vypusknye-albomy`):
+
+```
+[Стоимость альбомов]
+        ↓
+[AR — оживающие фотографии]
+        ↓
+[Фото со съёмок]
+```
+
+Перенос отображения, а не удаление функциональности: модели данных, настройки из
+админки, media, тексты, флаги `enabled`, Blade-шаблоны и логика получения данных
+сохранены. Вторая независимая реализация не создавалась — разметка вынесена в
+общий Blade-компонент. Миграций нет, схема БД не менялась.
+
+### Реализация
+
+- `resources/views/components/site/shooting-works.blade.php` (новый) —
+  переиспользуемый компонент `x-site.shooting-works` с разметкой блока
+  «Фото со съёмок», перенесённой из `home.blade.php` без изменений: сетка карточек
+  избранных альбомов (обложка через `cover->getThumbnailUrl()` либо плейсхолдер,
+  название, описание при наличии, ссылка на `route('portfolio.show')`,
+  `data-aos` с задержкой по индексу). Props: `albums`, `title`, `subtitle`,
+  `content` (у всех есть значения по умолчанию). Пустая коллекция → компонент
+  не рендерит ничего.
+- `app/Services/PageContentService.php` — новый метод `arTeaser()`: единственное
+  место, собирающее массив настроек AR-тизера (`enabled`, `title`, `accent`,
+  `subtitle`, `footer`, `media`) из страницы `home`. Связь `arTeaserMedia`
+  загружается явно через `loadMissing`, ленивый запрос не возникает. Отсутствие
+  страницы `home` даёт `enabled = true` с пустыми текстами — компонент
+  подставляет собственные значения по умолчанию (поведение сохранено).
+- `app/Http/Controllers/ServiceCatalogController.php` — `showCategory()`:
+  - при `$category->is_graduation_albums` (и только тогда) грузятся `$arTeaser`
+    (через `PageContentService::arTeaser()`), `$shootingWorks` и `$shootingBlock`;
+    для обычных категорий `$arTeaser = ['enabled' => false]`, а коллекции и
+    тексты пустые — вывод не меняется;
+  - `$shootingWorks` — `Album::query()` по `type = behind_the_scenes` +
+    `is_featured = true` + `is_published = true`, сортировка по `sort_order`,
+    eager load `cover` одним IN-запросом (без N+1);
+  - `$shootingBlock` — цепочка фоллбэка из страницы `shooting`
+    (`home_title ?: title ?: default`, аналогично подзаголовок; контент —
+    plain-text из `home_content ?: content`), по тому же принципу, что и
+    `$graduationBlock` выше в этом же методе;
+  - новые приватные методы `shootingWorks()` и `shootingBlock()`.
+- `resources/views/services/category.blade.php` — сразу после
+  `x-site.graduation-pricing` подключены `@if ($arTeaser['enabled'])`
+  с `x-site.ar-teaser` (те же пять пропсов, что были на главной) и
+  `x-site.shooting-works`. Существующий блок `x-site.shooting-album`
+  (единственный явно привязанный `shooting_album_id`) не тронут и остаётся
+  ниже по странице.
+- `app/Http/Controllers/HomeController.php` — удалены запрос `$shootingWorks`,
+  массив `$arTeaser` и оба ключа в `compact()`. `HomeController` не грузит данные
+  перенесённых блоков.
+- `resources/views/home.blade.php` — удалены секции AR-тизера и «Фото со съёмок»,
+  а также неиспользуемая `$shootingBlock` в `@php`-блоке. Остальные блоки
+  главной не тронуты.
+
+Существующие шаблоны компонентов (`x-site.ar-teaser`, `x-site.shooting-album`)
+не удалялись и не изменялись. Настройки AR-тизера по-прежнему редактируются в
+админке у страницы `home` («Контент → Страницы → Главная» → секция
+«Оживающие фотографии»); набор полей не менялся.
+
+### Контекст загрузки
+
+Данные обоих блоков грузятся в `ServiceCatalogController::showCategory()` — там
+же, где уже грузились данные блока «Стоимость альбомов» (B12 → предыдущая
+запись). `HomeController` в переносе не участвует. AR-тизер читается через
+существующий кэшируемый `PageContentService`; выборка альбомов — один запрос с
+eager load обложек, N+1 отсутствует (покрыто тестом с бюджетом запросов).
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/GraduationCategoryExtrasPageTest.php` (новый,
+  20 тестов) — перенос покрытий с главной на страницу категории:
+  - AR-тизер: рендер со значениями по умолчанию, тексты из страницы `home`
+    (title/accent/subtitle/footer), фоллбэк при пустых полях, скрытие при
+    `ar_teaser_enabled = false`, media из `ar_teaser_media_id` и фолбэк-картинка
+    `images/ar-teaser.jpg` без media, отражение сохранённых настроек (кэш);
+  - «Фото со съёмок»: рендер при `is_featured` + `is_published` (заголовок,
+    описание, ссылка на альбом), скрытие неопубликованных и неизбранных
+    альбомов, игнорирование прочих `type`, обложка, сортировка по `sort_order`,
+    тексты из страницы `shooting` и фоллбэк к дефолтам, скрытие блоков на
+    категории без флага `is_graduation_albums`;
+  - порядок секций: `assertSeeInOrder(['Стоимость альбомов', 'оживающие
+    фотографии', 'Фото со съёмок'])`;
+  - бюджет запросов ≤30 при 25 избранных `behind_the_scenes` альбомах
+    (защита от N+1).
+- `tests/Feature/Http/Controllers/HomeControllerTest.php` — 10 тестов блоков
+  заменены на 2 отрицательных (`test_home_page_does_not_render_ar_teaser`,
+  `test_home_page_does_not_render_shooting_works_block`), причём с готовым
+  контентом (включённый AR-тизер с media, избранный опубликованный
+  `behind_the_scenes` альбом с обложкой), чтобы блок не мог «вернуться» на
+  главную незаметно. Остальные блоки главной не тронуты.
+
+### Проверка
+
+- `php artisan test` — 1102 passed / assertions, 0 risky, 0 failures;
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` — `x-site.shooting-works` в дереве views, состав страницы
+  категории, раздел «Блок „Фото со съёмок“ на странице выпускных альбомов»
+  (вместо «…на главной странице»), метод `arTeaser()` в таблице
+  `PageContentService`, уточнение секции «Оживающие фотографии» в `PageForm`.
+- `roadmap.md` — в D1 уточнено текущее место вывода AR-тизера (страница
+  корневой категории «Выпускные альбомы»); требование «блок не удаляется и не
+  перерабатывается до D1.10» сохранено — перенос выполнен без изменения модели
+  данных, настроек и разметки.
+- `database.md` — не изменялся: миграций нет, новых полей нет.
+
+---
+
 ## 2026-09-26 — Блок «Стоимость альбомов» перенесён с главной на страницу категории
 
 ### Цель
