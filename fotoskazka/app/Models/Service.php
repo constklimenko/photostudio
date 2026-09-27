@@ -67,6 +67,11 @@ class Service extends Model
         return $this->hasMany(Inquiry::class);
     }
 
+    public function faqItems(): BelongsToMany
+    {
+        return $this->belongsToMany(FaqItem::class, 'faq_item_service');
+    }
+
     public function items(): BelongsToMany
     {
         return $this->belongsToMany(ServiceItem::class)

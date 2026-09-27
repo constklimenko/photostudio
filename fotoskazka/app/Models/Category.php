@@ -93,6 +93,11 @@ class Category extends Model
             ->orderByPivot('sort_order');
     }
 
+    public function faqItems(): BelongsToMany
+    {
+        return $this->belongsToMany(FaqItem::class, 'category_faq_item');
+    }
+
     public function albums(): BelongsToMany
     {
         return $this->belongsToMany(Album::class, 'category_album');

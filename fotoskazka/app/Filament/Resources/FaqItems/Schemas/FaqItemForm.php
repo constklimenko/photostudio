@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\FaqItems\Schemas;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class FaqItemForm
@@ -32,6 +34,24 @@ class FaqItemForm
                     ->required()
                     ->rows(5)
                     ->label('Ответ'),
+                Section::make('Привязка к каталогу услуг')
+                    ->schema([
+                        Select::make('services')
+                            ->multiple()
+                            ->relationship('services', 'title')
+                            ->preload()
+                            ->searchable()
+                            ->label('Услуги')
+                            ->columnSpanFull(),
+                        Select::make('categories')
+                            ->multiple()
+                            ->relationship('categories', 'name')
+                            ->preload()
+                            ->searchable()
+                            ->label('Категории услуг')
+                            ->helperText('Доступны только категории типа «Услуга»')
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 }

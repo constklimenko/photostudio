@@ -1,5 +1,63 @@
 # Changelog
 
+## 2026-09-27 — FAQ: привязка к услугам и категориям услуг
+
+### Цель
+
+Расширить FAQ связями many-to-many с конкретными услугами (`Service`) и
+категориями услуг (`Category`): один вопрос может быть привязан к нескольким
+услугам, нескольким категориям либо к тем и другим одновременно. Публичный
+вывод FAQ не меняется, полиморфная связь не вводится.
+
+### Реализация
+
+- `database/migrations/2026_09_27_100000_create_faq_item_service_table.php`
+  (новая) — pivot `faq_item_service`; составной PK `(faq_item_id, service_id)`,
+  оба FK `ON DELETE CASCADE`, индекс по `service_id`.
+- `database/migrations/2026_09_27_100001_create_category_faq_item_table.php`
+  (новая) — pivot `category_faq_item`; составной PK `(category_id, faq_item_id)`,
+  оба FK `ON DELETE CASCADE`, индекс по `faq_item_id`.
+- `app/Models/FaqItem.php` — связи `services()` (BelongsToMany через
+  `faq_item_service`) и `categories()` (BelongsToMany через `category_faq_item`,
+  выборка ограничена `categories.type = service`).
+- `app/Models/Service.php` — обратная связь `faqItems()`.
+- `app/Models/Category.php` — обратная связь `faqItems()`.
+- `app/Filament/Resources/FaqItems/Schemas/FaqItemForm.php` — секция
+  «Привязка к каталогу услуг» с множественными селектами «Услуги» и
+  «Категории услуг» (только `type = service`, за счёт ограничения связи).
+
+Существующие миграции не изменялись, данные не затрагивались. Публичные
+шаблоны FAQ и страницы услуг/категорий не менялись.
+
+### Тесты
+
+- `tests/Feature/Models/FaqItemRelationshipTest.php` (новый, 10 тестов):
+  привязка к нескольким услугам, к нескольким категориям, одновременно к
+  услугам и категориям; обратные связи `Service::faqItems()` /
+  `Category::faqItems()`; ограничение категорий только `type = service`
+  (категория блога не попадает в выборку); корректная загрузка связей через
+  `FaqItem::with(['services', 'categories'])`; каскадное удаление pivot-записей
+  при удалении FAQ, услуги и категории.
+- `tests/Feature/Filament/FaqItemResourceTest.php` — новый тест
+  `test_faq_form_persists_service_and_category_links`: создание FAQ через форму
+  Filament сохраняет привязки к услугам и категориям.
+
+### Проверка
+
+- `php artisan test tests/Feature/Models/FaqItemRelationshipTest.php` — 10 passed;
+- `php artisan test tests/Feature/Filament/FaqItemResourceTest.php` — 8 passed;
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `database.md` — ER-диаграмма (`FAQ_ITEMS }o--o{ SERVICES/CATEGORIES`),
+  описания таблиц `faq_item_service` и `category_faq_item`, связи
+  `FaqItem::services()/categories()`, `Service::faqItems()`,
+  `Category::faqItems()`.
+- `architecture.md` — новый раздел «FAQ — привязка к услугам и категориям
+  услуг».
+- `roadmap.md` — не изменялся (новых сущностей и этапов не вводится).
+
 ## 2026-09-27 — Hero: ленивая подгрузка полноразмерной картинки и на мобильных
 
 ### Цель

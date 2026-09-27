@@ -60,6 +60,9 @@ erDiagram
     CATEGORIES ||--o{ POSTS : categorizes
     CATEGORIES }o--o{ CATEGORIES : parent_child
 
+    FAQ_ITEMS }o--o{ SERVICES : describes
+    FAQ_ITEMS }o--o{ CATEGORIES : grouped_in
+
     PROJECTS ||--o{ ALBUMS : contains
     PROJECTS ||--o| INQUIRIES : source
     ALBUMS ||--o{ PHOTOS : contains
@@ -438,6 +441,64 @@ video_id -> videos.id ON DELETE CASCADE
 
 ---
 
+## faq_item_service
+
+Pivot для many-to-many связи вопросов FAQ и конкретных услуг.
+
+```sql
+faq_item_id BIGINT UNSIGNED
+service_id BIGINT UNSIGNED
+
+PRIMARY KEY(faq_item_id, service_id)
+```
+
+Foreign keys:
+
+```sql
+faq_item_id -> faq_items.id ON DELETE CASCADE
+service_id -> services.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(service_id)
+```
+
+---
+
+## category_faq_item
+
+Pivot для many-to-many связи категорий услуг и вопросов FAQ.
+
+```sql
+category_id BIGINT UNSIGNED
+faq_item_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, faq_item_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+faq_item_id -> faq_items.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(faq_item_id)
+```
+
+Привязка допустима только для категорий `type = service`: связь
+`FaqItem::categories()` ограничивает выборку `categories.type = 'service'`,
+поэтому категории блога (`type = post`) в FAQ не попадают. Обе таблицы —
+обычные many-to-many pivot (полиморфная связь не используется),
+дополнительных полей нет.
+
+---
+
 ### Система ролей
 
 Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
@@ -525,6 +586,7 @@ shooting_album_id -> albums.id ON DELETE SET NULL
 | `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
 | `videos()`  | Видео, прикреплённые к категории (BelongsToMany)             |
 | `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
+| `faqItems()`| Вопросы FAQ, привязанные к категории (BelongsToMany через `category_faq_item`) |
 | `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
 | `ctaAlbum()` | Альбом, на который ведёт кнопка CTA (BelongsTo → album) |
 | `shootingAlbum()` | Альбом «Фото со съёмок» (BelongsTo → album) |
@@ -883,6 +945,9 @@ INDEX(show_on_home)
 `services/{slug}`. Порядок кнопок общий с категориями: `sort_order` по
 возрастанию, при равенстве — категории раньше услуг, затем по названию (алфавит,
 без учёта регистра).
+
+`faqItems()` — вопросы FAQ, привязанные к услуге (BelongsToMany через
+`faq_item_service`); удаление услуги каскадно удаляет pivot-записи.
 
 ---
 
@@ -1435,6 +1500,21 @@ Indexes:
 INDEX(is_active)
 INDEX(sort_order)
 ```
+
+Связи с услугами и категориями услуг (many-to-many, две отдельные
+pivot-таблицы `faq_item_service` и `category_faq_item`; полиморфной связи нет).
+Один вопрос может быть привязан к нескольким услугам и нескольким категориям
+одновременно.
+
+| Модель  | Метод         | Связь                                                              |
+|---------|---------------|--------------------------------------------------------------------|
+| FaqItem | `services()`  | Услуги вопроса (BelongsToMany через `faq_item_service`)            |
+| FaqItem | `categories()`| Категории услуг вопроса (BelongsToMany через `category_faq_item`, выборка ограничена `type = service`) |
+| Service | `faqItems()`  | Вопросы FAQ, привязанные к услуге (BelongsToMany через `faq_item_service`) |
+| Category| `faqItems()`  | Вопросы FAQ, привязанные к категории (BelongsToMany через `category_faq_item`) |
+
+Публичный вывод FAQ этот набор связей не меняет: на страницах услуг и категорий
+FAQ не выводится.
 
 ---
 

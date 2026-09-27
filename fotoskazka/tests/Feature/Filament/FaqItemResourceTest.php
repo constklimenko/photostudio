@@ -2,11 +2,15 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Filament\Resources\FaqItems\Pages\CreateFaqItem;
+use App\Models\Category;
 use App\Models\FaqItem;
 use App\Models\Role;
+use App\Models\Service;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class FaqItemResourceTest extends TestCase
@@ -87,5 +91,26 @@ class FaqItemResourceTest extends TestCase
 
         $response->assertSuccessful();
         $this->assertDatabaseHas('faq_items', ['question' => 'Test Question']);
+    }
+
+    public function test_faq_form_persists_service_and_category_links(): void
+    {
+        $services = Service::factory()->count(2)->create();
+        $category = Category::factory()->create(['type' => 'service']);
+
+        Livewire::test(CreateFaqItem::class)
+            ->fillForm([
+                'question' => 'Можно ли выбрать услуги?',
+                'answer' => 'Да.',
+                'services' => $services->pluck('id')->all(),
+                'categories' => [$category->id],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $faq = FaqItem::where('question', 'Можно ли выбрать услуги?')->firstOrFail();
+
+        $this->assertCount(2, $faq->services);
+        $this->assertCount(1, $faq->categories);
     }
 }
