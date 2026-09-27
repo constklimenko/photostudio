@@ -60,13 +60,13 @@
             </div>
         @endif
 
-        <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $category->name }}</h1>
-
-        <div class="mt-6">
-            <x-site.share-button :title="$category->name" />
-        </div>
-
         @if (! $category->is_graduation_albums)
+            <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $category->name }}</h1>
+
+            <div class="mt-6">
+                <x-site.share-button :title="$category->name" />
+            </div>
+
             @if ($category->description)
                 <div class="mt-6 prose prose-invert max-w-none">
                     {!! $category->description !!}
@@ -111,7 +111,7 @@
             @endif
         @endif
 
-        @if ($category->ctaAlbum && $category->cta_button_text)
+        @if (! $category->is_graduation_albums && $category->ctaAlbum && $category->cta_button_text)
             <section class="py-12" data-aos="fade-up">
                 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <a href="{{ route('portfolio.show', $category->ctaAlbum->slug) }}"
@@ -122,7 +122,9 @@
             </section>
         @endif
     </div>
+    @if (! $category->is_graduation_albums)
 </section>
+@endif
 
 <x-site.graduation-pricing
     :graduation-roots="$graduationCategories"
@@ -149,7 +151,7 @@
     :content="$shootingBlock['content'] ?? null"
 />
 
-@if ($category->children->isNotEmpty())
+@if ($category->children->isNotEmpty() && ! $category->is_graduation_albums )
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">Разделы</h2>

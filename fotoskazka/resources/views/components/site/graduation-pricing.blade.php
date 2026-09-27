@@ -7,7 +7,7 @@
 ])
 
 @if ($graduationRoots->isNotEmpty())
-    <section class="py-24 bg-[#111111]" data-aos="fade-up">
+{{--    <section class="py-24 bg-[#111111]" data-aos="fade-up">--}}
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">{{ $title }}</h2>
             <p class="mt-3 text-gray-400 text-center">{{ $subtitle }}</p>
@@ -112,18 +112,34 @@
                                                        class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
                                                         Заказать
                                                     </a>
-                                                    <a href="{{ route('services.show', $service->catalogPath()) }}"
-                                                       class="inline-flex items-center gap-2 text-[#d4af37] font-medium text-sm uppercase tracking-wider hover:opacity-70 transition">
-                                                        Подробнее об услуге
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-                                                        </svg>
-                                                    </a>
                                                 </div>
                                             </div>
                                         </article>
                                     @endforeach
                                 </div>
+
+                                @if ($child->ctaAlbum && $child->cta_button_text)
+                                    @php
+                                        $childCtaPhoto = ($child->ctaAlbum->photos ?? collect())
+                                            ->sortBy('sort_order')
+                                            ->first(fn ($photo) => $photo->media);
+                                    @endphp
+                                    <div class="mt-12 text-center" data-graduation-cta data-aos="fade-up">
+                                        @if ($childCtaPhoto)
+                                            <a href="{{ route('portfolio.show', $child->ctaAlbum->slug) }}"
+                                               class="group block max-w-3xl mx-auto rounded-2xl overflow-hidden shadow-lg shadow-black/30">
+                                                <img src="{{ $childCtaPhoto->media->getDisplayUrl() ?: $childCtaPhoto->media->getUrl() }}"
+                                                     alt="{{ $child->ctaAlbum->title }}"
+                                                     loading="lazy"
+                                                     class="w-full aspect-[16/9] object-cover group-hover:scale-105 transition duration-500">
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('portfolio.show', $child->ctaAlbum->slug) }}"
+                                           class="mt-8 inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                                            {{ $child->cta_button_text }}
+                                        </a>
+                                    </div>
+                                @endif
                             </div>
                         @endforeach
                     </div>

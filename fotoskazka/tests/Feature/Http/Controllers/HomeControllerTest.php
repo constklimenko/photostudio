@@ -268,6 +268,59 @@ class HomeControllerTest extends TestCase
             ->assertDontSee('Обычный проект');
     }
 
+    public function test_home_page_ignores_other_pages_marked_show_on_home(): void
+    {
+        Page::factory()->create([
+            'slug' => 'services',
+            'title' => 'Услуги студии',
+            'is_published' => true,
+            'show_on_home' => true,
+        ]);
+
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный проект',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertDontSee('data-home-block="featured-works"', false)
+            ->assertDontSee('Избранный проект');
+    }
+
+    public function test_home_page_featured_works_depend_only_on_portfolio_page(): void
+    {
+        $this->enablePortfolioSection();
+
+        Page::factory()->create([
+            'slug' => 'services',
+            'title' => 'Услуги студии',
+            'is_published' => true,
+            'show_on_home' => true,
+        ]);
+
+        Album::factory()->create([
+            'type' => 'portfolio',
+            'is_featured' => true,
+            'is_published' => true,
+            'title' => 'Избранный проект',
+        ]);
+
+        Cache::flush();
+
+        $response = $this->get('/');
+
+        $response->assertOk()
+            ->assertSee('data-home-block="featured-works"', false)
+            ->assertSee('Избранный проект')
+            ->assertDontSee('data-hero-button', false);
+    }
+
     public function test_behind_the_scenes_albums_not_shown_in_featured_works(): void
     {
         $this->enablePortfolioSection();

@@ -135,6 +135,9 @@ class ServiceCatalogController extends Controller
                                         ->where('is_published', true)
                                         ->with(['photos' => fn ($pq) => $pq->orderBy('sort_order')->with('media')]),
                                 ]),
+                            'ctaAlbum' => fn ($cq) => $cq->with([
+                                'photos' => fn ($pq) => $pq->orderBy('sort_order')->with('media'),
+                            ]),
                         ]);
                 }
             },

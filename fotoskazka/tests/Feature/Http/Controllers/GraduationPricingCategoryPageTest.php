@@ -386,6 +386,155 @@ class GraduationPricingCategoryPageTest extends TestCase
         $response->assertDontSee('AR + 500 руб.');
     }
 
+    public function test_graduation_pricing_tab_renders_cta_with_first_album_photo(): void
+    {
+        $firstMedia = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'cta/first.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+        $secondMedia = Media::query()->create([
+            'disk' => 'public',
+            'file_path' => 'cta/second.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+
+        $ctaAlbum = Album::factory()->create([
+            'is_published' => true,
+            'title' => 'Варианты обложек',
+        ]);
+
+        Photo::factory()->create([
+            'album_id' => $ctaAlbum->id,
+            'media_id' => $secondMedia->id,
+            'sort_order' => 2,
+        ]);
+        Photo::factory()->create([
+            'album_id' => $ctaAlbum->id,
+            'media_id' => $firstMedia->id,
+            'sort_order' => 1,
+        ]);
+
+        $tree = $this->createGraduationTree();
+        $tree['child']->update([
+            'cta_album_id' => $ctaAlbum->id,
+            'cta_button_text' => 'Посмотреть варианты обложек',
+        ]);
+
+        $response = $this->get(route('services.show', $tree['root']->catalogPath()));
+
+        $response->assertOk();
+
+        $cta = $this->ctaSection($response->getContent());
+
+        $this->assertNotSame('', $cta);
+        $this->assertStringContainsString('Посмотреть варианты обложек', $cta);
+        $this->assertStringContainsString(route('portfolio.show', $ctaAlbum->slug), $cta);
+        $this->assertStringContainsString(
+            route('media.display', ['media' => $firstMedia->getKey(), 'v' => 'webp']),
+            $cta
+        );
+        $this->assertStringNotContainsString(
+            route('media.display', ['media' => $secondMedia->getKey(), 'v' => 'webp']),
+            $cta
+        );
+    }
+
+    public function test_graduation_pricing_tab_cta_without_photos_shows_only_button(): void
+    {
+        $ctaAlbum = Album::factory()->create([
+            'is_published' => true,
+            'title' => 'Альбом без фото',
+        ]);
+
+        $tree = $this->createGraduationTree();
+        $tree['child']->update([
+            'cta_album_id' => $ctaAlbum->id,
+            'cta_button_text' => 'Посмотреть варианты',
+        ]);
+
+        $response = $this->get(route('services.show', $tree['root']->catalogPath()));
+
+        $response->assertOk();
+
+        $cta = $this->ctaSection($response->getContent());
+
+        $this->assertNotSame('', $cta);
+        $this->assertStringContainsString('Посмотреть варианты', $cta);
+        $this->assertStringContainsString(route('portfolio.show', $ctaAlbum->slug), $cta);
+    }
+
+    public function test_each_graduation_tab_uses_its_own_cta_link(): void
+    {
+        $juniorAlbum = Album::factory()->create(['is_published' => true, 'title' => 'Младшие школьники']);
+        $seniorAlbum = Album::factory()->create(['is_published' => true, 'title' => '9-11 классы']);
+
+        $root = Category::factory()->create([
+            'type' => 'service',
+            'parent_id' => null,
+            'is_published' => true,
+            'is_graduation_albums' => true,
+            'name' => 'Выпускные альбомы',
+        ]);
+
+        foreach ([
+            ['Младшие школьники', 'Выпускные папки младших школьников', $juniorAlbum],
+            ['9-11 классы', 'Выпускные папки 9-11 классов', $seniorAlbum],
+        ] as [$childName, $ctaText, $ctaAlbum]) {
+            $child = Category::factory()->create([
+                'type' => 'service',
+                'parent_id' => $root->id,
+                'is_published' => true,
+                'name' => $childName,
+                'cta_album_id' => $ctaAlbum->id,
+                'cta_button_text' => $ctaText,
+            ]);
+
+            $service = Service::factory()->create([
+                'is_published' => true,
+                'title' => "Услуга {$childName}",
+                'price_from' => 1650.00,
+            ]);
+            $service->category()->associate($child)->save();
+        }
+
+        $response = $this->get(route('services.show', $root->catalogPath()));
+
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        $this->assertSame(2, substr_count($html, 'data-graduation-cta'));
+        $this->assertStringContainsString('Выпускные папки младших школьников', $html);
+        $this->assertStringContainsString('Выпускные папки 9-11 классов', $html);
+        $this->assertStringContainsString(route('portfolio.show', $juniorAlbum->slug), $html);
+        $this->assertStringContainsString(route('portfolio.show', $seniorAlbum->slug), $html);
+    }
+
+    public function test_graduation_page_renders_child_cta_only_inside_pricing_block(): void
+    {
+        $ctaAlbum = Album::factory()->create(['is_published' => true, 'title' => 'Обложки']);
+
+        $tree = $this->createGraduationTree();
+        $tree['child']->update([
+            'cta_album_id' => $ctaAlbum->id,
+            'cta_button_text' => 'Посмотреть варианты',
+        ]);
+
+        $response = $this->get(route('services.show', $tree['root']->catalogPath()));
+
+        $response->assertOk();
+        $response->assertSee('data-graduation-cta', false);
+        $this->assertSame(1, substr_count($response->getContent(), 'Посмотреть варианты'));
+    }
+
+    private function ctaSection(string $html): string
+    {
+        preg_match('/<div[^>]*data-graduation-cta.*?<\/section>/s', $html, $matches);
+
+        return $matches[0] ?? '';
+    }
+
     public function test_graduation_category_page_avoid_n_plus_one(): void
     {
         $root = Category::factory()->create([
