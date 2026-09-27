@@ -134,6 +134,8 @@
     :ar-price="$arPrice"
 />
 
+<x-site.faq :items="$category->faqItems" />
+
 @if ($arTeaser['enabled'])
     <x-site.ar-teaser
         :title="$arTeaser['title'] ?? null"

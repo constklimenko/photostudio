@@ -86,6 +86,7 @@ class ServiceCatalogController extends Controller
                     $query->with('cover');
                 }
             },
+            'faqItems' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
         ]);
 
         if ($service->show_album_photos && $service->featured_album_id) {
@@ -163,6 +164,7 @@ class ServiceCatalogController extends Controller
                     $query->with('cover');
                 }
             },
+            'faqItems' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
         ]);
 
         if ($category->show_album_photos && $category->featured_album_id) {

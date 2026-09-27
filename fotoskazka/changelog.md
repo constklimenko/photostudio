@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-09-27 — FAQ выводится на страницах услуги и категории услуг
+
+### Цель
+
+Показать публично FAQ, привязанные к конкретной услуге и к категории услуг,
+используя связи, добавленные предыдущей задачей. Отдельной логики вывода и
+дублирования разметки не вводится.
+
+### Реализация
+
+- `resources/views/components/site/faq.blade.php` (новый) — переиспользуемый
+  блок `x-site.faq` (разметка аккордеона перенесена из `x-site.home.faq`).
+- `resources/views/components/site/home/faq.blade.php` — сохранённый блок
+  главной стал тонкой обёрткой над `x-site.faq`.
+- `app/Http/Controllers/ServiceCatalogController.php` — `showService()` и
+  `showCategory()` догружают `faqItems` (только `is_active = true`, порядок
+  `sort_order`) через eager loading, без N+1.
+- `resources/views/services/show.blade.php` — `x-site.faq` после основного блока
+  услуги, перед формой заявки.
+- `resources/views/services/category.blade.php` — `x-site.faq` после блока
+  «Стоимость альбомов», перед AR-тизером.
+
+Показываются только вопросы, привязанные непосредственно к текущей сущности:
+категория — на своей странице, услуга — на своей. Наследования привязок
+(родительская категория → категория → услуга) нет. Пустой набор вопросов блок
+не рендерит.
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/FaqOnServiceAndCategoryPageTest.php` (новый,
+  9 тестов): вывод FAQ на странице услуги и категории; скрытие неактивных;
+  вывод только вопросов текущей сущности; отсутствие FAQ категории на странице
+  услуги; порядок по `sort_order`; показ вопроса, привязанного и к услуге, и к
+  категории, на обеих страницах.
+- `tests/Feature/Components/HomeBlocksTest.php` — проходит без изменений:
+  обёртка `x-site.home.faq` сохраняет прежний вывод.
+
+### Проверка
+
+- `php artisan test tests/Feature/Http/Controllers/FaqOnServiceAndCategoryPageTest.php
+  tests/Feature/Components/HomeBlocksTest.php
+  tests/Feature/Http/Controllers/ServiceCatalogControllerTest.php` — 67 passed;
+- `./vendor/bin/pint --test` — clean.
+
+### Документация
+
+- `architecture.md` — компонент `x-site.faq` в дереве views, публичный вывод на
+  страницах услуги/категории, статус `x-site.home.faq` как обёртки.
+- `database.md` — уточнён публичный вывод привязанных FAQ.
+
 ## 2026-09-27 — FAQ: привязка к услугам и категориям услуг
 
 ### Цель

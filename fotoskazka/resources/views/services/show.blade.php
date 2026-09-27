@@ -176,6 +176,8 @@
     </div>
 </section>
 
+<x-site.faq :items="$service->faqItems" />
+
 <section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 class="font-heading text-3xl font-normal tracking-wide text-white text-center">Записаться на {{ \Illuminate\Support\Str::lower($service->title) }}</h2>
