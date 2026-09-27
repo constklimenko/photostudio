@@ -22,8 +22,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
                         </button>
-                        <div id="{{ $faqId }}" class="faq-answer hidden pb-5 text-gray-400 leading-relaxed text-sm">
-                            {{ $item->answer }}
+                        <div id="{{ $faqId }}"
+                             class="faq-answer hidden mt-1 pb-5 pl-4 border-l-2 border-[#d4af37]/40">
+                            {!! $item->answer !!}
                         </div>
                     </div>
                 @endforeach

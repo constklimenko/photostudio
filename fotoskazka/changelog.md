@@ -1,5 +1,86 @@
 # Changelog
 
+## 2026-09-27 — FAQ: выразительный вывод HTML-ответа
+
+### Цель
+
+Оформить HTML-ответ FAQ (после перевода на RichEditor) выразительнее: поддержка
+списков и выделений, более контрастный цвет текста.
+
+### Реализация
+
+- `resources/views/components/site/faq.blade.php` — у блока ответа убраны
+  `text-gray-400` (в `app.css` переопределён в тёмный `#666660`) и `text-sm`;
+  добавлена золотая левосторонняя акцентная линия.
+- `resources/css/app.css` — добавлены стили `.faq-answer` для HTML-содержимого:
+  контрастный текст `#e0e0d8`, параграфы, `ul`/`ol`/`li` с золотыми маркерами,
+  `strong`/`b` (белый, полужирный), `em`/`i`, ссылки (золото), заголовки,
+  `blockquote`, `code`, `hr`.
+- Нумерация `ol` задана явно через `list-style-type: decimal`
+  (`ul` — `list-style-type: disc`), чтобы перебить preflight Tailwind
+  (`ol, ul { list-style: none }`). Пересобран `public/build` (`npm run build`):
+  в актуальном бандле присутствуют правила `.faq-answer ol`/`ul`.
+
+Проект использует Tailwind v4 без `@tailwindcss/typography`, поэтому классы
+`prose` (в других шаблонах) фактически не работают; для FAQ применены явные
+CSS-правила вместо подключения новой зависимости.
+
+### Проверка
+
+- `npx vite build` (в отдельный outDir) — CSS собирается, правила `.faq-answer`
+  присутствуют в бандле;
+- `HomeBlocksTest` + `FaqOnServiceAndCategoryPageTest` — 18 passed.
+
+## 2026-09-27 — Админка FAQ: WYSIWYG-ответ и выбор услуг/категорий
+
+### Цель
+
+Доработать форму FAQ после появления связей: перевести ответ на штатный
+WYSIWYG Filament и дать удобный выбор привязанных услуг и категорий услуг.
+Публичный вывод FAQ по расположению блоков не меняется.
+
+### Реализация
+
+- `app/Filament/Resources/FaqItems/Schemas/FaqItemForm.php`:
+  - `answer` переведён с `Textarea` на `RichEditor` (штатный компонент Filament 4,
+    уже используется в `ServiceForm`/`CategoryForm`/`PostForm`/`PageForm`);
+    HTML сохраняется в существующую колонку `faq_items.answer TEXT`;
+  - `question` остался обычным `TextInput` (обязательное, до 255);
+  - `services` — multiple-`Select` по связи `services`, `preload()`,
+    `searchable()` (поиск по названию), метка «Услуги»;
+  - `categories` — multiple-`Select` по связи `categories` (ограничена
+    `type = service`), `preload()`, `searchable()`, метка «Категории услуг»;
+    иерархический контекст в опциях — через `CategoryTreeService::flatten('service')`
+    с тем же отступом `— ` по уровню, что и в выборе «Родительская категория»
+    (`CategoryForm`);
+  - синхронизация обеих pivot-связей выполняется штатным механизмом Filament
+    при сохранении; при редактировании сохранённые связи подставляются в форму.
+- `sort_order`, `is_active`, таблица FAQ, сортировка и CRUD не изменялись.
+- `resources/views/components/site/faq.blade.php` — ответ выводится через
+  `{!! $item->answer !!}`: RichEditor-контент рендерится как HTML, как и
+  остальной HTML-контент проекта (`description`, `content`). Для ответов без
+  разметки вывод визуально не меняется; расположение блоков FAQ на страницах и
+  главной не менялось.
+
+### Тесты
+
+- `tests/Feature/Filament/FaqItemResourceTest.php` — новые тесты:
+  - `test_faq_form_stores_html_answer` — HTML-ответ сохраняется в БД;
+  - `test_faq_html_answer_survives_edit` — HTML не теряется при редактировании;
+  - `test_faq_form_saves_multiple_services` — сохранение нескольких услуг;
+  - `test_faq_form_saves_multiple_service_categories` — нескольких категорий;
+  - `test_faq_form_updates_links_on_edit` — изменение связей при редактировании;
+  - `test_faq_form_removes_links_on_edit` — удаление связей;
+  - существующий `test_faq_form_persists_service_and_category_links` продолжает
+    проходить.
+
+### Проверка
+
+- `php artisan test tests/Feature/Filament/FaqItemResourceTest.php` — 14 passed;
+- `php artisan test` (FAQ-отношения, страницы услуги/категории, блоки главной) —
+  без регрессий;
+- `./vendor/bin/pint --test` — clean.
+
 ## 2026-09-27 — FAQ выводится на страницах услуги и категории услуг
 
 ### Цель
