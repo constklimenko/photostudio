@@ -9,8 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroImage = document.querySelector('#hero-block img[data-original]');
 
     if (heroImage) {
-        const desktopViewport = window.matchMedia('(min-width: 768px)');
-
         const swapToOriginal = () => {
             const original = heroImage.dataset.original;
             if (!original || heroImage.dataset.swapped) return;
@@ -23,20 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
             image.src = original;
         };
 
-        const maybeSwap = () => {
-            if (desktopViewport.matches && heroImage.complete && heroImage.naturalWidth > 0) {
-                swapToOriginal();
-            }
-        };
-
-        heroImage.addEventListener('load', () => {
-            if (desktopViewport.matches) {
-                swapToOriginal();
-            }
-        });
-
-        desktopViewport.addEventListener('change', maybeSwap);
-        maybeSwap();
+        if (heroImage.complete) {
+            swapToOriginal();
+        } else {
+            heroImage.addEventListener('load', swapToOriginal, { once: true });
+            heroImage.addEventListener('error', swapToOriginal, { once: true });
+        }
     }
 
     AOS.init({
