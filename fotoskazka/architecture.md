@@ -162,7 +162,7 @@ resources/views/
 │   ├── ar-teaser.blade.php    # AR-тизер «оживающие фотографии» (страница корневой категории is_graduation_albums)
 │   ├── shooting-album.blade.php # Блок «Фото со съёмок» (card-карточка либо grid через album-photos; используется на страницах услуги и категории)
 │   ├── shooting-works.blade.php # Блок «Фото со съёмок» из избранных behind_the_scenes альбомов (страница корневой категории is_graduation_albums)
-│   ├── graduation-pricing.blade.php # Блок «Стоимость альбомов» (страница корневой категории с флагом is_graduation_albums)
+│   ├── graduation-pricing.blade.php # Блок «Стоимость альбомов» (страница корневой категории с флагом is_graduation_albums); в карточке услуги — кнопка «Посмотреть видео» (модалка x-site.video-modal)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
 │   ├── faq.blade.php             # Блок «Частые вопросы» (страницы услуги и категории услуг; обёртка x-site.home.faq)
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
@@ -172,6 +172,7 @@ resources/views/
 │   ├── share-button.blade.php  # Кнопка шаринга
 │   ├── social-links.blade.php  # Иконки соцсетей
 │   ├── video-player.blade.php  # Плеер видео: поворот ±90°, запрет скачивания, кастомные контролы
+│   ├── video-modal.blade.php   # Модальное окно с видео услуги (открывается кнопкой «Посмотреть видео» в graduation-pricing)
 │   └── videos.blade.php        # Блок видео (через x-site.video-player) (через x-site.video-player)
 ├── emails/
 │   └── new-inquiry.blade.php   # Шаблон письма о новой заявке

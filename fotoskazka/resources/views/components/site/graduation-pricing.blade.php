@@ -112,6 +112,16 @@
                                                        class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
                                                         Заказать
                                                     </a>
+                                                    @if ($service->videos->isNotEmpty())
+                                                        <button type="button"
+                                                                data-video-modal-open="graduation-video-{{ $service->id }}"
+                                                                class="inline-flex items-center gap-2 px-8 py-3 border border-[#d4af37] text-[#d4af37] font-semibold uppercase tracking-wider text-sm rounded-lg hover:bg-[#d4af37] hover:text-black transition">
+                                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                                            </svg>
+                                                            Посмотреть видео
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </article>
@@ -147,4 +157,16 @@
             @endforeach
         </div>
     </section>
+
+    @foreach ($graduationRoots as $root)
+        @foreach ($root->children as $child)
+            @foreach ($child->services as $service)
+                <x-site.video-modal
+                    :id="'graduation-video-'.$service->id"
+                    :videos="$service->videos"
+                    :title="$service->title"
+                />
+            @endforeach
+        @endforeach
+    @endforeach
 @endif

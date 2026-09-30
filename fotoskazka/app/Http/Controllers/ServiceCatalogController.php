@@ -131,6 +131,7 @@ class ServiceCatalogController extends Controller
                                 ->orderBy('sort_order')
                                 ->with([
                                     'items.icon',
+                                    'videos',
                                     'category.parent',
                                     'featuredAlbum' => fn ($fq) => $fq
                                         ->where('is_published', true)

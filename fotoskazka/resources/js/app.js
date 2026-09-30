@@ -245,4 +245,33 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     });
+
+    const closeVideoModal = (modal) => {
+        if (!modal) return;
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        modal.querySelectorAll('video').forEach((video) => video.pause());
+    };
+
+    document.addEventListener('click', (e) => {
+        const openBtn = e.target.closest('[data-video-modal-open]');
+        if (openBtn) {
+            const modal = document.getElementById(openBtn.dataset.videoModalOpen);
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+            return;
+        }
+
+        const closeBtn = e.target.closest('[data-video-modal-close]');
+        if (closeBtn) {
+            closeVideoModal(closeBtn.closest('[data-video-modal]'));
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('[data-video-modal]:not(.hidden)').forEach(closeVideoModal);
+    });
 });

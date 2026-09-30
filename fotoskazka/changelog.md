@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-09-30 — Выпускные альбомы: кнопка «Посмотреть видео» с модальным окном
+
+### Цель
+
+На странице корневой категории выпускных альбомов (`is_graduation_albums`)
+рядом с кнопкой «Заказать» в карточке услуги добавить кнопку «Посмотреть
+видео», открывающую модальное окно с видео, привязанными к услуге.
+
+### Реализация
+
+- `resources/views/components/site/video-modal.blade.php` (новый) —
+  переиспользуемое модальное окно с прокручиваемым списком видео через
+  `x-site.video-player`; закрытие по крестику, фону и Escape (скрипт общий,
+  в `app.js`). Компонент не рендерится, если видео нет.
+- `resources/views/components/site/graduation-pricing.blade.php` — в блоке
+  кнопок карточки услуги добавлена кнопка «Посмотреть видео»
+  (`data-video-modal-open="graduation-video-{id}"`) при наличии связи
+  `videos`; модальные окна всех услуг выводятся в конце компонента вне
+  таб-панелей (иначе `display:none` скрытой панели ломает fixed-оверлей).
+- `resources/js/app.js` — делегированные обработчики открытия/закрытия
+  модалок видео: блокировка прокрутки body, пауза `<video>` при закрытии,
+  Escape. Пересобран `public/build` (`npm run build`).
+- `app/Http/Controllers/ServiceCatalogController.php` — для услуг внутри
+  выпускных подкатегорий добавлена жадная загрузка `videos` (без N+1).
+- `tests/.../GraduationPricingCategoryPageTest.php` — тесты кнопки и модалки
+  при наличии видео и их отсутствии без видео; починен устаревший regex
+  теста сортировки услуг (ожидал несуществующий `<section>` компонента).
+
+### Проверка
+
+- `php artisan test` по `GraduationPricingCategoryPageTest` и
+  `GraduationCategoryExtrasPageTest` — 44 passed;
+- `./vendor/bin/pint` — passed;
+- `npm run build` — успешно.
+
 ## 2026-09-27 — FAQ: выразительный вывод HTML-ответа
 
 ### Цель

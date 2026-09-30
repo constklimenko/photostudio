@@ -10,6 +10,7 @@ use App\Models\Page;
 use App\Models\Photo;
 use App\Models\Service;
 use App\Models\ServiceItem;
+use App\Models\Video;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -301,7 +302,7 @@ class GraduationPricingCategoryPageTest extends TestCase
         $response = $this->get(route('services.show', $data['root']->catalogPath()));
         $html = $response->getContent();
 
-        preg_match('/<section[^>]*>\s*<div[^>]*>\s*<h2[^>]*>\s*'.preg_quote(self::blockHeading(), '/').'\s*<\/h2>.*?<\/section>/su', $html, $matches);
+        preg_match('/<h2[^>]*>\s*'.preg_quote(self::blockHeading(), '/').'\s*<\/h2>.*?<\/section>/su', $html, $matches);
         $section = $matches[0] ?? '';
 
         $this->assertNotSame('', $section);
@@ -526,6 +527,36 @@ class GraduationPricingCategoryPageTest extends TestCase
         $response->assertOk();
         $response->assertSee('data-graduation-cta', false);
         $this->assertSame(1, substr_count($response->getContent(), 'Посмотреть варианты'));
+    }
+
+    public function test_graduation_category_page_renders_video_button_and_modal(): void
+    {
+        $data = $this->createGraduationTree();
+
+        $video = Video::factory()->create([
+            'title' => 'Презентация альбома',
+            'url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        ]);
+        $data['service']->videos()->attach($video);
+
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
+
+        $response->assertOk();
+        $response->assertSee('Посмотреть видео');
+        $response->assertSee('data-video-modal-open="graduation-video-'.$data['service']->id.'"', false);
+        $response->assertSee('id="graduation-video-'.$data['service']->id.'"', false);
+        $response->assertSee($video->embed_url, false);
+    }
+
+    public function test_graduation_category_page_omits_video_button_without_videos(): void
+    {
+        $data = $this->createGraduationTree();
+
+        $response = $this->get(route('services.show', $data['root']->catalogPath()));
+
+        $response->assertOk();
+        $response->assertDontSee('Посмотреть видео');
+        $response->assertDontSee('data-video-modal', false);
     }
 
     private function ctaSection(string $html): string
