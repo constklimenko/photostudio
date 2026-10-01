@@ -38,12 +38,13 @@ services:
     restart: unless-stopped
     environment:
       DOMAIN: fotoskazkaufa.ru
+    entrypoint: ["/bin/sh", "-c", "sh /etc/nginx/generate-config.sh && exec nginx -g 'daemon off;'"]
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./:/var/www/html:ro
-      - ./docker/nginx/40-fotoskazka.sh:/docker-entrypoint.d/40-fotoskazka.sh:ro
+      - ./docker/nginx/generate-config.sh:/etc/nginx/generate-config.sh:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
