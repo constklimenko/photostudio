@@ -1,7 +1,4 @@
 x-app: &app
-  build:
-    context: .
-    dockerfile: docker/php/Dockerfile
   image: fotoskazka-app:latest
   restart: unless-stopped
   working_dir: /var/www/html
@@ -17,6 +14,9 @@ x-app: &app
 services:
   app:
     <<: *app
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
     environment:
       RUN_SETUP: "true"
     command: ["php-fpm"]
