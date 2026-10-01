@@ -18,8 +18,14 @@ PHP 7.4), без обновления ОС и без правки системн
 - `docker/php/php.ini` (новый) — memory 512M, upload 200M, opcache (prod).
 - `docker/php/entrypoint.sh` (новый) — подготовка `storage`/`bootstrap/cache`,
   `storage:link`, а для сервиса `app` — `migrate --force` и `optimize`.
-- `docker/nginx/default.conf` (новый) — отдача `public/`, fastcgi на `app:9000`,
-  `client_max_body_size 210M`.
+- `docker/nginx/40-fotoskazka.sh` (новый) — генерирует конфиг nginx при старте:
+  HTTP-блок (отдача `public/`, ACME-challenge `/.well-known/acme-challenge/`,
+  fastcgi на `app:9000`, `fastcgi_param HTTPS on`) и, если есть сертификат,
+  HTTPS-блок (443, TLS 1.2/1.3). Так исключается циклическая зависимость
+  «конфиг требует сертификат, а сертификат требует работающий nginx».
+- HTTPS — Let's Encrypt через webroot: каталог `/var/www/certbot` монтируется в
+  web-контейнер, сертификаты — `/etc/letsencrypt`. Обновление — таймером
+  `certbot` на хосте с deploy-hook на `nginx -s reload`.
 - `docker-compose.yml` (новый) — сервисы `app`, `web` (nginx, порт 80),
   `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler` (`schedule:work`);
   профиль `tools` для сборки ассетов (`node`).
