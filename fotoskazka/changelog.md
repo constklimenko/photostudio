@@ -1,15 +1,16 @@
 # Changelog
 
-## 2026-10-01 — Docker-развёртывание (php-fpm 8.3 + nginx + MySQL 8)
+## 2026-10-01 — Docker-развёртывание (php-fpm 8.4 + nginx + MySQL 8)
 
 ### Цель
 
-Поднять проект на сервере, где нет и не будет PHP 8.3 (Ubuntu 20.04, PHP 7.4),
-без обновления ОС и без правки системного окружения.
+Поднять проект на сервере, где нет и не будет современного PHP (Ubuntu 20.04,
+PHP 7.4), без обновления ОС и без правки системного окружения. `composer.lock`
+содержит Symfony 8.1 (`php >=8.4.1`), поэтому образ — `php:8.4-fpm`.
 
 ### Реализация
 
-- `docker/php/Dockerfile` (новый) — образ `php:8.3-fpm` + расширения
+- `docker/php/Dockerfile` (новый) — образ `php:8.4-fpm` + расширения
   `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip`; GD собран с
   WebP/JPEG/FreeType (нужно `MediaProcessor`); Composer 2 из образа.
 - `docker/php/php.ini` (новый) — memory 512M, upload 200M, opcache (prod).
