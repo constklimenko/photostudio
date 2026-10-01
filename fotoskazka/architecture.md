@@ -1488,6 +1488,26 @@ Filament-дерево категорий — следующая часть эт�
 - Воркер держит код в памяти: после обновления кода обязателен
   `php artisan queue:restart`, иначе Job'ы выполняются старой версией классов
 
+### Docker-развёртывание
+
+Прод-развёртывание выполняется через Docker Compose (не зависит от версии PHP
+на хосте — на сервере может стоять PHP 7.4):
+
+- `docker/php/Dockerfile` — образ `php:8.3-fpm` с расширениями
+  `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip` (GD собран с
+  поддержкой WebP/JPEG/FreeType — нужно для `MediaProcessor`);
+- `docker-compose.yml` — сервисы `app` (php-fpm), `web` (nginx),
+  `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler` (`schedule:work`);
+- код проекта подключается bind-mount'ом (`./:/var/www/html`), `vendor`
+  и `public/build` ставятся/собираются внутри контейнеров;
+- настройки приложения — `.env` (шаблон `.env.docker.example`), `DB_HOST=db`;
+- `docker/php/entrypoint.sh` при старте готовит каталоги `storage`, создаёт
+  symlink `public/storage`, а для сервиса `app` (`RUN_SETUP=true`) выполняет
+  `migrate --force` и `optimize`;
+- кэш `public/build` собирается через сервис `node` (`docker compose run --rm node`);
+- после деплоя нового кода нужно перезапустить контейнеры (`docker compose up -d --build`),
+  т.к. `opcache.validate_timestamps=0`.
+
 ## Ключевые решения
 
 ### Album.type (вместо отдельных таблиц)

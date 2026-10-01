@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-10-01 — Docker-развёртывание (php-fpm 8.3 + nginx + MySQL 8)
+
+### Цель
+
+Поднять проект на сервере, где нет и не будет PHP 8.3 (Ubuntu 20.04, PHP 7.4),
+без обновления ОС и без правки системного окружения.
+
+### Реализация
+
+- `docker/php/Dockerfile` (новый) — образ `php:8.3-fpm` + расширения
+  `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip`; GD собран с
+  WebP/JPEG/FreeType (нужно `MediaProcessor`); Composer 2 из образа.
+- `docker/php/php.ini` (новый) — memory 512M, upload 200M, opcache (prod).
+- `docker/php/entrypoint.sh` (новый) — подготовка `storage`/`bootstrap/cache`,
+  `storage:link`, а для сервиса `app` — `migrate --force` и `optimize`.
+- `docker/nginx/default.conf` (новый) — отдача `public/`, fastcgi на `app:9000`,
+  `client_max_body_size 210M`.
+- `docker-compose.yml` (новый) — сервисы `app`, `web` (nginx, порт 80),
+  `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler` (`schedule:work`);
+  профиль `tools` для сборки ассетов (`node`).
+- `.env.docker.example` (новый) — прод-шаблон окружения (`DB_HOST=db`,
+  `APP_ENV=production`, `APP_DEBUG=false`).
+- `.dockerignore` (новый).
+
+### Проверка
+
+- `docker build` — образ собирается, `php -m` содержит все требуемые расширения;
+- `docker compose config` — валиден;
+- `nginx -t` — конфиг валиден.
+
 ## 2026-09-30 — Выпускные альбомы: кнопка «Посмотреть видео» с модальным окном
 
 ### Цель
