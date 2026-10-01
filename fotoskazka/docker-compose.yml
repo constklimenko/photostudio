@@ -54,6 +54,10 @@ services:
       MYSQL_USER: ${DB_USERNAME:-fotoskazka}
       MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+      - --max-connections=50
     volumes:
       - dbdata:/var/lib/mysql
     healthcheck:

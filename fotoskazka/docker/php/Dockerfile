@@ -35,6 +35,13 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
 
 WORKDIR /var/www/html
 
+RUN { \
+        echo 'pm = ondemand'; \
+        echo 'pm.max_children = 4'; \
+        echo 'pm.process_idle_timeout = 10s'; \
+        echo 'pm.max_requests = 500'; \
+    } >> /usr/local/etc/php-fpm.d/www.conf
+
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
