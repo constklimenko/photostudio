@@ -13,6 +13,8 @@ PHP 7.4), без обновления ОС и без правки системн
 - `docker/php/Dockerfile` (новый) — образ `php:8.4-fpm` + расширения
   `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip`; GD собран с
   WebP/JPEG/FreeType (нужно `MediaProcessor`); Composer 2 из образа.
+  Дополнительно ставится `default-mysql-client` — бинарники `mysql`/`mysqldump`
+  нужны командам `db:backup`/`db:restore` (см. README).
 - `docker/php/php.ini` (новый) — memory 512M, upload 200M, opcache (prod).
 - `docker/php/entrypoint.sh` (новый) — подготовка `storage`/`bootstrap/cache`,
   `storage:link`, а для сервиса `app` — `migrate --force` и `optimize`.

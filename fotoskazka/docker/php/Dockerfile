@@ -7,6 +7,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         git \
         unzip \
+        default-mysql-client \
         libzip-dev \
         libicu-dev \
         libsqlite3-dev \
