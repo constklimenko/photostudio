@@ -285,6 +285,104 @@ php artisan db:restore
 
 Публичная часть (контроллеры, модели, сервисы, actions, jobs, команды, mail, observers) покрыта тестами полностью или почти полностью. Админ-панель Filament (Resources/Forms/Tables) тестами не покрыта.
 
+## Сборка и развёртывание (Docker)
+
+Прод-развёртывание идёт через Docker Compose и **не зависит от версии PHP на
+хосте** (на сервере может стоять PHP 7.4). Стек: `web` (nginx), `app`
+(php-fpm 8.4), `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler`
+(`schedule:work`). Ассеты собираются отдельным сервисом `node`.
+
+### Состав
+
+| Файл | Назначение |
+|---|---|
+| `docker-compose.yml` | сервисы, порты, тома, переменные |
+| `docker/php/Dockerfile` | `php:8.4-fpm` + расширения (`gd` с WebP, `intl`, `zip`, `bcmath`, `exif`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_sqlite`), `default-mysql-client` для `db:backup`/`db:restore` |
+| `docker/php/php.ini` | memory 512M, upload 200M, opcache |
+| `docker/php/entrypoint.sh` | права на `storage`, `storage:link`, для `app` — `migrate --force` и `optimize` |
+| `docker/nginx/generate-config.sh` | генерирует конфиг nginx при старте (HTTP + HTTPS, если есть сертификат) |
+| `.env.docker.example` | шаблон прод-окружения |
+
+### Первый запуск
+
+```bash
+cp .env.docker.example .env
+# заполнить APP_URL, DB_PASSWORD, DB_ROOT_PASSWORD, YANDEX_DISK_TOKEN и т.д.
+sed -i "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" .env
+
+docker compose build
+docker compose up -d db                       # дождаться статуса healthy
+docker compose run --rm -e RUN_SETUP=false app composer install --no-dev --optimize-autoloader
+docker compose run --rm node                  # сборка public/build (npm ci && npm run build)
+docker compose up -d                          # app выполнит migrate + optimize
+docker compose exec app php artisan db:seed --force   # роли, категории
+```
+
+Проверка: `docker compose ps` и `curl -I http://localhost`.
+
+### Обновление кода
+
+```bash
+git pull
+docker compose run --rm -e RUN_SETUP=false app composer install --no-dev --optimize-autoloader
+docker compose run --rm node
+docker compose up -d --build
+```
+
+> `opcache.validate_timestamps=0`, поэтому после деплоя контейнеры обязательно
+> пересоздаются (`up -d --build`), иначе PHP продолжит отдавать старый код.
+
+### HTTPS (Let's Encrypt)
+
+Конфиг nginx генерируется скриптом `docker/nginx/generate-config.sh`: пока
+сертификата нет — только HTTP и ACME-challenge; после выпуска — добавляется
+HTTPS-блок (443). Сертификаты — `/etc/letsencrypt`, webroot — `/var/www/certbot`
+(оба монтируются в `web`).
+
+```bash
+apt install -y certbot
+mkdir -p /var/www/certbot
+docker compose up -d --force-recreate web
+
+certbot certonly --webroot -w /var/www/certbot \
+  -d example.com -d www.example.com --agree-tos --no-eff-email
+
+docker compose up -d --force-recreate web     # перечитать конфиг с HTTPS
+```
+
+Автообновление (таймер `certbot` на хосте) + перезагрузка nginx после продления:
+
+```bash
+mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+cat > /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh <<'EOF'
+#!/bin/sh
+docker compose -f /var/www/fotoskazka/docker-compose.yml exec -T web nginx -s reload
+EOF
+chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+certbot renew --dry-run
+```
+
+### Полезные команды
+
+```bash
+docker compose ps                       # статус сервисов
+docker compose logs -f app              # логи php-fpm
+docker compose exec app php artisan ... # artisan внутри app
+docker compose exec app php artisan migrate --force
+docker compose exec app php artisan db:backup
+docker compose exec app php artisan db:restore <файл> --force
+docker compose restart queue            # после деплоя — queue:restart
+```
+
+### Особенности окружения
+
+- **MTU.** Если хост-интерфейс имеет MTU меньше 1500 (типично для VPS с
+  туннелем), задайте его для Docker в `/etc/docker/daemon.json`
+  (`{"mtu": 1450}`) и перезапустите `docker` — иначе крупные загрузки в
+  контейнерах отваливаются по таймауту.
+- **Память.** При 1 ГБ RAM добавьте swap (2 ГБ), php-fpm настроен на
+  `pm=ondemand`, MySQL ограничен `--innodb-buffer-pool-size=128M`.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.

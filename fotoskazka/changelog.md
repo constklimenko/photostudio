@@ -18,26 +18,32 @@ PHP 7.4), без обновления ОС и без правки системн
 - `docker/php/php.ini` (новый) — memory 512M, upload 200M, opcache (prod).
 - `docker/php/entrypoint.sh` (новый) — подготовка `storage`/`bootstrap/cache`,
   `storage:link`, а для сервиса `app` — `migrate --force` и `optimize`.
-- `docker/nginx/40-fotoskazka.sh` (новый) — генерирует конфиг nginx при старте:
+- `docker/nginx/generate-config.sh` (новый) — генерирует конфиг nginx при старте:
   HTTP-блок (отдача `public/`, ACME-challenge `/.well-known/acme-challenge/`,
   fastcgi на `app:9000`, `fastcgi_param HTTPS on`) и, если есть сертификат,
   HTTPS-блок (443, TLS 1.2/1.3). Так исключается циклическая зависимость
   «конфиг требует сертификат, а сертификат требует работающий nginx».
+  Запускается через явный `entrypoint` сервиса `web` (официальный entrypoint
+  nginx игнорирует неисполняемые `.sh` из `/docker-entrypoint.d/`).
 - HTTPS — Let's Encrypt через webroot: каталог `/var/www/certbot` монтируется в
   web-контейнер, сертификаты — `/etc/letsencrypt`. Обновление — таймером
   `certbot` на хосте с deploy-hook на `nginx -s reload`.
-- `docker-compose.yml` (новый) — сервисы `app`, `web` (nginx, порт 80),
+- `docker-compose.yml` (новый) — сервисы `app`, `web` (nginx, порты 80/443),
   `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler` (`schedule:work`);
   профиль `tools` для сборки ассетов (`node`).
 - `.env.docker.example` (новый) — прод-шаблон окружения (`DB_HOST=db`,
   `APP_ENV=production`, `APP_DEBUG=false`).
 - `.dockerignore` (новый).
+- `README.md` — добавлен раздел «Сборка и развёртывание (Docker)»: состав
+  файлов, первый запуск, обновление, HTTPS, полезные команды, особенности
+  окружения (MTU, swap).
 
 ### Проверка
 
 - `docker build` — образ собирается, `php -m` содержит все требуемые расширения;
 - `docker compose config` — валиден;
-- `nginx -t` — конфиг валиден.
+- `nginx -t` — конфиг валиден;
+- на сервере: HTTP 200, HTTPS (Let's Encrypt) 200, `certbot renew --dry-run` — success.
 
 ## 2026-09-30 — Выпускные альбомы: кнопка «Посмотреть видео» с модальным окном
 

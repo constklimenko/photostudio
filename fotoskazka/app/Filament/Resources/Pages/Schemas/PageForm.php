@@ -140,14 +140,14 @@ class PageForm
                     ]),
 
                 Section::make('Альбомы')
-                    ->visible(fn (callable $get) => ! self::isHomePage($get))
                     ->schema([
                         Select::make('albums')
                             ->relationship('albums', 'title')
                             ->multiple()
                             ->preload()
                             ->searchable()
-                            ->label('Привязанные альбомы'),
+                            ->label('Привязанные альбомы')
+                            ->helperText('Для главной страницы привязанный альбом выводится на ней секцией «Отзывы» (сетка фото с lightbox)'),
                     ]),
 
                 Section::make('Оживающие фотографии')

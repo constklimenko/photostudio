@@ -21,4 +21,6 @@
         :content="$featuredWorksBlock['content']"
     />
 
+    <x-site.home.reviews :photos="$reviewPhotos" />
+
 @endsection

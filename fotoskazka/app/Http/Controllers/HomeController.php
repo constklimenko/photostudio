@@ -21,6 +21,8 @@ class HomeController extends Controller
         $featuredWorks = $homeContent->featuredWorks();
         $featuredWorksBlock = $homeContent->blockText('portfolio', 'Избранные работы', 'Наши лучшие проекты');
 
+        $reviewPhotos = $homeContent->reviewPhotos();
+
         return view('home', compact(
             'page',
             'heroImages',
@@ -28,6 +30,7 @@ class HomeController extends Controller
             'socialLinks',
             'featuredWorks',
             'featuredWorksBlock',
+            'reviewPhotos',
         ));
     }
 

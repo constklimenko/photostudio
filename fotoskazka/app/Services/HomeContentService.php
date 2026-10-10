@@ -6,6 +6,7 @@ use App\Models\Album;
 use App\Models\Category;
 use App\Models\FaqItem;
 use App\Models\Media;
+use App\Models\Photo;
 use App\Models\Post;
 use App\Models\Service;
 use App\Models\SocialLink;
@@ -16,8 +17,9 @@ use Illuminate\Support\Collection;
 /**
  * Слой данных главной страницы.
  *
- * Главная выводит Hero, социальные ссылки и блок «Избранные работы».
- * Методы остальных блоков (услуги, видео, отзывы, блог, вопросы, о студии,
+ * Главная выводит Hero, социальные ссылки, блок «Избранные работы» и секцию
+ * «Отзывы» (фото из альбомов, привязанных к странице `home` через `page_album`).
+ * Методы остальных блоков (услуги, видео, блог, вопросы, о студии,
  * форма заявки) сохранены: блоки лежат в компонентах `x-site.home.*`,
  * для их включения достаточно вызвать нужный метод в `HomeController`
  * и вывести компонент в `home.blade.php`.
@@ -125,6 +127,32 @@ class HomeContentService
             ->where('is_published', true)
             ->with('cover')
             ->get(['id', 'cover_media_id', 'title', 'slug']);
+    }
+
+    /**
+     * Секция «Отзывы»: фото из опубликованных альбомов, привязанных
+     * к странице `home` через pivot `page_album`.
+     *
+     * Альбомы упорядочены по `sort_order`, внутри альбома фото — тоже по
+     * `sort_order`. Возвращается плоский список фото (с загруженным `media`),
+     * чтобы шаблон вывел единую сетку с одним lightbox. Фото без media
+     * отбрасываются. Пустая коллекция — секция не выводится.
+     *
+     * @return Collection<int, Photo>
+     */
+    public function reviewPhotos(): Collection
+    {
+        $albums = Album::query()
+            ->where('is_published', true)
+            ->whereHas('pages', fn ($query) => $query->where('pages.slug', 'home'))
+            ->orderBy('sort_order')
+            ->with(['photos' => fn ($query) => $query->orderBy('sort_order')->with('media')])
+            ->get(['id', 'sort_order']);
+
+        return $albums
+            ->flatMap(fn (Album $album) => $album->photos)
+            ->filter(fn ($photo) => $photo->media instanceof Media)
+            ->values();
     }
 
     /**

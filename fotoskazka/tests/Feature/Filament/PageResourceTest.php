@@ -292,6 +292,17 @@ class PageResourceTest extends TestCase
             ->assertSee('home_sort_order');
     }
 
+    public function test_home_page_shows_albums_field(): void
+    {
+        $home = Page::factory()->create(['slug' => 'home']);
+
+        $response = $this->get("/admin/pages/{$home->id}/edit");
+
+        $response->assertSuccessful()
+            ->assertSee('Привязанные альбомы')
+            ->assertSee('albums');
+    }
+
     public function test_can_create_page_with_system_slug_via_form(): void
     {
         Livewire::test(CreatePage::class)
