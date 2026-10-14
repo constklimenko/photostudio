@@ -91,7 +91,7 @@ function makeRingTexture(size) {
     ctx.font = 'bold ' + Math.round(size * 0.18) + 'px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.fillText('LIVE', size / 2, size * 0.95);
+    ctx.fillText('LIVE', size / 2, size * 0.88);
   });
 }
 
