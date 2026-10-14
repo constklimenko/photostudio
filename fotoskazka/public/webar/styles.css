@@ -23,14 +23,25 @@ html, body {
 
 canvas { display: block; }
 
+/* Новый контекст наложения: MindAR вешает <video> с z-index:-2, и без этого
+   видео уходит ЗА непрозрачный фон страницы и не видно. */
 #ar-container {
   position: absolute;
   inset: 0;
+  z-index: 0;
+  isolation: isolate;
 }
 
-#ar-container video {
-  transform: scaleX(-1);
+/* Служебный оверлей MindAR (наведение/загрузка) не должен перехватывать клики
+   по кнопкам HUD — он лежит выше них, хотя и полупрозрачный. */
+.mindar-ui-overlay,
+.mindar-ui-scanning,
+.mindar-ui-loading,
+.mindar-ui-error {
+  pointer-events: none !important;
 }
+
+/* Задняя камера (environment) не зеркалится: кадр с камеры идёт как есть. */
 
 #hud {
   position: absolute;

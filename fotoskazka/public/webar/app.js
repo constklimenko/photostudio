@@ -1,4 +1,4 @@
-/* WebAR prototype — D1.2 (MindAR image tracking, stub content, measurement log) */
+/* WebAR prototype — D1.2 → первый шаг к D1.3 (MindAR image tracking, target replacement) */
 
 import * as THREE from 'three';
 import { MindARThree } from './vendor/mindar-image-three.prod.js';
@@ -7,6 +7,10 @@ window.__webarBooted = true;
 
 const TARGET_SRC = './targets/targets.mind';
 const TARGET_IMAGE_ASPECT = 1248 / 1648; // sample-photo.jpg (kept in sync by the compile tool)
+
+/* Изображение, которым заменяется распознанный таргет. Замените файл (или эту
+   строку) своим контентом. Формат кадра должен совпадать с таргетом (1648×1248). */
+const REPLACEMENT_SRC = './targets/replacement.svg';
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,19 +83,16 @@ function makeGridTexture(size, cells) {
   });
 }
 
-function makeRingTexture(size) {
-  return makeCanvasTexture(size, (ctx) => {
-    ctx.clearRect(0, 0, size, size);
-    ctx.lineWidth = size * 0.09;
-    ctx.strokeStyle = '#22e05a';
-    ctx.strokeRect(size * 0.08, size * 0.08, size * 0.84, size * 0.84);
-    ctx.fillStyle = 'rgba(34,224,90,0.10)';
-    ctx.fillRect(size * 0.08, size * 0.08, size * 0.84, size * 0.84);
-    ctx.fillStyle = '#22e05a';
-    ctx.font = 'bold ' + Math.round(size * 0.18) + 'px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('LIVE', size / 2, size * 0.88);
+/* Изображение-замена: непрозрачная текстура ровно по таргету. */
+function makeReplacementMaterial() {
+  const texture = new THREE.TextureLoader().load(REPLACEMENT_SRC);
+  texture.encoding = THREE.sRGBEncoding;
+  texture.minFilter = THREE.LinearFilter;
+  return new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: false,
+    depthWrite: false,
+    toneMapped: false,
   });
 }
 
@@ -115,12 +116,11 @@ function buildScene() {
 
   const anchor = mindarThree.addAnchor(0);
 
-  const ringMat = new THREE.MeshBasicMaterial({
-    map: makeRingTexture(1024),
-    transparent: true,
-    depthWrite: false,
-  });
-  overlayMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 1.15 * TARGET_IMAGE_ASPECT), ringMat);
+  const REPLACE_OVERSCAN = 1.02;
+  overlayMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(REPLACE_OVERSCAN, REPLACE_OVERSCAN * TARGET_IMAGE_ASPECT),
+    makeReplacementMaterial()
+  );
   anchor.group.add(overlayMesh);
 
   const gridMat = new THREE.MeshBasicMaterial({
@@ -156,9 +156,6 @@ function buildScene() {
   };
 
   renderer.setAnimationLoop(() => {
-    if (overlayMesh.visible) {
-      overlayMesh.material.opacity = 0.55 + 0.45 * Math.abs(Math.sin(performance.now() / 420));
-    }
     renderer.render(scene, camera);
   });
 
@@ -182,7 +179,7 @@ btnStart.addEventListener('click', async () => {
     if (!mindarThree) mindarThree = buildScene();
     await mindarThree.start();
     setCamera('on', 'camera: on');
-    setStatus('Отсканируйте фотографию sample-photo (распечатка 20×30 см матовая).');
+    setStatus('Кадр с камеры — как есть. Наведите на образец: область таргета заменится изображением-контентом.');
     btnStop.disabled = false;
     btnGrid.disabled = false;
   } catch (err) {
@@ -226,4 +223,4 @@ function cameraErrorText(err) {
 }
 
 log('Loaded (three.module + MindAR three build).');
-setStatus('Нажмите «Старт» и наведите камеру на напечатанную фотографию sample-photo.');
+setStatus('Нажмите «Старт»: появится кадр с камеры, а распознанная область таргета заменится контентом.');
