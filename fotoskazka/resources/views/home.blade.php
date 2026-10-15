@@ -2,6 +2,7 @@
 
 @section('title', $page?->seo_title ?: 'Фотосказка — профессиональная фотосъёмка')
 @section('meta_description', $page?->seo_description ?: 'Профессиональная фотосъёмка для ваших важных событий. Услуги фотографа, портфолио, выпускные альбомы.')
+@section('og_image', $heroImages->first()?->getDisplayUrl() ?: '')
 
 @section('content')
 

@@ -280,6 +280,33 @@ resources/views/
 - `@vite()` загружается только при наличии `manifest.json` или `hot` файла
 - Условная загрузка позволяет тестам работать без Vite-билда
 
+## Open Graph и Twitter Card
+
+Единая точка вывода OG/Twitter-мета-тегов — `<head>` базового layout
+`layouts/site.blade.php`. Значения управляются Blade-секциями страниц:
+
+| Секция            | Назначение                                  | Фолбэк                         |
+|-------------------|---------------------------------------------|--------------------------------|
+| `og_title`        | `og:title` / `twitter:title`                | `title`                        |
+| `og_description`  | `og:description` / `twitter:description`    | `meta_description`             |
+| `og_type`         | `og:type`                                   | `website` (`article` — пост)   |
+| `og_url`          | `og:url`                                    | `url()->current()`             |
+| `og_image`        | `og:image` / `twitter:image`                | `web-app-manifest-512x512.png` |
+
+- `og:site_name` — `config('app.name')`, `og:locale` — из `app()->getLocale()`
+  (нормализуется до `ru_RU`), `twitter:card` — `summary_large_image`.
+- Секции читаются через `$__env->yieldContent()` и выводятся «как есть»
+  (аналогично `@yield('title')`): Blade экранирует содержимое секции один раз,
+  повторное `{{ }}` привело бы к двойному экранированию `&` и кавычек.
+- Страницы с изображением задают `og_image` (обложка сущности или медиа первого
+  фото) в display-версии (`Media::getDisplayUrl()`, ≤800px WebP) — легче
+  оригинала и достаточно для превью; при отсутствии изображения (в т.ч. если
+  `getDisplayUrl()` вернул `null` для не-изображения) секция отдаёт пустую
+  строку — layout подставляет брендовое изображение. `@section('og_image', null)`
+  не используется: `null` открывает незакрытую буферизацию секции.
+- Источник данных — существующие `seo_title` / `seo_description`; новых полей
+  БД и моделей нет.
+
 ## Шапка (Header)
 
 - Пункты меню загружаются из таблицы `pages` через `PageContentService::getMenuItems()`

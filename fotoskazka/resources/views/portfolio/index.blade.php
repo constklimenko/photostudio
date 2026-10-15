@@ -2,6 +2,7 @@
 
 @section('title', $page?->seo_title ?: 'Портфолио — Фотосказка')
 @section('meta_description', $page?->seo_description ?: 'Фотопортфолио профессионального фотографа. Свадебные, семейные, индивидуальные фотосессии и выпускные альбомы.')
+@section('og_image', $albums->first()?->cover?->getDisplayUrl() ?: '')
 
 @section('content')
 

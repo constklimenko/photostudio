@@ -5,6 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="@yield('meta_description', config('app.name'))">
 
+    @php
+        $ogLocale = str_replace('-', '_', app()->getLocale());
+        $ogLocale = str_contains($ogLocale, '_') ? $ogLocale : $ogLocale.'_'.strtoupper($ogLocale);
+        $ogTitle = trim($__env->yieldContent('og_title')) ?: trim($__env->yieldContent('title', config('app.name')));
+        $ogDescription = trim($__env->yieldContent('og_description')) ?: trim($__env->yieldContent('meta_description'));
+        $ogImage = trim($__env->yieldContent('og_image')) ?: e(url('web-app-manifest-512x512.png'));
+        $ogType = trim($__env->yieldContent('og_type')) ?: 'website';
+        $ogUrl = trim($__env->yieldContent('og_url')) ?: e(url()->current());
+    @endphp
+
+    <meta property="og:type" content="{!! $ogType !!}">
+    <meta property="og:site_name" content="{{ config('app.name') }}">
+    <meta property="og:locale" content="{{ $ogLocale }}">
+    <meta property="og:title" content="{!! $ogTitle !!}">
+    <meta property="og:description" content="{!! $ogDescription !!}">
+    <meta property="og:url" content="{!! $ogUrl !!}">
+    <meta property="og:image" content="{!! $ogImage !!}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{!! $ogTitle !!}">
+    <meta name="twitter:description" content="{!! $ogDescription !!}">
+    <meta name="twitter:image" content="{!! $ogImage !!}">
+
     <title>@yield('title', config('app.name'))</title>
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">

@@ -2,6 +2,8 @@
 
 @section('title', $post->seo_title ?: ($post->title . ' — Блог — Фотосказка'))
 @section('meta_description', $post->seo_description ?: $post->excerpt)
+@section('og_type', 'article')
+@section('og_image', $post->cover?->getDisplayUrl() ?: '')
 
 @section('content')
 

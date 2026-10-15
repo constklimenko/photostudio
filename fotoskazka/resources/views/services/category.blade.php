@@ -2,6 +2,7 @@
 
 @section('title', $category->seo_title ?: ($category->name . ' — Фотосказка'))
 @section('meta_description', $category->seo_description ?: $category->description ?: config('app.name'))
+@section('og_image', $category->cover?->getDisplayUrl() ?: '')
 
 @section('content')
 
