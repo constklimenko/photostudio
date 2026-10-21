@@ -28,6 +28,17 @@ server {
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
 
+    # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
+    # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.
+    # internal — напрямую по этому адресу файл не открыть.
+    location ^~ /protected-videos/ {
+        internal;
+        alias /var/www/html/storage/app/public/;
+        types { }
+        default_type video/mp4;
+        add_header X-Content-Type-Options nosniff;
+    }
+
     location ~ \.php\$ {
         try_files \$uri =404;
         fastcgi_pass app:9000;
@@ -75,6 +86,17 @@ server {
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; }
+
+    # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
+    # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.
+    # internal — напрямую по этому адресу файл не открыть.
+    location ^~ /protected-videos/ {
+        internal;
+        alias /var/www/html/storage/app/public/;
+        types { }
+        default_type video/mp4;
+        add_header X-Content-Type-Options nosniff;
+    }
 
     location ~ \.php\$ {
         try_files \$uri =404;

@@ -1092,22 +1092,44 @@ storage/app/public/
 ### Плеер видео: поворот ±90° и запрет скачивания
 
 - **Роут `GET /video/{video}/stream`** — сырой поток загруженного видео через
-  `VideoController@stream` (StreamedResponse, диск `filesystems.default_media_disk`).
+  `VideoController@stream` (диск `filesystems.default_media_disk`).
   Заголовки: `Content-Type: video/mp4`, `Content-Disposition: inline`,
   `Cache-Control: private, max-age=86400, immutable`, `X-Content-Type-Options: nosniff`,
   `Accept-Ranges: bytes`, `ETag`. 404 при отсутствии `file_path`/файла.
+- **Две ветки отдачи** (контроллер не вызывает `$disk->path()`, работает через
+  Laravel Filesystem):
+  - **nginx X-Accel-Redirect** — при `filesystems.video_x_accel = true`
+    (`VIDEO_X_ACCEL`, в Docker-проде включён) и **локальном** диске
+    (адаптер `LocalFilesystemAdapter`). PHP проверяет запись и наличие файла и
+    отвечает пустым телом с `X-Accel-Redirect: /protected-videos/<file_path>`
+    (сегменты пути `rawurlencode`, префикс — `filesystems.video_x_accel_location`)
+    и заголовками `Content-Type`/`Content-Disposition`/`Cache-Control`.
+    Файл, `Range` (206), `If-Range`, `ETag`/`If-None-Match` (304) и
+    `Accept-Ranges` обслуживает nginx: internal location `^~ /protected-videos/`
+    с `alias` на `storage/app/public/` (корень диска `public`) в обоих
+    server-блоках `docker/nginx/generate-config.sh`, `X-Content-Type-Options`
+    добавляет сам location. php-fpm воркер освобождается сразу — при
+    `pm.max_children = 4` несколько одновременных просмотров больше не
+    блокируют сайт. Прямой запрос к `/protected-videos/...` → 404 (`internal`).
+    Если `MEDIA_DISK` сменится на другой локальный диск, `alias` нужно
+    направить на его корень.
+  - **PHP-стрим (запасная ветка)** — флаг выключен (локальная разработка,
+    `php artisan serve`) или диск нелокальный. Размер — `$disk->size()`,
+    чтение — `$disk->readStream()`; seekable-поток позиционируется `fseek`,
+    поток без перемотки (удалённый диск) — пропуском байтов до начала диапазона.
+    ETag — `md5(file_path:size)`.
 - **Кэширование браузером**: `private max-age` позволяет хранить видео в
   кэше конкретного браузера (недоступно для CDN/прокси/промежуточных узлов);
   ETag + `If-None-Match` дают дешёвую ревалидацию (304). File не перезаписывается
   по содержимому, поэтому `immutable` оправдан.
-- **Поддержка HTTP Range (206 Partial Content)** для мгновенного старта
-  воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
+- **Поддержка HTTP Range (206 Partial Content)** в PHP-ветке для мгновенного
+  старта воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
   одиночные `bytes=start-end`, открытые (`bytes=n-`), суффиксные (`bytes=-n`)
-  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`) диапазоны;
+  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`, не более
+  `MAX_RANGES = 5` частей, иначе заголовок `Range` игнорируется) диапазоны;
   `If-None-Match` → `304`, неудовлетворимый диапазон → `416` с
-  `Content-Range: bytes */size`. Стрим читается локально
-  (`fopen` + `fseek`/`fread` чанками 8 КБ), между запросами полнотелого 200 и
-  сегмента 206 выставляются `Content-Length`/`Content-Range`.
+  `Content-Range: bytes */size`. Поток читается чанками 8 КБ, между запросами
+  полнотелого 200 и сегмента 206 выставляются `Content-Length`/`Content-Range`.
 - **`Video::source_url`** указывает на `video.stream` (прокси вместо `Storage::url`),
   чтобы не публиковать реальный путь файла напрямую.
 - **Компонент `x-site.video-player`** (`resources/views/components/site/video-player.blade.php`)
