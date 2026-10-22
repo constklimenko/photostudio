@@ -128,6 +128,30 @@ class InquiryTest extends TestCase
         });
     }
 
+    public function test_telegram_message_escapes_user_input(): void
+    {
+        Http::fake(['api.telegram.org/*' => Http::response(['ok' => true])]);
+
+        NotificationSetting::query()->update([
+            'telegram_enabled' => true,
+            'telegram_bot_token' => 'test-token',
+            'telegram_chat_id' => 'test-chat',
+        ]);
+
+        Inquiry::factory()->create([
+            'name' => 'Иван & Мария',
+            'message' => 'Бюджет <5000> руб., <b>срочно</b>',
+        ]);
+
+        Http::assertSent(function ($request) {
+            $text = $request['text'];
+
+            return str_contains($text, 'Иван &amp; Мария')
+                && str_contains($text, 'Бюджет &lt;5000&gt; руб., &lt;b&gt;срочно&lt;/b&gt;')
+                && str_contains($text, '<b>Новая заявка</b>');
+        });
+    }
+
     public function test_telegram_error_does_not_break_inquiry_creation(): void
     {
         Http::fake(['api.telegram.org/*' => Http::response([], 500)]);

@@ -11,6 +11,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VideoController extends Controller
 {
+    private const MAX_RANGES = 5;
+
     public function index(PageContentService $pageContent)
     {
         $page = $pageContent->get('video');
@@ -72,6 +74,10 @@ class VideoController extends Controller
         $range = $request->header('Range');
 
         if (! $this->rangeStillValid($since, $etag)) {
+            $range = null;
+        }
+
+        if ($range && substr_count($range, ',') >= self::MAX_RANGES) {
             $range = null;
         }
 

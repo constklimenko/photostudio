@@ -488,6 +488,20 @@ class HomeControllerTest extends TestCase
         ]);
     }
 
+    public function test_store_inquiry_rejects_too_long_message(): void
+    {
+        $response = $this->post(route('inquiry.store'), [
+            'name' => 'Иван Иванов',
+            'phone' => '+7-123-456-78-90',
+            'email' => 'ivan@example.com',
+            'message' => str_repeat('а', 2001),
+            'agreed_to_terms' => true,
+        ]);
+
+        $response->assertSessionHasErrors(['message']);
+        $this->assertDatabaseCount('inquiries', 0);
+    }
+
     public function test_store_inquiry_validates_required_fields(): void
     {
         $response = $this->post(route('inquiry.store'), []);

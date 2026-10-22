@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-10-21 — Исправления: Telegram-уведомления о заявках и Range у видео
+
+### Цель
+
+Устранить две ошибки, найденные при обзоре проекта: потерю Telegram-уведомлений
+при спецсимволах в заявке и возможность перегрузить сервер запросом видео
+с большим числом диапазонов.
+
+### Изменения
+
+- `SendInquiryNotifications` — поля заявки экранируются (`e()`) перед отправкой
+  в Telegram с `parse_mode: HTML`; раньше `<`, `>` или `&` в имени или
+  комментарии приводили к ошибке Telegram API 400 и уведомление терялось.
+  Комментарий в сообщении обрезается до 3000 символов (лимит Telegram — 4096).
+- `HomeController::storeInquiry` — `message` ограничен `max:2000`;
+  в форме заявки добавлен `maxlength="2000"`.
+- `VideoController::stream` — заголовок `Range` с числом диапазонов больше
+  `MAX_RANGES` (5) игнорируется и отдаётся полный файл (200), как допускает
+  RFC 9110; раньше `bytes=0-,0-,…` заставлял отдавать файл столько раз,
+  сколько указано диапазонов.
+
+### Тесты
+
+- `InquiryTest::test_telegram_message_escapes_user_input`
+- `HomeControllerTest::test_store_inquiry_rejects_too_long_message`
+- `VideoControllerTest::test_stream_route_ignores_range_with_too_many_parts`
+
+### НЕ изменено
+
+- Отдача видео по-прежнему идёт через PHP-FPM (`pm.max_children = 4`);
+  перевод на nginx `X-Accel-Redirect` — отдельная задача.
+- Миграции, `architecture.md`, `database.md` — без изменений.
+
 ## 2026-10-19 — Roadmap: актуализация статуса и этап E «Эксплуатация и безопасность»
 
 ### Цель

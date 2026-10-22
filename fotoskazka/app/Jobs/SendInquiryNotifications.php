@@ -9,6 +9,7 @@ use App\Services\TelegramNotifier;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class SendInquiryNotifications implements ShouldQueue
 {
@@ -68,16 +69,21 @@ class SendInquiryNotifications implements ShouldQueue
             return;
         }
 
-        $service = $this->inquiry->service?->title ?? '—';
+        $service = e($this->inquiry->service?->title ?? '—');
+        $name = e($this->inquiry->name);
+        $phone = e($this->inquiry->phone);
+        $email = e($this->inquiry->email);
+        $date = e($this->inquiry->shooting_date);
+        $message = e(Str::limit((string) $this->inquiry->message, 3000));
 
         $text = "📩 <b>Новая заявка</b>\n\n"
-            ."Имя: {$this->inquiry->name}\n"
-            ."Телефон: {$this->inquiry->phone}\n"
-            ."Email: {$this->inquiry->email}\n"
+            ."Имя: {$name}\n"
+            ."Телефон: {$phone}\n"
+            ."Email: {$email}\n"
             ."Услуга: {$service}\n"
-            ."Дата: {$this->inquiry->shooting_date}\n"
-            ."Комментарий: {$this->inquiry->message}\n\n"
-            .'Открыть: '.url("/admin/inquiries/{$this->inquiry->id}/edit");
+            ."Дата: {$date}\n"
+            ."Комментарий: {$message}\n\n"
+            .'Открыть: '.e(url("/admin/inquiries/{$this->inquiry->id}/edit"));
 
         try {
             $notifier->sendMessage($text);

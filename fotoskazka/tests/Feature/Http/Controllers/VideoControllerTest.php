@@ -240,6 +240,25 @@ class VideoControllerTest extends TestCase
         $this->assertStringContainsString('78', $response->streamedContent());
     }
 
+    public function test_stream_route_ignores_range_with_too_many_parts(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $range = 'bytes='.implode(',', array_fill(0, 100, '0-'));
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => $range]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Length', '10');
+        $this->assertSame('0123456789', $response->streamedContent());
+    }
+
     public function test_stream_route_returns_unsatisfiable_range(): void
     {
         Storage::fake('public');
