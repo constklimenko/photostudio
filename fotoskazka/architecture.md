@@ -307,6 +307,24 @@ resources/views/
 - Источник данных — существующие `seo_title` / `seo_description`; новых полей
   БД и моделей нет.
 
+## Канонический адрес и meta description
+
+- В production (`APP_ENV=production`) `AppServiceProvider` вызывает
+  `URL::forceRootUrl(APP_URL)` и `URL::forceScheme()` по схеме `APP_URL`:
+  все абсолютные ссылки (`url()`, `route()`, canonical, `og:url`,
+  `sitemap.xml`, строка `Sitemap:` в `robots.txt`) строятся от основного
+  домена, даже если запрос пришёл по IP или `www`. Иначе `sitemap.xml`,
+  кэшируемый на 24 часа, мог закэшироваться с хостом случайного запроса.
+  Поэтому `APP_URL` на проде обязан быть основным `https://`-доменом.
+- `layouts/site.blade.php` выводит `<link rel="canonical">`: по умолчанию
+  `url()->current()` (без query-параметров), переопределяется секцией
+  `canonical`; `og:url` по умолчанию совпадает с canonical.
+- `meta description` (и `og:description` по умолчанию) нормализуется в
+  layout: HTML-теги удаляются, пробелы и переносы схлопываются, длина
+  ограничивается 160 символами с `…`. Содержимое поля `seo_description`
+  в БД не меняется.
+- Заголовок Hero на главной — единственный `<h1>` страницы.
+
 ## Шапка (Header)
 
 - Пункты меню загружаются из таблицы `pages` через `PageContentService::getMenuItems()`

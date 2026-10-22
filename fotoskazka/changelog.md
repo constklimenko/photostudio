@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-10-22 — Критичные SEO-правки: robots.txt, canonical, H1, lang (этап E3, частично)
+
+### Цель
+
+Аудит fotoskazkaufa.ru показал: `robots.txt` отдаёт 404 от nginx, в
+`sitemap.xml` все адреса с IP сервера вместо домена, нет `rel="canonical"`,
+на главной нет `<h1>`, `meta description` главной — несколько абзацев
+с переносами строк, `<html lang="en">`.
+
+### Реализация
+
+- `docker/nginx/generate-config.sh`: `location = /robots.txt` в обоих
+  server-блоках получил `try_files $uri /index.php?$query_string`, запрос
+  доходит до `SitemapController@robots`.
+- `AppServiceProvider`: в production корень и схема URL берутся из
+  `APP_URL` (`URL::forceRootUrl` / `URL::forceScheme`).
+- `layouts/site.blade.php`: `<link rel="canonical">` (текущий URL без
+  query, секция `canonical` для переопределения); `og:url` по умолчанию
+  равен canonical; `meta description` очищается от тегов, схлопывает
+  пробелы и обрезается до 160 символов; `og:description` берёт то же
+  значение.
+- `components/site/hero.blade.php`: заголовок `<h3>` → `<h1>` (стили те же).
+- `.env.example`, `.env.docker.example`: `APP_LOCALE=ru`.
+- Тесты `SeoMetaTest`: canonical без query, H1 на главной, нормализация
+  длинного описания, в production canonical и `robots.txt` используют
+  `APP_URL` при запросе по IP.
+- Документация: `architecture.md` (раздел «Канонический адрес и meta description»).
+
+### Не сделано (остаток E3)
+
+- 301 с `http://` и `www.` на основной `https://`-домен (nginx / CDN), HSTS.
+
+### Проверка
+
+- `php artisan test` — зелёный; Pint clean.
+
 ## 2026-10-21 — Отдача видео через nginx X-Accel-Redirect (этап E)
 
 ### Цель

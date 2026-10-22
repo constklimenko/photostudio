@@ -24,9 +24,9 @@
     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
 
     <div class="relative z-10 text-center px-4 max-w-4xl mx-auto">
-        <h3 class="font-heading tracking-wider text-white text-5xl sm:text-6xl md:text-7xl font-normal mb-6 leading-snug">
+        <h1 class="font-heading tracking-wider text-white text-5xl sm:text-6xl md:text-7xl font-normal mb-6 leading-snug">
             {{ $title }}
-        </h3>
+        </h1>
         @if (filled($subtitle))
             <p class="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
                 {{ $subtitle }}

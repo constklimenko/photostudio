@@ -3,16 +3,23 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="@yield('meta_description', config('app.name'))">
+    @php
+        $metaDescription = trim($__env->yieldContent('meta_description', e(config('app.name'))));
+        $metaDescription = e(Str::of(strip_tags(html_entity_decode($metaDescription, ENT_QUOTES)))->squish()->limit(160, '…'));
+        $canonicalUrl = trim($__env->yieldContent('canonical')) ?: e(url()->current());
+    @endphp
+
+    <meta name="description" content="{!! $metaDescription !!}">
+    <link rel="canonical" href="{!! $canonicalUrl !!}">
 
     @php
         $ogLocale = str_replace('-', '_', app()->getLocale());
         $ogLocale = str_contains($ogLocale, '_') ? $ogLocale : $ogLocale.'_'.strtoupper($ogLocale);
         $ogTitle = trim($__env->yieldContent('og_title')) ?: trim($__env->yieldContent('title', config('app.name')));
-        $ogDescription = trim($__env->yieldContent('og_description')) ?: trim($__env->yieldContent('meta_description'));
+        $ogDescription = trim($__env->yieldContent('og_description')) ?: $metaDescription;
         $ogImage = trim($__env->yieldContent('og_image')) ?: e(url('web-app-manifest-512x512.png'));
         $ogType = trim($__env->yieldContent('og_type')) ?: 'website';
-        $ogUrl = trim($__env->yieldContent('og_url')) ?: e(url()->current());
+        $ogUrl = trim($__env->yieldContent('og_url')) ?: $canonicalUrl;
     @endphp
 
     <meta property="og:type" content="{!! $ogType !!}">

@@ -1213,6 +1213,9 @@ content↔видео, независимое хранение и жизненн�
 
 ## E3 — HTTPS, единый домен и канонические URL
 
+> **Статус: ЧАСТИЧНО** (2026-10-22) — canonical, `og:url` и sitemap от `APP_URL`
+> сделаны (см. `changelog.md`); остались 301 для `http://` / `www.` и HSTS.
+
 Сейчас HTTP-блок nginx (`docker/nginx/generate-config.sh`) отдаёт сайт
 целиком, без редиректа на HTTPS; `www` и домен без `www` отдаются оба;
 `<link rel="canonical">` в layout отсутствует.

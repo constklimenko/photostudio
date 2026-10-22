@@ -26,7 +26,7 @@ server {
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
 
     # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
     # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.
@@ -85,7 +85,7 @@ server {
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
-    location = /robots.txt  { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
 
     # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
     # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.
