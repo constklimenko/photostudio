@@ -332,6 +332,32 @@ docker compose up -d --build
 > `opcache.validate_timestamps=0`, поэтому после деплоя контейнеры обязательно
 > пересоздаются (`up -d --build`), иначе PHP продолжит отдавать старый код.
 
+### Отдача видео (X-Accel-Redirect)
+
+Загруженные видео (`/video/{id}/stream`) в проде отдаёт nginx, а не PHP:
+`VideoController@stream` только проверяет запись и отвечает заголовком
+`X-Accel-Redirect: /protected-videos/<file_path>`, nginx берёт файл из
+internal location `^~ /protected-videos/` (`alias
+/var/www/html/storage/app/public/`) и сам обрабатывает `Range`, `ETag`, 304.
+Так просмотр видео не занимает php-fpm воркер (`pm.max_children = 4`).
+
+- Включается `VIDEO_X_ACCEL=true` (уже стоит в `.env.docker.example`); для
+  `php artisan serve` без nginx — `false` (по умолчанию), тогда видео стримит PHP.
+- Отдельный том не нужен: `web` монтирует весь проект (`./:/var/www/html:ro`),
+  поэтому `storage/app/public` nginx видит по тому же пути.
+- Работает только для локального `MEDIA_DISK` (`public`); для удалённого
+  диска контроллер автоматически стримит файл через PHP. При смене локального
+  диска поправить `alias` в `docker/nginx/generate-config.sh`
+  (префикс — `VIDEO_X_ACCEL_LOCATION`, по умолчанию `/protected-videos/`).
+- После изменения `.env` или скрипта: `docker compose up -d --force-recreate app web`
+  (конфиг Laravel закэширован `optimize`, конфиг nginx генерируется при старте).
+
+Проверка (заголовки должны прийти от nginx, `Content-Range` — на Range-запрос):
+
+```bash
+curl -sI -H 'Range: bytes=0-99' https://example.com/video/1/stream
+```
+
 ### HTTPS (Let's Encrypt)
 
 Конфиг nginx генерируется скриптом `docker/nginx/generate-config.sh`: пока

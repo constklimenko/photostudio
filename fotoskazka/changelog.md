@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-10-21 — Отдача видео через nginx X-Accel-Redirect (этап E)
+
+### Цель
+
+`VideoController@stream` отдавал mp4 через PHP чанками по 8 КБ; при
+`pm.max_children = 4` несколько одновременных просмотров занимали все
+php-fpm воркеры, и сайт переставал отвечать. Кроме того, контроллер вызывал
+`$disk->path()`, то есть был привязан к локальному диску вопреки `AGENTS.md`.
+
+### Реализация
+
+- `config/filesystems.php`: `video_x_accel` (`VIDEO_X_ACCEL`, по умолчанию
+  `false`) и `video_x_accel_location` (`VIDEO_X_ACCEL_LOCATION`,
+  `/protected-videos/`). `.env.docker.example` — `VIDEO_X_ACCEL=true`,
+  `.env.example` — `false`.
+- `docker/nginx/generate-config.sh`: в обоих server-блоках internal location
+  `^~ /protected-videos/` с `alias /var/www/html/storage/app/public/`,
+  `default_type video/mp4`, `X-Content-Type-Options: nosniff`. Монтирование
+  томов не менялось — `web` уже видит весь проект read-only.
+- `VideoController@stream`:
+  - при включённом флаге и локальном диске (`LocalFilesystemAdapter`) —
+    пустой ответ с `X-Accel-Redirect` (сегменты пути `rawurlencode`),
+    `Content-Type`, `Content-Disposition`, `Cache-Control`; файл PHP не читает,
+    Range/ETag/304 обрабатывает nginx;
+  - иначе — прежняя PHP-реализация, но через `$disk->size()` /
+    `$disk->readStream()` вместо `path()`/`fopen`, поэтому работает и для
+    удалённых дисков (поток без перемотки пропускается до начала диапазона);
+  - ETag PHP-ветки — `md5(file_path:size)` вместо абсолютного пути;
+  - лимит частей `Range` (`MAX_RANGES = 5`) сохранён.
+- Тесты (`VideoControllerTest`): флаг выключен → поток через PHP без
+  `X-Accel-Redirect`; флаг включён → пустое тело, `X-Accel-Redirect` с
+  экранированным путём, `Range` не обрабатывается PHP; настраиваемый префикс;
+  404 при отсутствующем файле; нелокальный диск → стрим и 206 через
+  `readStream`, `path()` не вызывается.
+- Документация: `architecture.md` (плеер видео), `README.md` (раздел «Отдача
+  видео (X-Accel-Redirect)»).
+
+### Проверка
+
+- `php artisan test`, `./vendor/bin/pint`.
+- Location проверен на `nginx:1.27-alpine`: заголовки PHP сохраняются,
+  `Range` → 206, `If-None-Match` → 304, прямой запрос к
+  `/protected-videos/...` → 404.
+
+### Деплой
+
+`.env`: `VIDEO_X_ACCEL=true`, затем `docker compose up -d --force-recreate app web`.
+
 ## 2026-10-21 — Исправления: Telegram-уведомления о заявках и Range у видео
 
 ### Цель
@@ -30,7 +78,8 @@
 ### НЕ изменено
 
 - Отдача видео по-прежнему идёт через PHP-FPM (`pm.max_children = 4`);
-  перевод на nginx `X-Accel-Redirect` — отдельная задача.
+  перевод на nginx `X-Accel-Redirect` — отдельная задача (выполнена,
+  см. запись «Отдача видео через nginx X-Accel-Redirect»).
 - Миграции, `architecture.md`, `database.md` — без изменений.
 
 ## 2026-10-19 — Roadmap: актуализация статуса и этап E «Эксплуатация и безопасность»

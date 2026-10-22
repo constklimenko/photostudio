@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Video;
 use App\Services\PageContentService;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VideoController extends Controller
@@ -33,21 +36,25 @@ class VideoController extends Controller
         ));
     }
 
-    public function stream(Request $request, Video $video): StreamedResponse
+    public function stream(Request $request, Video $video): Response
     {
         abort_unless($video->file_path, 404);
 
+        $file = $video->file_path;
         $disk = Storage::disk(Config::get('filesystems.default_media_disk', 'public'));
 
-        $path = $disk->path($video->file_path);
-
-        if (! $disk->exists($video->file_path)) {
+        if (! $disk->exists($file)) {
             abort(404);
         }
 
-        $size = filesize($path);
-        $filename = basename($video->file_path);
-        $etag = '"'.md5($path.':'.$size).'"';
+        $filename = basename($file);
+
+        if (Config::get('filesystems.video_x_accel') && $disk->getAdapter() instanceof LocalFilesystemAdapter) {
+            return $this->accelRedirect($file, $filename);
+        }
+
+        $size = $disk->size($file);
+        $etag = '"'.md5($file.':'.$size).'"';
 
         $baseHeaders = [
             'Content-Type' => 'video/mp4',
@@ -92,31 +99,31 @@ class VideoController extends Controller
         }
 
         if ($ranges === []) {
-            return $this->fullStream($path, $size, $baseHeaders);
+            return $this->fullStream($disk, $file, $size, $baseHeaders);
         }
 
         if (count($ranges) === 1) {
-            return $this->singleRangeStream($path, $size, $ranges[0], $baseHeaders);
+            return $this->singleRangeStream($disk, $file, $size, $ranges[0], $baseHeaders);
         }
 
-        return $this->multiRangeStream($path, $size, $ranges, $baseHeaders);
+        return $this->multiRangeStream($disk, $file, $size, $ranges, $baseHeaders);
     }
 
-    protected function fullStream(string $path, int $size, array $headers): StreamedResponse
+    protected function fullStream(Filesystem $disk, string $file, int $size, array $headers): StreamedResponse
     {
         return new StreamedResponse(
-            fn () => $this->streamBytes($path, 0, $size - 1),
+            fn () => $this->streamBytes($disk, $file, 0, $size - 1),
             200,
             array_merge($headers, ['Content-Length' => (string) $size]),
         );
     }
 
-    protected function singleRangeStream(string $path, int $size, array $range, array $headers): StreamedResponse
+    protected function singleRangeStream(Filesystem $disk, string $file, int $size, array $range, array $headers): StreamedResponse
     {
         [$start, $end] = $range;
 
         return new StreamedResponse(
-            fn () => $this->streamBytes($path, $start, $end),
+            fn () => $this->streamBytes($disk, $file, $start, $end),
             206,
             array_merge($headers, [
                 'Content-Range' => 'bytes '.$start.'-'.$end.'/'.$size,
@@ -125,17 +132,17 @@ class VideoController extends Controller
         );
     }
 
-    protected function multiRangeStream(string $path, int $size, array $ranges, array $headers): StreamedResponse
+    protected function multiRangeStream(Filesystem $disk, string $file, int $size, array $ranges, array $headers): StreamedResponse
     {
         $boundary = 'fotoskazka-'.bin2hex(random_bytes(8));
 
-        $response = new StreamedResponse(function () use ($path, $size, $ranges, $boundary): void {
+        $response = new StreamedResponse(function () use ($disk, $file, $size, $ranges, $boundary): void {
             foreach ($ranges as [$start, $end]) {
                 echo "--{$boundary}\r\n"
                     ."Content-Type: video/mp4\r\n"
                     ."Content-Range: bytes {$start}-{$end}/{$size}\r\n\r\n";
 
-                $this->streamBytes($path, $start, $end);
+                $this->streamBytes($disk, $file, $start, $end);
                 echo "\r\n";
             }
 
@@ -147,15 +154,46 @@ class VideoController extends Controller
         return $response;
     }
 
-    protected function streamBytes(string $path, int $start, int $end): void
+    /**
+     * Отдача через nginx: PHP файл не читает, Range/ETag/If-Range/304
+     * обрабатывает internal location (см. docker/nginx/generate-config.sh).
+     */
+    protected function accelRedirect(string $file, string $filename): Response
     {
-        $handle = fopen($path, 'rb');
+        $location = rtrim((string) Config::get('filesystems.video_x_accel_location', '/protected-videos/'), '/');
+        $uri = $location.'/'.implode('/', array_map('rawurlencode', explode('/', ltrim($file, '/'))));
 
-        if ($handle === false) {
+        return new Response('', 200, [
+            'X-Accel-Redirect' => $uri,
+            'Content-Type' => 'video/mp4',
+            'Content-Disposition' => 'inline; filename="'.addslashes($filename).'"',
+            'Cache-Control' => 'private, max-age=86400, immutable',
+        ]);
+    }
+
+    protected function streamBytes(Filesystem $disk, string $file, int $start, int $end): void
+    {
+        $handle = $disk->readStream($file);
+
+        if (! is_resource($handle)) {
             return;
         }
 
-        fseek($handle, $start);
+        if (stream_get_meta_data($handle)['seekable']) {
+            fseek($handle, $start);
+        } else {
+            $skip = $start;
+
+            while ($skip > 0 && ! feof($handle)) {
+                $buffer = fread($handle, (int) min(8192, $skip));
+
+                if ($buffer === false || $buffer === '') {
+                    break;
+                }
+
+                $skip -= strlen($buffer);
+            }
+        }
 
         $chunk = 8192;
         $remaining = $end - $start + 1;
