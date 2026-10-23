@@ -4,7 +4,7 @@
 
 | Компонент     | Версия        |
 |---------------|---------------|
-| PHP           | 8.4.24        |
+| PHP           | 8.4.27        |
 | Laravel       | 13.16.1       |
 | MySQL         | 8.x           |
 | Filament      | 4.11.7        |
@@ -1561,7 +1561,8 @@ Filament-дерево категорий — следующая часть эт�
 Прод-развёртывание выполняется через Docker Compose (не зависит от версии PHP
 на хосте — на сервере может стоять PHP 7.4):
 
-- `docker/php/Dockerfile` — образ `php:8.4-fpm` с расширениями
+- `docker/php/Dockerfile` — образ `php:8.4.27-fpm-trixie` с обновлением
+  security-пакетов Debian (`apt-get upgrade`) и расширениями
   `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip` (GD собран с
   поддержкой WebP/JPEG/FreeType — нужно для `MediaProcessor`);
 - `docker-compose.yml` — сервисы `app` (php-fpm), `web` (nginx),

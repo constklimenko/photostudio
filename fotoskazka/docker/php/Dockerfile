@@ -1,9 +1,10 @@
-FROM php:8.4-fpm
+FROM php:8.4.27-fpm-trixie
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN set -eux; \
     apt-get update; \
+    apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
         git \
         unzip \

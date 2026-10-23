@@ -289,7 +289,7 @@ php artisan db:restore
 
 Прод-развёртывание идёт через Docker Compose и **не зависит от версии PHP на
 хосте** (на сервере может стоять PHP 7.4). Стек: `web` (nginx), `app`
-(php-fpm 8.4), `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler`
+(php-fpm 8.4.27), `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler`
 (`schedule:work`). Ассеты собираются отдельным сервисом `node`.
 
 ### Состав
@@ -297,7 +297,7 @@ php artisan db:restore
 | Файл | Назначение |
 |---|---|
 | `docker-compose.yml` | сервисы, порты, тома, переменные |
-| `docker/php/Dockerfile` | `php:8.4-fpm` + расширения (`gd` с WebP, `intl`, `zip`, `bcmath`, `exif`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_sqlite`), `default-mysql-client` для `db:backup`/`db:restore` |
+| `docker/php/Dockerfile` | `php:8.4.27-fpm-trixie` с обновлением пакетов Debian (`apt-get upgrade`) + расширения (`gd` с WebP, `intl`, `zip`, `bcmath`, `exif`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_sqlite`), `default-mysql-client` для `db:backup`/`db:restore` |
 | `docker/php/php.ini` | memory 512M, upload 200M, opcache |
 | `docker/php/entrypoint.sh` | права на `storage`, `storage:link`, для `app` — `migrate --force` и `optimize` |
 | `docker/nginx/generate-config.sh` | генерирует конфиг nginx при старте (HTTP + HTTPS, если есть сертификат) |
@@ -331,6 +331,20 @@ docker compose up -d --build
 
 > `opcache.validate_timestamps=0`, поэтому после деплоя контейнеры обязательно
 > пересоздаются (`up -d --build`), иначе PHP продолжит отдавать старый код.
+
+### Патчи безопасности PHP
+
+Базовый образ закреплён на `php:8.4.27-fpm-trixie`, при сборке выполняется
+`apt-get upgrade` — устанавливаются актуальные security-обновления Debian.
+Чтобы поднять PHP до следующего патч-релиза, достаточно:
+
+```bash
+# 1. Проверить актуальный патч-релиз: https://hub.docker.com/_/php
+# 2. Обновить тег FROM в docker/php/Dockerfile
+docker compose build --pull
+docker compose up -d
+docker compose exec app php -v          # проверить версию PHP
+```
 
 ### Отдача видео (X-Accel-Redirect)
 
