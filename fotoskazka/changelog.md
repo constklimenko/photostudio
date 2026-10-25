@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-25 — nginx: index.html как индекс каталога (`/webar/`)
+
+- `docker/nginx/generate-config.sh` — в обоих server-блоках (HTTP и HTTPS)
+  `index index.php;` → `index index.php index.html;`. Адрес `/webar/` без
+  `index.html` раньше отдавал 403. Других `index.html` в `public/` нет, так
+  что правка затрагивает только `/webar/`; листинг каталогов по-прежнему
+  запрещён.
+- README прототипа — снова указан адрес `/webar/`.
+- Проверка: контейнер `nginx:1.27-alpine` с этим скриптом — `nginx -t` без
+  ошибок; `/webar/`, `/webar/?t=class`, `/webar/index.html` → 200,
+  `/webar/targets/` → 403.
+- На сервере применится после `docker compose restart web` (скрипт выполняется при
+  старте контейнера `web`; `up -d` его не пересоздаёт — скрипт смонтирован
+  томом, изменение файла Compose не замечает).
+
 ## 2026-10-25 — WebAR: таргет «фото класса» для полевого теста D1.3
 
 ### Цель

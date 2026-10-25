@@ -18,7 +18,7 @@ server {
     }
 
     root /var/www/html/public;
-    index index.php;
+    index index.php index.html;
     charset utf-8;
 
     location / {
@@ -77,7 +77,7 @@ server {
     ssl_session_timeout 1d;
 
     root /var/www/html/public;
-    index index.php;
+    index index.php index.html;
     charset utf-8;
 
     location / {

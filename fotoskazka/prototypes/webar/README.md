@@ -172,7 +172,7 @@ npm run sync:public     # cкопирует prototypes/webar/ → public/webar (
 
 После этого путь **должен** открываться на сайте:
 
-- `https://fotoskazkaufa.ru/webar/index.html` — AR-страница (адрес без `index.html` отдаёт 403: nginx ищет только `index.php`);
+- `https://fotoskazkaufa.ru/webar/` (или `/webar/index.html`) — AR-страница;
 - `https://fotoskazkaufa.ru/webar/camera.html` — отдельный тест камеры.
 
 Механика: `scripts/sync-public.mjs` вычищает и заново создаёт
