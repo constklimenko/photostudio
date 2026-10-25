@@ -5,13 +5,30 @@ import { MindARThree } from './vendor/mindar-image-three.prod.js';
 
 window.__webarBooted = true;
 
-const TARGET_SRC = './targets/targets.mind';
-const TARGET_IMAGE_ASPECT = 1248 / 1648; // sample-photo.jpg (kept in sync by the compile tool)
+/* Таргеты выбираются параметром ?t=… Пропорции (высота / ширина) должны
+   совпадать с изображением, из которого собран .mind, и с кадром видео.
+   Картинка-замена — запасной вариант, если видео не загрузилось. */
+const TARGETS = {
+  sample: {
+    label: 'образец FS-001',
+    mind: './targets/targets.mind',
+    aspect: 1248 / 1648,
+    video: './targets/demo-video.mp4',
+  },
+  class: {
+    label: 'фото класса',
+    mind: './targets/class.mind',
+    aspect: 1064 / 1600,
+    video: './targets/class-video.mp4',
+  },
+};
+const requestedTarget = new URLSearchParams(location.search).get('t');
+const TARGET_KEY = Object.hasOwn(TARGETS, requestedTarget) ? requestedTarget : 'sample';
+const TARGET = TARGETS[TARGET_KEY];
 
-/* Видео, которое проигрывается поверх распознанного таргета. Кадр должен
-   совпадать по пропорциям с таргетом (1648×1248). Картинка — запасной вариант,
-   если видео не загрузилось. */
-const VIDEO_SRC = './targets/demo-video.mp4';
+const TARGET_SRC = TARGET.mind;
+const TARGET_IMAGE_ASPECT = TARGET.aspect;
+const VIDEO_SRC = TARGET.video;
 const REPLACEMENT_SRC = './targets/replacement.svg';
 
 const $ = (id) => document.getElementById(id);
@@ -272,5 +289,9 @@ function cameraErrorText(err) {
   return err.message || String(err);
 }
 
-log('Loaded (three.module + MindAR three build).');
+document.querySelectorAll('[data-target]').forEach((a) => {
+  a.classList.toggle('active', a.dataset.target === TARGET_KEY);
+});
+
+log('Loaded (three.module + MindAR three build). Таргет: ' + TARGET.label);
 setStatus('Нажмите «Старт»: появится кадр с камеры, а поверх распознанного фото запустится видео.');

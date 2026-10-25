@@ -19,6 +19,24 @@ Standalone изолированный прототип для проверки �
 ffmpeg -y -i targets/sample-photo.jpg -vf "scale=3296:2496,zoompan=z='1+0.15*sin(PI*on/200)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=200:s=832x630:fps=25,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='VIDEO %{eif\:t\:d}.%{eif\:mod(n,25)*4\:d\:2}s':x=16:y=16:fontsize=26:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw=8,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='TOP':x=(w-tw)/2:y=16:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.55:boxborderw=6" -c:v libx264 -profile:v main -pix_fmt yuv420p -crf 26 -preset slow -movflags +faststart -an targets/demo-video.mp4
 ```
 
+**Таргеты.** Таргет выбирается параметром `?t=` (кнопки «образец» / «фото
+класса» на странице): `sample` — `targets.mind` + `demo-video.mp4` (по
+умолчанию), `class` — `class.mind` + `class-video.mp4`. Новый таргет
+добавляется в объект `TARGETS` в `app.js` (файл `.mind`, пропорции
+высота/ширина, видео).
+
+Файлы фото класса (`photo-target.jpg`, `class-*`, `class.mind`) **не хранятся
+в git** (`targets/.gitignore`): на сервер они заливаются вручную в
+`public/webar/targets/` и удаляются после тестов. Сборка:
+
+```bash
+cd targets && ffmpeg -y -i photo-target.jpg -vf scale=1600:1064 -q:v 2 class-target.jpg
+cd ../tools/compile-target && npm install && node compile.mjs ../../targets/class-target.jpg ../../targets/class.mind
+```
+
+Ролик — той же командой ffmpeg, что и для образца, с входом `class-target.jpg`,
+`scale=3200:2128` и `s=832x554`.
+
 **Кэш CDN.** CDN сайта кэширует файлы с учётом query string, поэтому
 `app.js` и `styles.css` подключаются с версией (`?v=20261025` в `index.html`
 и `camera.html`). После правки этих файлов увеличьте версию, иначе CDN

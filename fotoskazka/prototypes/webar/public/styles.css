@@ -111,6 +111,7 @@ canvas { display: block; }
 .btn:disabled { opacity: 0.4; cursor: default; }
 .btn.primary { background: var(--ok); border-color: var(--ok); color: #06230f; font-weight: 600; }
 .btn.active { outline: 2px solid var(--ok); }
+a.btn { display: inline-block; text-decoration: none; }
 
 #logwrap {
   margin-top: 8px;
