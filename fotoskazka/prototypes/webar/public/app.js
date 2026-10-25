@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { MindARThree } from './vendor/mindar-image-three.prod.js';
 
 window.__webarBooted = true;
+const scriptsReadyAt = performance.now();
 
 /* Таргеты выбираются параметром ?t=… Пропорции (высота / ширина) должны
    совпадать с изображением, из которого собран .mind, и с кадром видео.
@@ -152,6 +153,47 @@ let mindarThree = null;
 let overlayMesh = null;
 let gridMesh = null;
 
+/* Замер этапов запуска: «Старт» → камера → .mind → прогрев WebGL →
+   сканирование → первое распознавание. Методы MindAR оборачиваются снаружи,
+   вендорный код не меняется. */
+let stageStart = null;
+let stageLast = null;
+
+function markStage(label) {
+  if (stageStart === null) return;
+  const now = performance.now();
+  log(label + ': ' + Math.round(now - stageLast) + ' мс (с «Старт» ' + ((now - stageStart) / 1000).toFixed(1) + ' с)');
+  stageLast = now;
+}
+
+function mindDownloadInfo() {
+  const url = new URL(TARGET_SRC, location.href).href;
+  const entry = performance.getEntriesByName(url).pop();
+  if (!entry) return '';
+  const kb = entry.encodedBodySize ? Math.round(entry.encodedBodySize / 1024) + ' КБ' : 'из кэша';
+  return ' [скачивание ' + Math.round(entry.duration) + ' мс, ' + kb + ']';
+}
+
+function instrumentStart(m) {
+  const startVideo = m._startVideo.bind(m);
+  m._startVideo = async () => {
+    await startVideo();
+    markStage('камера готова');
+  };
+  const startAR = m._startAR.bind(m);
+  m._startAR = () => {
+    const done = startAR();
+    const controller = m.controller;
+    const dummyRun = controller.dummyRun.bind(controller);
+    controller.dummyRun = async (v) => {
+      markStage('.mind загружен и разобран' + mindDownloadInfo());
+      await dummyRun(v);
+      markStage('прогрев WebGL');
+    };
+    return done;
+  };
+}
+
 function buildScene() {
   mindarThree = new MindARThree({
     container: $('ar-container'),
@@ -161,6 +203,7 @@ function buildScene() {
     filterBeta: 1000,
     missTolerance: 20,
   });
+  instrumentStart(mindarThree);
 
   const { renderer, scene, camera } = mindarThree;
 
@@ -189,6 +232,8 @@ function buildScene() {
     trackStart = performance.now();
     foundAt = video.paused ? trackStart : null;
     video.play().catch((e) => log('video play: ' + e.name + ': ' + e.message));
+    markStage('распознано');
+    stageStart = null;
     trackTimer = setInterval(() => {
       const s = ((performance.now() - trackStart) / 1000).toFixed(1);
       holdEl.textContent = 'удержание: ' + s + ' с';
@@ -238,9 +283,12 @@ btnStart.addEventListener('click', async () => {
   btnStart.disabled = true;
   unlockVideo();
   setStatus('Запрашиваю камеру…');
+  stageStart = stageLast = performance.now();
+  log('Старт');
   try {
     if (!mindarThree) mindarThree = buildScene();
     await mindarThree.start();
+    markStage('сканирование запущено');
     setCamera('on', 'camera: on');
     setStatus('Наведите камеру на напечатанное фото — поверх него запустится видео.');
     btnStop.disabled = false;
@@ -256,6 +304,7 @@ btnStart.addEventListener('click', async () => {
 btnStop.addEventListener('click', async () => {
   if (!mindarThree) return;
   await mindarThree.stop();
+  stageStart = null;
   targetVisible = false;
   video.pause();
   video.currentTime = 0;
@@ -294,4 +343,5 @@ document.querySelectorAll('[data-target]').forEach((a) => {
 });
 
 log('Loaded (three.module + MindAR three build). Таргет: ' + TARGET.label);
+log('скрипты three + MindAR загружены за ' + Math.round(scriptsReadyAt) + ' мс от открытия страницы');
 setStatus('Нажмите «Старт»: появится кадр с камеры, а поверх распознанного фото запустится видео.');
