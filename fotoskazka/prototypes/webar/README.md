@@ -1,4 +1,4 @@
-# WebAR prototype — D1.2 «Первый технический прототип» + шаг к D1.3
+# WebAR prototype — D1.2 «Первый технический прототип» → D1.3 «видео»
 
 Standalone изолированный прототип для проверки базовой механики
 «фотография → распознавание → контент» на смартфоне.
@@ -6,7 +6,21 @@ Standalone изолированный прототип для проверки �
 Кадр с камеры отображается на всю страницу, а **распознанная область печатного
 таргета динамически заменяется** изображением-контентом (непрозрачная плоскость
 ровно по геометрии таргета). Прежде здесь была почти прозрачная рамка «LIVE».
-Замена изображения — предвестник **D1.3** («оживающая фотография» с видео).
+С 2026-10-24 (**D1.3**) поверх таргета проигрывается видео
+`targets/demo-video.mp4` (`VIDEO_SRC`): без звука, inline, по кругу; запуск при
+`targetFound`, пауза при `targetLost`. Видео разблокируется жестом «Старт»
+(требование iOS). Задержка «targetFound → первый кадр видео» пишется в журнал.
+Если видео не загрузилось, показывается картинка `replacement.svg`.
+
+Тестовый ролик собран из самого таргета (плавный зум, таймкод, метка `TOP`
+для контроля ориентации):
+
+```bash
+ffmpeg -y -i targets/sample-photo.jpg -vf "scale=3296:2496,zoompan=z='1+0.15*sin(PI*on/200)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=200:s=832x630:fps=25,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='VIDEO %{eif\:t\:d}.%{eif\:mod(n,25)*4\:d\:2}s':x=16:y=16:fontsize=26:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw=8,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='TOP':x=(w-tw)/2:y=16:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.55:boxborderw=6" -c:v libx264 -profile:v main -pix_fmt yuv420p -crf 26 -preset slow -movflags +faststart -an targets/demo-video.mp4
+```
+
+Свой ролик: те же пропорции кадра (1648×1248 ≈ 1.32), H.264 + `yuv420p` +
+`faststart`, без звука.
 
 Laravel, БД, Filament, авторизация, файловые загрузки и production-код **не
 затрагиваются** — это отдельный statics-каталог со своим dev server.
@@ -229,15 +243,15 @@ npm run compile             # => ../../targets/targets.mind (из ../../targets/
 - публичная копия на сайте: `npm run sync:public` → `public/webar` (git);
 - минимальный доступ к камере (`camera.html`) и AR-страница (`index.html`);
 - image tracking MindAR по подготовленному `targets.mind`;
-- **замена распознанной области таргета изображением-контентом** поверх полного
-  кадра с камеры (`REPLACEMENT_SRC`), плюс журнал удержания (метрики D1.2);
+- **видео поверх распознанного таргета** (`VIDEO_SRC`, запуск/пауза по
+  found/lost, задержка запуска в журнале), запасная картинка `REPLACEMENT_SRC`,
+  плюс журнал удержания (метрики D1.2);
 - пересборка `.mind` офлайн.
 
 Намеренно НЕ сделано (граница D1.2, roadmap):
 - БД, Filament, авторизация, загрузка файлов, production routes;
 - интеграция с Media/Video проекта;
-- **видео** вместо изображения — это следующий шаг **D1.3** (текущая замена
-  картинкой — предвестник D1.3, а не её реализация);
+- звук видео (iOS требует отдельного жеста), выбор ролика без правки кода;
 - выбор альтернатив (8th Wall) на этой итерации — D1.3.
 
 ---

@@ -1,4 +1,4 @@
-/* WebAR prototype — D1.2 → первый шаг к D1.3 (MindAR image tracking, target replacement) */
+/* WebAR prototype — D1.3 (MindAR image tracking, видео поверх таргета) */
 
 import * as THREE from 'three';
 import { MindARThree } from './vendor/mindar-image-three.prod.js';
@@ -8,8 +8,10 @@ window.__webarBooted = true;
 const TARGET_SRC = './targets/targets.mind';
 const TARGET_IMAGE_ASPECT = 1248 / 1648; // sample-photo.jpg (kept in sync by the compile tool)
 
-/* Изображение, которым заменяется распознанный таргет. Замените файл (или эту
-   строку) своим контентом. Формат кадра должен совпадать с таргетом (1648×1248). */
+/* Видео, которое проигрывается поверх распознанного таргета. Кадр должен
+   совпадать по пропорциям с таргетом (1648×1248). Картинка — запасной вариант,
+   если видео не загрузилось. */
+const VIDEO_SRC = './targets/demo-video.mp4';
 const REPLACEMENT_SRC = './targets/replacement.svg';
 
 const $ = (id) => document.getElementById(id);
@@ -83,9 +85,7 @@ function makeGridTexture(size, cells) {
   });
 }
 
-/* Изображение-замена: непрозрачная текстура ровно по таргету. */
-function makeReplacementMaterial() {
-  const texture = new THREE.TextureLoader().load(REPLACEMENT_SRC);
+function makeContentMaterial(texture) {
   texture.encoding = THREE.sRGBEncoding;
   texture.minFilter = THREE.LinearFilter;
   return new THREE.MeshBasicMaterial({
@@ -95,6 +95,39 @@ function makeReplacementMaterial() {
     toneMapped: false,
   });
 }
+
+/* iOS разрешает inline-автовоспроизведение только muted + playsinline. */
+function createVideo() {
+  const v = document.createElement('video');
+  v.src = VIDEO_SRC;
+  v.muted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.setAttribute('playsinline', '');
+  v.setAttribute('webkit-playsinline', '');
+  v.preload = 'auto';
+  v.addEventListener('playing', () => {
+    if (foundAt === null) return;
+    log('видео запущено через ' + Math.round(performance.now() - foundAt) + ' мс после targetFound');
+    foundAt = null;
+  });
+  v.addEventListener('error', () => {
+    log('ошибка видео — показываю картинку-замену');
+    if (overlayMesh) overlayMesh.material = makeContentMaterial(new THREE.TextureLoader().load(REPLACEMENT_SRC));
+  });
+  return v;
+}
+
+/* Видео разблокируется жестом пользователя (кнопка «Старт»), чтобы потом
+   запускаться без касания при распознавании таргета. */
+function unlockVideo() {
+  const p = video.play();
+  if (p) p.then(() => { if (!targetVisible) video.pause(); }).catch((e) => log('video unlock: ' + e.name));
+}
+
+const video = createVideo();
+let targetVisible = false;
+let foundAt = null;
 
 /* --- MindAR scene --- */
 
@@ -119,7 +152,7 @@ function buildScene() {
   const REPLACE_OVERSCAN = 1.02;
   overlayMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(REPLACE_OVERSCAN, REPLACE_OVERSCAN * TARGET_IMAGE_ASPECT),
-    makeReplacementMaterial()
+    makeContentMaterial(new THREE.VideoTexture(video))
   );
   anchor.group.add(overlayMesh);
 
@@ -135,7 +168,10 @@ function buildScene() {
 
   anchor.onTargetFound = () => {
     setTarget('found', 'target: found ✓');
+    targetVisible = true;
     trackStart = performance.now();
+    foundAt = video.paused ? trackStart : null;
+    video.play().catch((e) => log('video play: ' + e.name + ': ' + e.message));
     trackTimer = setInterval(() => {
       const s = ((performance.now() - trackStart) / 1000).toFixed(1);
       holdEl.textContent = 'удержание: ' + s + ' с';
@@ -145,6 +181,9 @@ function buildScene() {
 
   anchor.onTargetLost = () => {
     setTarget('lost', 'target: lost');
+    targetVisible = false;
+    foundAt = null;
+    video.pause();
     if (trackStart) {
       const held = ((performance.now() - trackStart) / 1000).toFixed(1);
       log('targetLost — удержание ' + held + ' с');
@@ -173,19 +212,26 @@ function appendMeasurement(heldSeconds) {
 /* --- Start / stop --- */
 
 btnStart.addEventListener('click', async () => {
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    setCamera('err', 'camera: error');
+    setStatus('Камера доступна только по HTTPS или с адреса localhost / 127.0.0.1. Сейчас: ' + location.origin, 'err');
+    log('insecure context: ' + location.origin);
+    return;
+  }
   btnStart.disabled = true;
+  unlockVideo();
   setStatus('Запрашиваю камеру…');
   try {
     if (!mindarThree) mindarThree = buildScene();
     await mindarThree.start();
     setCamera('on', 'camera: on');
-    setStatus('Кадр с камеры — как есть. Наведите на образец: область таргета заменится изображением-контентом.');
+    setStatus('Наведите камеру на напечатанное фото — поверх него запустится видео.');
     btnStop.disabled = false;
     btnGrid.disabled = false;
   } catch (err) {
     setCamera('err', 'camera: error');
     setStatus(cameraErrorText(err), 'err');
-    log(err.name + ': ' + err.message);
+    log(err ? err.name + ': ' + err.message : 'MindAR start rejected');
     btnStart.disabled = false;
   }
 });
@@ -193,6 +239,9 @@ btnStart.addEventListener('click', async () => {
 btnStop.addEventListener('click', async () => {
   if (!mindarThree) return;
   await mindarThree.stop();
+  targetVisible = false;
+  video.pause();
+  video.currentTime = 0;
   setCamera('off', 'camera: off');
   setTarget('idle', 'target: —');
   setStatus('Остановлено.');
@@ -210,6 +259,7 @@ btnGrid.addEventListener('click', () => {
 });
 
 function cameraErrorText(err) {
+  if (!err) return 'Не удалось запустить камеру.';
   if (err.name === 'SecurityError' || err.name === 'NotAllowedError') {
     return 'Доступ к камере запрещён. Разрешите камеру для этого сайта и повторите (HTTPS обязателен).';
   }
@@ -223,4 +273,4 @@ function cameraErrorText(err) {
 }
 
 log('Loaded (three.module + MindAR three build).');
-setStatus('Нажмите «Старт»: появится кадр с камеры, а распознанная область таргета заменится контентом.');
+setStatus('Нажмите «Старт»: появится кадр с камеры, а поверх распознанного фото запустится видео.');

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>WebAR prototype — Фотосказка D1.2</title>
+  <title>WebAR prototype — Фотосказка D1.3</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -14,11 +14,11 @@
 
     <div id="hud">
       <div class="hud-top">
-        <div class="title">WebAR prototype <span class="dim">· D1.2 · MindAR</span></div>
+        <div class="title">WebAR prototype <span class="dim">· D1.3 · MindAR</span></div>
         <div id="camera-state" class="pill">camera: —</div>
       </div>
 
-      <div id="status" class="status">Нажмите «Старт». Кадр камеры транслируется на всю страницу; распознанная область <b>sample-photo</b> динамически заменяется изображением-контентом.</div>
+      <div id="status" class="status">Нажмите «Старт». Кадр камеры транслируется на всю страницу; поверх распознанной <b>sample-photo</b> запускается видео.</div>
 
       <div class="hud-row">
         <button id="btn-start" class="btn primary">Старт</button>
@@ -40,8 +40,8 @@
       </details>
 
       <div class="note">
-        Изображение с камеры передаётся полностью; заменяется только область
-        распознанного таргета. Требуется HTTPS и обычный браузер (Safari /
+        Изображение с камеры передаётся полностью; поверх распознанного таргета
+        проигрывается видео (без звука), при потере таргета — пауза. Требуется HTTPS и обычный браузер (Safari /
         Chrome). Если открыто в Instagram/VK/Telegram — нажмите «открыть в
         браузере». Камера запрашивается только по жесту (кнопка «Старт»).
       </div>
