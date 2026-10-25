@@ -19,6 +19,11 @@ Standalone изолированный прототип для проверки �
 ffmpeg -y -i targets/sample-photo.jpg -vf "scale=3296:2496,zoompan=z='1+0.15*sin(PI*on/200)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=200:s=832x630:fps=25,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='VIDEO %{eif\:t\:d}.%{eif\:mod(n,25)*4\:d\:2}s':x=16:y=16:fontsize=26:fontcolor=white:box=1:boxcolor=black@0.55:boxborderw=8,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:text='TOP':x=(w-tw)/2:y=16:fontsize=22:fontcolor=yellow:box=1:boxcolor=black@0.55:boxborderw=6" -c:v libx264 -profile:v main -pix_fmt yuv420p -crf 26 -preset slow -movflags +faststart -an targets/demo-video.mp4
 ```
 
+**Кэш CDN.** CDN сайта кэширует файлы с учётом query string, поэтому
+`app.js` и `styles.css` подключаются с версией (`?v=20261025` в `index.html`
+и `camera.html`). После правки этих файлов увеличьте версию, иначе CDN
+продолжит отдавать старую копию.
+
 Свой ролик: те же пропорции кадра (1648×1248 ≈ 1.32), H.264 + `yuv420p` +
 `faststart`, без звука.
 
