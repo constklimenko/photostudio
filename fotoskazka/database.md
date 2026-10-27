@@ -86,6 +86,11 @@ erDiagram
 
     ICONS ||--o{ SERVICE_ITEMS : decorates
 
+    PROJECTS ||--o{ AR_TARGETS : groups
+    PHOTOS ||--o{ AR_TARGETS : source
+    USERS ||--o{ AR_TARGETS : created_by
+    AR_TARGETS ||--o{ AR_CONTENTS : shows
+
 ```
 
 ---
@@ -1626,6 +1631,135 @@ INDEX(type)
 
 ---
 
+## ar_targets
+
+«Оживающая фотография» (этап D1): напечатанное фото, которое распознаёт
+камера, и публичная ссылка `/ar/{token}`. Схема — `docs/AR-ARCHITECTURE-D1.4.md`.
+
+```sql
+id BIGINT PRIMARY KEY
+
+token VARCHAR(32) UNIQUE
+
+title VARCHAR(255)
+
+project_id BIGINT NULL
+
+photo_id BIGINT NULL
+
+disk VARCHAR(50)
+
+marker_path VARCHAR(1000)
+
+marker_width INT UNSIGNED
+
+marker_height INT UNSIGNED
+
+tracker VARCHAR(30) DEFAULT 'mindar'
+
+tracker_version VARCHAR(20) NULL
+
+target_path VARCHAR(1000) NULL
+
+feature_points INT UNSIGNED NULL
+
+compiled_at TIMESTAMP NULL
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_by BIGINT NULL
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+project_id -> projects.id ON DELETE SET NULL
+photo_id -> photos.id ON DELETE SET NULL
+created_by -> users.id ON DELETE SET NULL
+```
+
+Indexes:
+
+```sql
+UNIQUE(token)
+INDEX(project_id)
+INDEX(photo_id)
+INDEX(created_by)
+INDEX(is_active)
+```
+
+- `token` — 12 символов `[A-Za-z0-9]`, генерируется моделью при создании
+  (`ArTarget::newToken()`), не входит в `$fillable` и не меняется при
+  правках; перевыпуск — только `regenerateToken()` (напечатанные QR перестают
+  работать).
+- `disk` по умолчанию — `config('filesystems.ar_disk')` (env `AR_DISK`).
+- `marker_*` — изображение, из которого собран таргет; `markerAspect()` =
+  `marker_height / marker_width` — пропорции плоскости видео.
+- `tracker` / `tracker_version` / `target_path` — файл трекера (`.mind` MindAR);
+  при смене трекера таргеты пересобираются из маркера.
+- Удаление альбома/фото/проекта не удаляет таргет (`SET NULL`). Удаление
+  таргета удаляет его `ar_contents` (с файлами), маркер и `.mind` с диска.
+
+---
+
+## ar_contents
+
+Контент поверх таргета — видео. Файл и метаданные хранятся в строке (таблицы
+`videos` и `media` для AR не используются).
+
+```sql
+id BIGINT PRIMARY KEY
+
+ar_target_id BIGINT
+
+type VARCHAR(20) DEFAULT 'video'
+
+disk VARCHAR(50)
+
+file_path VARCHAR(1000)
+
+mime_type VARCHAR(100) NULL
+
+file_size BIGINT UNSIGNED NULL
+
+width INT UNSIGNED NULL
+
+height INT UNSIGNED NULL
+
+duration_ms INT UNSIGNED NULL
+
+has_sound BOOLEAN DEFAULT TRUE
+
+sort_order INT DEFAULT 0
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+ar_target_id -> ar_targets.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(ar_target_id, is_active, sort_order)
+```
+
+- `ArTarget::contents()` — по `sort_order`, затем `id`;
+  `activeContents()` — только `is_active`. Страница показывает первый
+  активный контент.
+- Удаление `ArContent` удаляет его файл с диска (`deleted`).
+
+---
+
 # Storage Strategy
 
 Актуальная схема (B2 — Яндекс.Диск подключён):
@@ -1639,9 +1773,13 @@ Laravel Filesystem
     │
     ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
     │
-    └── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
-                                       lightbox (PNG ≤1600px), формат и лимит
-                                       IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    ├── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
+    │                                  lightbox (PNG ≤1600px), формат и лимит
+    │                                  IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    │
+    └── ar_disk (AR_DISK, сейчас public) → файлы «оживающих фотографий»:
+                                       маркер, .mind, видео (ArTarget/ArContent);
+                                       на D1.7 — S3, отдельно от оригиналов
 ```
 
 - MediaProcessor генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.

@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-10-27 — D1.6: таблицы и модели ar_targets, ar_contents
+
+### Цель
+
+Первый шаг MVP «оживающих фотографий»: структура БД и модели по
+`docs/AR-ARCHITECTURE-D1.4.md`.
+
+### Реализация
+
+- Миграции `2026_10_27_100000_create_ar_targets_table`,
+  `2026_10_27_100001_create_ar_contents_table` — только новые таблицы,
+  существующие не меняются. FK: `project_id`, `photo_id`, `created_by` —
+  `ON DELETE SET NULL`; `ar_contents.ar_target_id` — `CASCADE`.
+- `App\Models\ArTarget`:
+  - токен 12 символов `[A-Za-z0-9]` (`Str::random`, проверка уникальности)
+    генерируется при создании, не входит в `$fillable`, перевыпуск —
+    `regenerateToken()`;
+  - `disk` по умолчанию из `filesystems.ar_disk`;
+  - `markerAspect()`, связи `project`, `photo`, `creator`, `contents`
+    (по `sort_order`), `activeContents`;
+  - при удалении удаляет свои `ar_contents` (с файлами), маркер и `.mind`.
+- `App\Models\ArContent` — связь `target`, `disk` по умолчанию из
+  `filesystems.ar_disk`, при удалении удаляет файл видео.
+- Фабрики `ArTargetFactory`, `ArContentFactory`.
+- `config/filesystems.php` — `ar_disk` (env `AR_DISK`, по умолчанию `public`);
+  `AR_DISK=public` в `.env.example` и `.env.docker.example`.
+- `database.md` — таблицы `ar_targets`, `ar_contents`, ER-связи, `ar_disk`
+  в Storage Strategy. `roadmap.md` — статус D1.6.
+
+### Проверка
+
+- `tests/Feature/Models/ArTargetTest.php`, `ArContentTest.php` — 18 тестов:
+  токен (формат, уникальность, не массово присваивается, не меняется при
+  правке, перевыпуск), диск по умолчанию, значения по умолчанию,
+  пропорции маркера, связи, удаление фото/альбома/проекта не трогает таргет,
+  порядок и фильтр контентов, удаление таргета и контента удаляет файлы.
+- Полный набор: 1212 тестов, все проходят; Pint — чисто.
+- Локальная MySQL: `migrate`, `migrate:rollback --step=2`, повторный
+  `migrate` — успешно; FK и индексы проверены `SHOW CREATE TABLE`.
+
+### НЕ сделано (следующие шаги D1.6)
+
+- Таблица `ar_events`, Filament-ресурс, компиляция `.mind` в форме,
+  QR-код, публичная страница `/ar/{token}`, звук.
+
 ## 2026-10-27 — D1.5: решение — собственная реализация на MindAR
 
 ### Решения владельца
