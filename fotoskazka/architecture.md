@@ -1625,6 +1625,14 @@ Filament-дерево категорий — следующая часть эт�
   передаёт `ArTargetFileService`. Имена файлов уникальны на каждую
   компиляцию (кэш CDN), прежние удаляются.
 - Видео со звуком: звук включается жестом «Старт» или кнопкой.
+- Публичная страница `GET /ar/{token}` (`ArPageController`, `throttle:60,1`,
+  `X-Robots-Tag: noindex, nofollow`): 404 — неизвестный токен, 410 —
+  выключенная ссылка, «Видео ещё не загружено» — нет `.mind` или активного
+  видео. Шаблоны `resources/views/ar/{layout,show,unavailable}.blade.php`
+  (свой лёгкий layout без `@vite`), конфиг таргета — JSON в
+  `<script id="ar-config">`, просмотрщик `public/js/ar/ar-viewer.js`
+  (MindAR из `public/vendor/mindar/1.2.5/`, предзагрузка `.mind`, видео
+  на плоскости по пропорциям маркера, пауза при потере фото, звук).
 - Проверка на iPhone отложена до D1.9 (решение владельца).
 - Прототип и замеры — `prototypes/webar` (копия `public/webar`).
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ArPageController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CabinetController;
 use App\Http\Controllers\CommentController;
@@ -47,6 +48,11 @@ Route::get('/media/{media}/lightbox', [MediaController::class, 'lightbox'])
     ->name('media.lightbox');
 
 Route::post('/inquiry', [HomeController::class, 'storeInquiry'])->name('inquiry.store');
+
+Route::get('/ar/{token}', ArPageController::class)
+    ->where('token', '[A-Za-z0-9]{1,32}')
+    ->middleware('throttle:60,1')
+    ->name('ar.show');
 
 Route::middleware('auth')->group(function () {
     Route::get('/cabinet', [CabinetController::class, 'index'])
