@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-10-27 — WebAR: gzip для .mind и предзагрузка таргета
+
+### Цель
+
+Сократить старт: по замеру `.mind` отдавался без сжатия (931 КБ) и начинал
+скачиваться только после запуска камеры (0,6–1,3 с на этапе).
+
+### Реализация
+
+- `docker/nginx/generate-config.sh` — в обоих server-блоках `location ~* \.mind$`
+  с `gzip on`, `gzip_types application/octet-stream`, `gzip_vary on` и
+  `gzip_proxied any` (без него nginx не сжимает запросы, пришедшие через CDN
+  с заголовком `Via`).
+- `prototypes/webar/public/app.js` — `.mind` скачивается `fetch` сразу при
+  открытии страницы, параллельно с запуском камеры; MindAR получает готовый
+  файл как blob-URL (обёртка `_startAR` подставляет `imageTargetSrc`). Если
+  предзагрузка не удалась — MindAR скачивает файл сам. В журнале: строка
+  «предзагрузка .mind» и этап «.mind готов (ожидание предзагрузки + разбор)».
+- `index.html` — `app.js?v=20261027`.
+- `architecture.md` — раздел Docker: верное имя скрипта nginx
+  (`generate-config.sh`), индекс `index.html`, gzip для `.mind`, применение
+  через `docker compose restart web`.
+- `docs/AR-D1.3-FIELD-PROTOCOL.md` — пояснение к новым строкам журнала.
+- `public/webar/*` — перегенерировано.
+
+### Проверка
+
+- Контейнер `nginx:1.27-alpine` со скриптом: `nginx -t` успешно;
+  `class.mind` с `Accept-Encoding: gzip` и `Via` → `Content-Encoding: gzip`,
+  512 КБ вместо 931 КБ; без gzip — 931 404 байт; `/webar/` — 200,
+  несуществующий `.mind` — 404.
+- Playwright (Chromium, `localhost:83/webar/?t=class`): `class.mind`
+  запрашивается по сети один раз (предзагрузка); запуск и повторный запуск
+  проходят, ошибок нет.
+- Эффект на телефоне и сжатие через CDN проверяются после деплоя.
+
 ## 2026-10-27 — D1.3: замер этапов запуска на Android
 
 Владелец снял журнал этапов на `https://fotoskazkaufa.ru/webar/` (Android,

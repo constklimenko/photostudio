@@ -1574,9 +1574,13 @@ Filament-дерево категорий — следующая часть эт�
   symlink `public/storage`, а для сервиса `app` (`RUN_SETUP=true`) выполняет
   `migrate --force` и `optimize`;
 - кэш `public/build` собирается через сервис `node` (`docker compose run --rm node`);
-- `docker/nginx/40-fotoskazka.sh` генерирует конфиг nginx при старте: HTTP-блок
+- `docker/nginx/generate-config.sh` генерирует конфиг nginx при старте: HTTP-блок
   (отдача `public/`, ACME-challenge, fastcgi на `app:9000`) и HTTPS-блок (443),
   если найден сертификат `/etc/letsencrypt/live/${DOMAIN}/fullchain.pem`;
+  индекс каталога — `index.php index.html` (статический `/webar/`); файлы
+  таргетов WebAR `*.mind` отдаются со сжатием gzip, в том числе на запросы
+  через CDN (`gzip_proxied any`). Скрипт смонтирован томом, поэтому после
+  его изменения нужен `docker compose restart web`;
 - HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
   монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
   deploy-hook `docker compose exec -T web nginx -s reload`;

@@ -28,6 +28,17 @@ server {
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
 
+    # Таргеты WebAR (.mind) сжимаются gzip примерно вдвое; gzip_proxied —
+    # чтобы сжимать и запросы, пришедшие через CDN.
+    location ~* \.mind\$ {
+        gzip on;
+        gzip_comp_level 6;
+        gzip_proxied any;
+        gzip_vary on;
+        gzip_types application/octet-stream;
+        try_files \$uri =404;
+    }
+
     # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
     # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.
     # internal — напрямую по этому адресу файл не открыть.
@@ -86,6 +97,17 @@ server {
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
+
+    # Таргеты WebAR (.mind) сжимаются gzip примерно вдвое; gzip_proxied —
+    # чтобы сжимать и запросы, пришедшие через CDN.
+    location ~* \.mind\$ {
+        gzip on;
+        gzip_comp_level 6;
+        gzip_proxied any;
+        gzip_vary on;
+        gzip_types application/octet-stream;
+        try_files \$uri =404;
+    }
 
     # Видео отдаёт nginx по X-Accel-Redirect из VideoController@stream
     # (VIDEO_X_ACCEL=true): Range/ETag/304 без занятия php-fpm воркера.

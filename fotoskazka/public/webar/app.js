@@ -32,6 +32,23 @@ const TARGET_IMAGE_ASPECT = TARGET.aspect;
 const VIDEO_SRC = TARGET.video;
 const REPLACEMENT_SRC = './targets/replacement.svg';
 
+/* .mind скачивается сразу при открытии страницы, параллельно с запуском
+   камеры: MindAR сам начинает загрузку только после камеры. Готовый файл
+   передаётся MindAR как blob-URL; при ошибке MindAR скачает его сам. */
+const mindPrefetch = fetch(TARGET_SRC)
+  .then((r) => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.blob();
+  })
+  .then((blob) => {
+    log('предзагрузка .mind: ' + Math.round(performance.now()) + ' мс от открытия страницы' + mindDownloadInfo());
+    return URL.createObjectURL(blob);
+  })
+  .catch((e) => {
+    log('предзагрузка .mind не удалась (' + e.message + '), MindAR скачает сам');
+    return TARGET_SRC;
+  });
+
 const $ = (id) => document.getElementById(id);
 
 const btnStart = $('btn-start');
@@ -181,12 +198,13 @@ function instrumentStart(m) {
     markStage('камера готова');
   };
   const startAR = m._startAR.bind(m);
-  m._startAR = () => {
+  m._startAR = async () => {
+    m.imageTargetSrc = await mindPrefetch;
     const done = startAR();
     const controller = m.controller;
     const dummyRun = controller.dummyRun.bind(controller);
     controller.dummyRun = async (v) => {
-      markStage('.mind загружен и разобран' + mindDownloadInfo());
+      markStage('.mind готов (ожидание предзагрузки + разбор)');
       await dummyRun(v);
       markStage('прогрев WebGL');
     };
