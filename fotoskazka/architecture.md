@@ -46,6 +46,13 @@ app/
 │   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
+│   │   ├── ArTargets/          # «Оживающие фото» (D1.6): таргет + видео
+│   │   │   ├── ArTargetResource.php
+│   │   │   ├── Pages/          # Create/Edit/List; Concerns/HandlesCompiledTarget —
+│   │   │   │                   #   приём маркера и .mind из браузерного компилятора
+│   │   │   ├── RelationManagers/ContentsRelationManager.php  # загрузка видео MP4
+│   │   │   ├── Schemas/ArTargetForm.php   # поле-компилятор (ViewField)
+│   │   │   └── Tables/ArTargetsTable.php
 │   │   ├── Albums/
 │   │   │   ├── AlbumResource.php
 │   │   │   ├── Pages/
@@ -145,6 +152,7 @@ app/
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
 │   ├── ServiceCatalogResolver.php # Разрешение иерархического пути /services (B11)
 │   ├── CategoryTreeService.php    # Дерево категорий услуг для админки (B11): flatten/options/move
+│   ├── ArTargetFileService.php   # Запись маркера и .mind таргета (D1.6), удаление прежних
 │   └── TelegramNotifier.php      # Отправка через Telegram API
 └── Providers/
     └── Filament/
@@ -1608,7 +1616,14 @@ Filament-дерево категорий — следующая часть эт�
   правках) и QR-код для печати рядом с фото; одна ссылка — одно фото.
 - Файлы — отдельный диск Laravel Filesystem `ar` (MVP — локальный, затем
   S3), своя копия маркера; хранение без срока, пока оплачено хранилище.
-- Таргет `.mind` компилируется в браузере в форме Filament (7–10 с).
+- Таргет `.mind` компилируется в браузере в форме Filament (7–10 с):
+  поле `resources/views/filament/forms/components/ar-marker-compiler.blade.php`
+  + Alpine-компонент `public/js/ar/ar-marker-compiler.js` (загружается
+  `x-load`), компилятор — self-hosted `public/vendor/mindar/1.2.5/`. Маркер
+  (JPEG ≤ 1600 px) и `.mind` уходят во временные загрузки Livewire
+  (`data.marker_upload`, `data.mind_upload`), страница проверяет их и
+  передаёт `ArTargetFileService`. Имена файлов уникальны на каждую
+  компиляцию (кэш CDN), прежние удаляются.
 - Видео со звуком: звук включается жестом «Старт» или кнопкой.
 - Проверка на iPhone отложена до D1.9 (решение владельца).
 - Прототип и замеры — `prototypes/webar` (копия `public/webar`).
