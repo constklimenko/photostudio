@@ -865,7 +865,10 @@ A → B → C → A
 
 # D1 — Собственный сервис «оживающих фотографий» (WebAR)
 
-> **Статус (2026-10-25): D1.1 выполнен; D1.2 и D1.3 подтверждены на Android; следующий — D1.4.**
+> **Статус (2026-10-27): D1.1 выполнен; D1.2 и D1.3 подтверждены на Android; D1.4 выполнен (предварительно); следующий — D1.5.**
+> D1.4 — `docs/AR-ARCHITECTURE-D1.4.md`: `ar_targets` / `ar_contents` / `ar_events`,
+> токен ссылки, отдельный диск `ar`, компиляция `.mind` в браузере в Filament
+> (замер 7–10 с, условие «меньше минуты» выполнено).
 > D1.1 — `docs/AR-TECHNOLOGY-RESEARCH.md`, `docs/AR-TARGET-REQUIREMENTS.md`,
 > `docs/AR-PROTOTYPE-TEST-PLAN.md`. D1.2 — прототип на MindAR
 > (`prototypes/webar`, копия в `public/webar`) готов с 2026-09-20;
