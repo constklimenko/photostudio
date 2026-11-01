@@ -50,7 +50,7 @@ class AlbumsTable
                 IconColumn::make('is_published')
                     ->boolean(),
                 TextColumn::make('sort_order')
-                    ->sortable(),
+                    ->label('Порядок'),
                 TextColumn::make('photos_count')
                     ->counts('photos')
                     ->label('Фото'),
@@ -79,6 +79,8 @@ class AlbumsTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('sort_order')
+            ->reorderable('sort_order');
     }
 }

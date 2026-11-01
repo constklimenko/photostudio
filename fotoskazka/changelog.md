@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-01 — Drag-and-drop сортировка альбомов в админке
+
+### Реализация
+
+- `AlbumsTable`: `->defaultSort('sort_order')` и
+  `->reorderable('sort_order')` — список альбомов отсортирован по полю
+  «Порядок», порядок меняется перетаскиванием строк; колонка `sort_order`
+  больше не sortable (sort переключением конфликтовал бы с drag-and-drop);
+- сортировка фото внутри альбома через drag-and-drop уже была включена
+  в `PhotosRelationManager` (`reorderable('sort_order')`).
+
+### Проверка
+
+- `./vendor/bin/pint --test` — OK;
+- `php artisan test` — 266 passed.
+
 ## 2026-11-01 — MAX-уведомления о заявках
 
 ### Цель
