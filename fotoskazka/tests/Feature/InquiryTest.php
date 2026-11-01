@@ -167,6 +167,112 @@ class InquiryTest extends TestCase
         $this->assertDatabaseHas('inquiries', ['id' => $inquiry->id]);
     }
 
+    public function test_max_notification_sent_on_inquiry_creation(): void
+    {
+        Http::fake(['platform-api2.max.ru/*' => Http::response(['message' => []])]);
+
+        NotificationSetting::query()->update([
+            'max_enabled' => true,
+            'max_bot_token' => 'test-token',
+            'max_chat_id' => 'test-chat',
+        ]);
+
+        Inquiry::factory()->create();
+
+        Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'platform-api2.max.ru')
+                && str_contains($request->url(), 'chat_id=test-chat')
+                && $request->header('Authorization')[0] === 'test-token'
+                && $request['format'] === 'html';
+        });
+    }
+
+    public function test_max_message_escapes_user_input(): void
+    {
+        Http::fake(['platform-api2.max.ru/*' => Http::response(['message' => []])]);
+
+        NotificationSetting::query()->update([
+            'max_enabled' => true,
+            'max_bot_token' => 'test-token',
+            'max_chat_id' => 'test-chat',
+        ]);
+
+        Inquiry::factory()->create([
+            'name' => 'Иван & Мария',
+            'message' => 'Бюджет <5000> руб., <b>срочно</b>',
+        ]);
+
+        Http::assertSent(function ($request) {
+            $text = $request['text'];
+
+            return str_contains($text, 'Иван &amp; Мария')
+                && str_contains($text, 'Бюджет &lt;5000&gt; руб., &lt;b&gt;срочно&lt;/b&gt;')
+                && str_contains($text, '<b>Новая заявка</b>');
+        });
+    }
+
+    public function test_max_error_does_not_break_inquiry_creation(): void
+    {
+        Http::fake(['platform-api2.max.ru/*' => Http::response([], 500)]);
+
+        NotificationSetting::query()->update([
+            'max_enabled' => true,
+            'max_bot_token' => 'test-token',
+            'max_chat_id' => 'test-chat',
+        ]);
+
+        $inquiry = Inquiry::factory()->create();
+
+        $this->assertDatabaseHas('inquiries', ['id' => $inquiry->id]);
+    }
+
+    public function test_max_error_saved_to_inquiry(): void
+    {
+        Http::fake(['platform-api2.max.ru/*' => Http::response([], 500)]);
+
+        NotificationSetting::query()->update([
+            'max_enabled' => true,
+            'max_bot_token' => 'test-token',
+            'max_chat_id' => 'test-chat',
+        ]);
+
+        $inquiry = Inquiry::factory()->create();
+
+        $inquiry->refresh();
+
+        $this->assertStringContainsString('Max API error: status 500', (string) $inquiry->notification_error);
+    }
+
+    public function test_no_max_when_disabled(): void
+    {
+        Http::fake();
+
+        NotificationSetting::query()->update([
+            'max_enabled' => false,
+            'max_bot_token' => 'test-token',
+            'max_chat_id' => 'test-chat',
+        ]);
+
+        Inquiry::factory()->create();
+
+        Http::assertNothingSent();
+    }
+
+    public function test_no_max_when_not_configured(): void
+    {
+        Http::fake();
+
+        NotificationSetting::query()->update([
+            'max_enabled' => true,
+            'max_bot_token' => null,
+            'max_chat_id' => null,
+        ]);
+
+        Inquiry::factory()->create();
+
+        Http::assertNothingSent();
+    }
+
     public function test_no_email_when_disabled(): void
     {
         Mail::fake();

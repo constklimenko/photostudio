@@ -1457,7 +1457,7 @@ INDEX(name)
 
 ## notification_settings
 
-Настройки уведомлений (email, Telegram). Единая запись.
+Настройки уведомлений (email, Telegram, MAX). Единая запись.
 
 ```sql
 id BIGINT PRIMARY KEY
@@ -1473,6 +1473,12 @@ telegram_enabled BOOLEAN DEFAULT FALSE
 telegram_bot_token VARCHAR(500) NULL
 
 telegram_chat_id VARCHAR(100) NULL
+
+max_enabled BOOLEAN DEFAULT FALSE
+
+max_bot_token VARCHAR(500) NULL
+
+max_chat_id VARCHAR(100) NULL
 
 created_at TIMESTAMP
 updated_at TIMESTAMP

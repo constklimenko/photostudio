@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-11-01 — MAX-уведомления о заявках
+
+### Цель
+
+Добавить уведомления о новых заявках в мессенджер MAX по аналогии с
+существующими email и Telegram (комментарии: канал согласован владельцем
+как отступление от roadmap, см. задачу 3.5).
+
+### Реализация
+
+- миграция `2026_11_01_095338_add_max_fields_to_notification_settings_table`:
+  `max_enabled` (BOOLEAN DEFAULT FALSE), `max_bot_token` VARCHAR(500) NULL,
+  `max_chat_id` VARCHAR(100) NULL в `notification_settings`;
+- `App\Services\MaxNotifier` — по образцу `TelegramNotifier`: POST
+  `https://platform-api2.max.ru/messages?chat_id={chat_id}`, токен в
+  заголовке `Authorization`, тело `{text, format: "html"}`, таймаут 5 с;
+  fallback на конфиг `services.max` (`MAX_BOT_TOKEN` / `MAX_CHAT_ID`);
+- `SendInquiryNotifications`: новый метод `sendMax()`; формирование HTML
+  текста заявки вынесено в общий метод `inquiryMessage()` (Telegram и MAX
+  отправляют одинаковое сообщение; лимит MAX — 4000 символов, история
+  ограничение не нарушает);
+- `NotificationSetting`: поля добавлены в `$fillable` и casts
+  (`max_enabled` — boolean);
+- Filament: секция MAX в форме и колонка `max_enabled` в таблице
+  раздела «Настройки уведомления»;
+- `config/services.php`: секция `max`; `.env.example`: `MAX_BOT_TOKEN`,
+  `MAX_CHAT_ID`;
+- тесты в `InquiryTest` по образцу Telegram-тестов: отправка, параметры
+  запроса (chat_id, Authorization, format=html), экранирование ввода,
+  без ошибки при 500 от API, ошибка записывается в
+  `inquiries.notification_error`, при выключенном/ненастроенном канале
+  запросов нет;
+- попутный фикс: `notification_error` не был в `$fillable` модели
+  `Inquiry`, из-за чего джоба молча не записывала ошибки уведомлений
+  (в том числе Telegram/email) — добавлено в `$fillable`.
+
+### Проверка
+
+- `php artisan migrate --force` — применена;
+- `php artisan test` — 1241 тест из 1241 пройден;
+- `./vendor/bin/pint --dirty` — clean;
+- `database.md`, `architecture.md`, `roadmap.md` обновлены.
+
+### Настройка у владельца
+
+1. Создать бота на платформе MAX для партнёров (business.max.ru, нужен
+   профиль организации/ИП/самозанятого РФ) → токен бота из настроек.
+2. Добавить бота в чат или канал, получить его ID (раздел «Получение
+   ID чата или канала» в dev.max.ru/docs-api).
+3. Вписать токен и ID в `MAX_BOT_TOKEN` / `MAX_CHAT_ID` (`.env`) или в
+   админке, включить «Включить MAX-уведомления».
+
 ## 2026-10-27 — D1.6: публичная страница /ar/{token}
 
 ### Цель

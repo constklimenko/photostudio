@@ -40,7 +40,7 @@ app/
 ├── Filesystem/
 │   └── YandexDiskPaginatedAdapter.php    # Листинг Яндекс.Диска с пагинацией (чанки по 100)
 ├── Jobs/
-│   ├── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
+│   ├── SendInquiryNotifications.php  # Очередь: email + Telegram + MAX уведомления
 │   ├── ProcessMedia.php              # Очередь: обработка Media (metadata + thumbnail)
 │   ├── RegenerateMediaImageCache.php # Очередь: прогрев кэша display/lightbox (media:regenerate-image-cache)
 │   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
@@ -153,7 +153,8 @@ app/
 │   ├── ServiceCatalogResolver.php # Разрешение иерархического пути /services (B11)
 │   ├── CategoryTreeService.php    # Дерево категорий услуг для админки (B11): flatten/options/move
 │   ├── ArTargetFileService.php   # Запись маркера и .mind таргета (D1.6), удаление прежних
-│   └── TelegramNotifier.php      # Отправка через Telegram API
+│   ├── TelegramNotifier.php      # Отправка через Telegram API
+│   └── MaxNotifier.php           # Отправка через Bot API MAX (platform-api2.max.ru)
 └── Providers/
     └── Filament/
         └── AdminPanelProvider.php

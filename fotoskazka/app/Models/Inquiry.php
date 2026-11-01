@@ -17,7 +17,7 @@ class Inquiry extends Model
     protected $fillable = [
         'user_id', 'service_id', 'name', 'phone', 'email',
         'message', 'agreed_to_terms', 'shooting_date', 'status',
-        'project_id',
+        'project_id', 'notification_error',
     ];
 
     protected function casts(): array

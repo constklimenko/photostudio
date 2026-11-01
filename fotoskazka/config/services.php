@@ -40,4 +40,9 @@ return [
         'chat_id' => env('TELEGRAM_CHAT_ID'),
     ],
 
+    'max' => [
+        'bot_token' => env('MAX_BOT_TOKEN'),
+        'chat_id' => env('MAX_CHAT_ID'),
+    ],
+
 ];
