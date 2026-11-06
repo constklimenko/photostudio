@@ -34,6 +34,11 @@
   `v=spf1 ip4:<IP сервера> ~all`. После этого доставка в Gmail
   работает (спам-фильтрация остаётся, но письма не бракуются).
 - Логи почты: `docker compose exec app tail -50 /var/log/mail.log`.
+- Возврат на Resend в любой момент: `composer require resend/resend-php`
+  (SDK не входят в текущие зависимости — без них транспорт с ошибкой
+  «Class Resend not found») и `.env`: `MAIL_MAILER=resend`,
+  `RESEND_API_KEY=...`; mailer и секция настроек в `config` остаются
+  на месте.
 - После правки Dockerfile пересобрать образы:
   `docker compose build app queue scheduler && docker compose up -d app queue scheduler web`.
 
