@@ -1,29 +1,39 @@
 # Changelog
 
-## 2026-11-06 — почта без внешних сервисов: локальный sendmail (msmtp)
+## 2026-11-06 — почта без внешних сервисов: sendmail/postfix в контейнере
 
 ### Цель
 
 Домен прикреплён к CDN (turboflare.ru), DNS-записи для Resend добавить
-нельзя — отправка почты переведена на локальныйernel sendmail без
-внешних почтовых сервисов.
+нельзя — отправка почты переведена на локальный sendmail без внешних
+почтовых сервисов.
 
 ### Реализация
 
-- `docker/php/Dockerfile`: `apt-get install ca-certificates msmtp msmtp-mta`
-  — msmtp-mta ставит `/usr/sbin/sendmail`, совместимый с transport
-  `sendmail` Laravel (`config/mail.php`, путь `/usr/sbin/sendmail -bs -i`);
+- `docker/php/Dockerfile`: пакет `postfix` (msmtp не годится: не
+  поддерживает `-bs`, не умеет MX-роутинг), конфиг
+  `docker/php/postfix.main.cf` → `/etc/postfix/main.cf`;
+- `docker/php/entrypoint.sh`: `postfix start` перед php-fpm;
+- postfix 3.10 настроен как satellite: обслуживание через `/usr/sbin/
+  sendmail -bs -i` (транспорт `sendmail` Laravel), отправка напрямую
+  на MX-серверы получателей (запись `myhostname = fotoskazkaufa.ru`,
+  `mydestination` пустой), TLS opportunistic, лог `/var/log/mail.log`;
 - `.env` и `.env.example`: `MAIL_MAILER=sendmail`,
   `MAIL_FROM_ADDRESS=noreply@fotoskazkaufa.ru`, переменные Resend убраны;
-- проверено в чистом контейнере `php:8.4.27-fpm-trixie`: пакеты доступны
-  (msmtp 1.8.28-3), `config:clear && tinker` — `mail.default = sendmail`.
+- проверено тестом в контейнере `debian:trixie`: `sendmail -bs` —
+  сообщение принимается в очередь (`250 Ok: queued as ...`), smtp-клиент
+  доставляет прямо на `gmail-smtp-in.l.google.com:25` по MX.
 
 ### Важно знать
 
-- msmtp без аккаунта доставляет напрямую на MX-серверы получателей.
-  Без SPF/DKIM (DNS-записей нет) почта Яндекса/Gmail почти наверняка
-  отправляет такие письма в спам или требованиями отказа (421/550),
-  особенно с IP облачного хостинга; мониторить `queue` лог при тестах.
+- Gmail и подобные принимают письма только с SPF- или DKIM-
+  аутентификацией: тест подтвердил жёсткий отказ
+  `550 5.7.26 Your email has been blocked because the sender is
+  unauthenticated`. Для реальной доставки в Gmail нужно попросить
+  поддержку turboflare добавить ОДНУ запись TXT:
+  `v=spf1 ip4:<IP сервера> ~all`. После этого доставка в Gmail
+  работает (спам-фильтрация остаётся, но письма не бракуются).
+- Логи почты: `docker compose exec app tail -50 /var/log/mail.log`.
 - После правки Dockerfile пересобрать образы:
   `docker compose build app queue scheduler && docker compose up -d app queue scheduler web`.
 

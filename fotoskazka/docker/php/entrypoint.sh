@@ -28,6 +28,8 @@ if [ ! -e public/storage ]; then
     php artisan storage:link >/dev/null 2>&1 || true
 fi
 
+postfix start || postfix status 2>&1
+
 if [ "${RUN_SETUP:-false}" = "true" ]; then
     echo "[entrypoint] running database migrations..."
     php artisan migrate --force

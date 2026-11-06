@@ -17,8 +17,7 @@ RUN set -eux; \
         libjpeg62-turbo-dev \
         libfreetype6-dev \
         libwebp-dev \
-        msmtp \
-        msmtp-mta; \
+        postfix; \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp; \
     docker-php-ext-install -j"$(nproc)" \
         bcmath \
@@ -50,6 +49,8 @@ RUN { \
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+
+COPY docker/php/postfix.main.cf /etc/postfix/main.cf
 
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["php-fpm"]
