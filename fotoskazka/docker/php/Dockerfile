@@ -6,6 +6,7 @@ RUN set -eux; \
     apt-get update; \
     apt-get upgrade -y; \
     apt-get install -y --no-install-recommends \
+        ca-certificates \
         git \
         unzip \
         default-mysql-client \
@@ -15,7 +16,9 @@ RUN set -eux; \
         libpng-dev \
         libjpeg62-turbo-dev \
         libfreetype6-dev \
-        libwebp-dev; \
+        libwebp-dev \
+        msmtp \
+        msmtp-mta; \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp; \
     docker-php-ext-install -j"$(nproc)" \
         bcmath \

@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-11-06 — почта без внешних сервисов: локальный sendmail (msmtp)
+
+### Цель
+
+Домен прикреплён к CDN (turboflare.ru), DNS-записи для Resend добавить
+нельзя — отправка почты переведена на локальныйernel sendmail без
+внешних почтовых сервисов.
+
+### Реализация
+
+- `docker/php/Dockerfile`: `apt-get install ca-certificates msmtp msmtp-mta`
+  — msmtp-mta ставит `/usr/sbin/sendmail`, совместимый с transport
+  `sendmail` Laravel (`config/mail.php`, путь `/usr/sbin/sendmail -bs -i`);
+- `.env` и `.env.example`: `MAIL_MAILER=sendmail`,
+  `MAIL_FROM_ADDRESS=noreply@fotoskazkaufa.ru`, переменные Resend убраны;
+- проверено в чистом контейнере `php:8.4.27-fpm-trixie`: пакеты доступны
+  (msmtp 1.8.28-3), `config:clear && tinker` — `mail.default = sendmail`.
+
+### Важно знать
+
+- msmtp без аккаунта доставляет напрямую на MX-серверы получателей.
+  Без SPF/DKIM (DNS-записей нет) почта Яндекса/Gmail почти наверняка
+  отправляет такие письма в спам или требованиями отказа (421/550),
+  особенно с IP облачного хостинга; мониторить `queue` лог при тестах.
+- После правки Dockerfile пересобрать образы:
+  `docker compose build app queue scheduler && docker compose up -d app queue scheduler web`.
+
+## 2026-11-01 — почта без SMTP: драйвер Resend (отменено 2026-11-06)
+
+### Цель
+
+Настроить отправку почты без локального SMTP: HTTP API сервиса Resend,
+драйвер которого встроен в Laravel.
+
+### Реализация
+
+- `.env` и `.env.example`: `MAIL_MAILER=resend`, `RESEND_API_KEY=`,
+  `MAIL_FROM_ADDRESS` на домен сайта; прочие переменные SMTP убраны;
+- конфиг менять не пришлось: в `config/mail.php` mailer `resend` уже
+  есть, ключ берётся из `services.resend.key` (`RESEND_API_KEY`).
+
+### Настройка у владельца
+
+1. Зарегистрироваться в Resend, добавить и верифицировать домен
+   (DNS-записи SPF/DKIM) — письма уходят с `noreply@fotoskazkaufa.ru`
+   и реже попадают в спам.
+2. Создать API-ключ и вписать его в `RESEND_API_KEY`.
+3. Проверка: отправить тестовую заявку через сайт — письмо придёт
+   получателям из «Настройки уведомления» (нужен работающий воркер
+   очереди, он есть в docker-compose).
+
 ## 2026-11-01 — Drag-and-drop сортировка альбомов в админке
 
 ### Реализация
