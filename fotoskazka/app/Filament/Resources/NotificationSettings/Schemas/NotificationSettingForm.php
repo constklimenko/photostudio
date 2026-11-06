@@ -45,6 +45,7 @@ class NotificationSettingForm
                             ]),
                     ]),
                 Section::make('MAX')
+                    ->description('Токен бота — с платформы business.max.ru; ID чата или канала, куда бот добавлен')
                     ->schema([
                         Checkbox::make('max_enabled')
                             ->label('Включить MAX-уведомления'),
@@ -58,8 +59,7 @@ class NotificationSettingForm
                                 TextInput::make('max_chat_id')
                                     ->label('Chat ID')
                                     ->maxLength(100),
-                            ])
-                            ->helperText('Токен бота — с платформы business.max.ru; ID чата или канала, куда бот добавлен'),
+                            ]),
                     ]),
             ]);
     }

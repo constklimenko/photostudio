@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-11-06 — фикс 500 на странице «Уведомления» в админке
+
+### Проблема
+
+Страница `/admin/notification-settings/{id}/edit` (а значит и
+`/livewire/update` из консоли браузера на нём) отвечала 500:
+
+```
+BadMethodCallException: Method Filament\Schemas\Components\Grid::helperText does not exist.
+```
+
+В `NotificationSettingForm::configure()`
+`app/Filament/Resources/NotificationSettings/Schemas/NotificationSettingForm.php`
+`->helperText()` был прицеплен к `Grid::make(2)` — в Filament v4 у `Grid`
+нет такого метода. Появилось в коммите
+`feat(notifications): MAX-уведомления о заявках + фикс записи
+notification_error` (2026-11-01), сломало страницу на проде сразу после
+деплоя.
+
+### Исправление
+
+- `->helperText()` перенесён с `Grid` на `Section::make('MAX')`
+  в виде `->description(...)` (у `Section` такой метод есть) —
+  текст подсказки сохранён полностью;
+- добавлен регрессионный тест
+  `tests/Feature/NotificationSettingsAdminTest.php`: рендер списка
+  и страницы редактирования настроек уведомлений вернуть 200
+  (именно этот тест предотвратил бы повтор);
+- проверено: `php artisan test tests/Feature/NotificationSettingsAdminTest.php`
+  (2 passed), `pint` — ok, страница `/admin/notification-settings/1/edit`
+  отвечает 200 и содержит поля MAX (Bot Token, Chat ID, чекбокс).
+
 ## 2026-11-06 — почта без внешних сервисов: sendmail/postfix в контейнере
 
 ### Цель
