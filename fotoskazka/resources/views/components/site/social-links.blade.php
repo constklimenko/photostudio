@@ -16,6 +16,12 @@
         'dzen' => '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6.5 11.5c-2.3 0-4.1-1.2-5.5-2.8-1.4 1.6-3.2 2.8-5.5 2.8-.6 0-1.1.5-1.1 1.1v.8c0 .6.5 1.1 1.1 1.1 2.3 0 4.1 1.2 5.5 2.8 1.4-1.6 3.2-2.8 5.5-2.8.6 0 1.1-.5 1.1-1.1v-.8c0-.6-.5-1.1-1.1-1.1z"/></svg>',
         'rutube' => '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6 8.5v7c0 .3-.2.5-.5.5h-1.5v-5.5c0-.3-.2-.5-.5-.5s-.5.2-.5.5V16h-1.5c-.3 0-.5-.2-.5-.5v-2.5c0-.3-.2-.5-.5-.5s-.5.2-.5.5V16h-1.5c-.3 0-.5-.2-.5-.5v-5.5c0-.3-.2-.5-.5-.5s-.5.2-.5.5V16H7.5c-.3 0-.5-.2-.5-.5v-7c0-.3.2-.5.5-.5h10.5c.3 0 .5.2.5.5z"/></svg>',
     ];
+
+    if ($variant === 'section') {
+        foreach (['instagram', 'telegram'] as $icon) {
+            $socialIcons[$icon] = str_replace('class="w-5 h-5"', 'class="w-5 h-5" style="margin: 2px"', $socialIcons[$icon]);
+        }
+    }
 @endphp
 
 @if ($socialLinks->isNotEmpty())
