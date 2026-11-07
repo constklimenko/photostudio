@@ -1,4 +1,9 @@
 <footer class="bg-[#050505] text-gray-500 border-t border-[#1a1a1a]">
+    @php
+        $phone = \App\Services\ContactSettings::phone();
+        $phoneHref = \App\Services\ContactSettings::phoneHref();
+        $email = \App\Services\ContactSettings::email();
+    @endphp
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
@@ -9,17 +14,17 @@
             <div>
                 <h3 class="font-heading text-white font-semibold tracking-wide mb-3">Контакты</h3>
                 <ul class="space-y-2 text-sm">
-                    @if (config('contacts.phone'))
+                    @if ($phone && $phoneHref)
                         <li>
-                            <a href="tel:{{ config('contacts.phone') }}" class="hover:text-[#d4af37] transition">
-                                {{ config('contacts.phone') }}
+                            <a href="{{ $phoneHref }}" class="hover:text-[#d4af37] transition">
+                                {{ $phone }}
                             </a>
                         </li>
                     @endif
-                    @if (config('contacts.email'))
+                    @if ($email)
                         <li>
-                            <a href="mailto:{{ config('contacts.email') }}" class="hover:text-[#d4af37] transition">
-                                {{ config('contacts.email') }}
+                            <a href="mailto:{{ $email }}" class="hover:text-[#d4af37] transition">
+                                {{ $email }}
                             </a>
                         </li>
                     @endif

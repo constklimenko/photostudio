@@ -1486,6 +1486,28 @@ updated_at TIMESTAMP
 
 ---
 
+## site_settings
+
+Ключ-значение настройки сайта. Записи создаются/удаляются через
+`SiteSetting::get()` / `SiteSetting::set()` (кэш-ключ `site_settings`,
+сбрасывается при записи). Пустое значение ключа трактуется как отсутствие
+настройки (fallback на конфиг). Используется для контактов сайта
+(`contacts.phone`, `contacts.email`), редактируемых в Filament на странице
+Контакты (`/admin/contacts`).
+
+```sql
+id BIGINT PRIMARY KEY
+
+key VARCHAR(255) UNIQUE
+
+value TEXT NULL
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+---
+
 ## faq_items
 
 Вопросы и ответы для секции FAQ на главной странице.

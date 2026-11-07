@@ -1,5 +1,7 @@
 <header class="sticky top-0 z-50 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#1a1a1a]">
     @php
+        $contactPhone = \App\Services\ContactSettings::phone();
+        $contactPhoneHref = \App\Services\ContactSettings::phoneHref();
         $currentPath = rtrim(request()->path(), '/');
         $menuItems = array_values(array_filter($menuItems, function ($item) use ($currentPath) {
             $target = trim($item['url'] ?? '', '/');
@@ -19,6 +21,10 @@
             </a>
 
             <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-300">
+                @if ($contactPhone && $contactPhoneHref)
+                    <a href="{{ $contactPhoneHref }}" class="font-semibold text-white hover:text-[#d4af37] transition">{{ $contactPhone }}</a>
+                @endif
+
                 @foreach ($menuItems as $item)
                     <a href="{{ $item['url'] }}" class="hover:text-white transition">{{ $item['title'] }}</a>
                 @endforeach
@@ -63,12 +69,21 @@
                         <button type="submit" class="w-full text-left px-2 py-1.5 rounded hover:bg-[#1a1a1a] cursor-pointer hover:text-white">Выйти</button>
                     </form>
                 @else
+                    @if ($contactPhone && $contactPhoneHref)
+                        <a href="{{ $contactPhoneHref }}" class="font-semibold text-[#d4af37] px-2 py-1.5 rounded hover:bg-[#1a1a1a]">{{ $contactPhone }}</a>
+                    @endif
                     <a href="#" data-open-modal="inquiry" class="inline-block px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition text-center mt-2">
                         Оставить заявку
                     </a>
                     <a href="{{ route('login') }}" class="hover:text-white transition px-2 py-1.5 rounded hover:bg-[#1a1a1a]">Войти</a>
                 @endauth
             </nav>
+
+            @if ($socialLinks->isNotEmpty())
+                <div class="mt-4 pt-4 border-t border-[#1a1a1a]">
+                    <x-site.social-links variant="compact" />
+                </div>
+            @endif
         </div>
     </div>
 </header>

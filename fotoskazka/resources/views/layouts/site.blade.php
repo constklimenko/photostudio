@@ -48,7 +48,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @endif
 </head>
-<body class="font-sans antialiased text-gray-300 bg-[#0a0a0a]">
+<body class="font-sans antialiased text-gray-300 bg-[#0a0a0a] pb-20 md:pb-0">
     <x-site.header />
 
     <main>
@@ -56,6 +56,8 @@
     </main>
 
     <x-site.footer />
+
+    <x-site.mobile-call-bar />
 
     <x-site.inquiry-modal :services="$serviceList" />
 </body>

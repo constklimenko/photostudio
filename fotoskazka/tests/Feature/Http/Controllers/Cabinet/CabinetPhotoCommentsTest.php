@@ -510,6 +510,6 @@ class CabinetPhotoCommentsTest extends TestCase
         $queryCount = count(\DB::getQueryLog());
         \DB::disableQueryLog();
 
-        $this->assertLessThanOrEqual(15, $queryCount, "Expected ≤15 queries, got {$queryCount}.");
+        $this->assertLessThanOrEqual(16, $queryCount, "Expected ≤16 queries, got {$queryCount}.");
     }
 }
