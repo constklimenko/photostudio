@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-11-07 — фикс 502 после рестарта app: nginx кэшировал IP fpm
+
+### Проблема
+
+После перезапуска контейнера `app` сайт отдавал 502/504 для всех PHP-запросов
+(статика через nginx работала). В логах nginx: `connect() failed
+(111: Connection refused) ... upstream: "fastcgi://172.18.0.3:9000"` — nginx
+резолвил `fastcgi_pass app:9000` один раз при старте и продолжал стучаться в
+старый IP, который после пересоздания контейнера занял другой сервис.
+
+### Исправление
+
+`docker/nginx/generate-config.sh`: в обеих server-секциях (80/443) включён
+docker-DNS resolver (`resolver 127.0.0.11`, `set $fastcgi_upstream app`,
+`fastcgi_pass $fastcgi_upstream:9000`) — nginx заново резолвит upstream
+каждые 10 с, рестарт `app` больше не роняет сайт.
+
+Для применения: `git pull` на сервере + `docker compose restart web`
+(генератор конфига смонтирован как volume, пересборка образа не нужна).
+
 ## 2026-11-07 — одинаковые иконки соцсетей на главной и в футере
 
 - SVG Instagram и Telegram в блоке на главной получили отступ 2 px со всех

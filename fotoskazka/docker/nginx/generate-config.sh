@@ -52,7 +52,12 @@ server {
 
     location ~ \.php\$ {
         try_files \$uri =404;
-        fastcgi_pass app:9000;
+        # При каждом запросе заново резолвим docker-DNS: nginx кэширует
+        # IP от fastcgi_pass app:9000 на постоянно, и после пересоздания
+        # app контейнера (новый IP) сайт падает в 502.
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set \$fastcgi_upstream app;
+        fastcgi_pass \$fastcgi_upstream:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
@@ -122,7 +127,12 @@ server {
 
     location ~ \.php\$ {
         try_files \$uri =404;
-        fastcgi_pass app:9000;
+        # При каждом запросе заново резолвим docker-DNS: nginx кэширует
+        # IP от fastcgi_pass app:9000 на постоянно, и после пересоздания
+        # app контейнера (новый IP) сайт падает в 502.
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set \$fastcgi_upstream app;
+        fastcgi_pass \$fastcgi_upstream:9000;
         fastcgi_index index.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
