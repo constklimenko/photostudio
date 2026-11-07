@@ -196,6 +196,7 @@ resources/views/
 │   │   ├── about-studio.blade.php # «О студии» (HTML-текст из Page)
 │   │   └── inquiry.blade.php  # Форма заявки (через x-site.inquiry-form)
 ├── home.blade.php              # Главная: Hero (x-site.hero) + соцсети (x-site.social-links) + «Избранные работы» (если страница portfolio помечена show_on_home) + «Отзывы» (фото из альбомов страницы home)
+├── privacy.blade.php           # Политика конфиденциальности: контент CMS-страницы privacy, контакты для обращений — из ContactSettings, «Редакция от» (updated_at)
 ├── blog/
 │   ├── index.blade.php         # Список статей (сетка 2 колонки, сайдбар, пагинация)
 │   └── show.blade.php          # Детальная (контент, альбомы-слайдер, форма заявки)
@@ -234,6 +235,7 @@ resources/views/
 | GET | `/blog/{slug}` | `BlogController@show` | — |
 | GET | `/video` | `VideoController@index` | — |
 | GET | `/video/{video}/stream` | `VideoController@stream` | raw |
+| GET | `/privacy` | `PrivacyPolicyController` (страница «Политика конфиденциальности», CMS-страница `privacy`) | — |
 | GET | `/media/{media}/original` | `MediaController@original` | — |
 | GET | `/media/{media}/thumbnail` | `MediaController@thumbnail` | WebP-превью из диска `thumbnails` |
 | GET | `/media/{media}/download` | `MediaController@download` | attachment |

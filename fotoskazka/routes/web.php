@@ -7,6 +7,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PortfolioController;
+use App\Http\Controllers\PrivacyPolicyController;
 use App\Http\Controllers\ServiceCatalogController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VideoController;
@@ -31,6 +32,8 @@ Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(f
     Route::get('/', 'index')->name('index');
     Route::get('/{slug}', 'show')->name('show');
 });
+
+Route::get('/privacy', PrivacyPolicyController::class)->name('privacy');
 
 Route::get('/video', [VideoController::class, 'index'])->name('video.index');
 Route::get('/video/{video}/stream', [VideoController::class, 'stream'])->name('video.stream');

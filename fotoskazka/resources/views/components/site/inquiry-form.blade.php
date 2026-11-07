@@ -57,7 +57,7 @@
         <input type="checkbox" name="agreed_to_terms" id="agreed_to_terms" required
                class="mt-1 rounded border-[#2a2a2a] bg-transparent text-[#d4af37] focus:ring-[#d4af37]">
         <label for="agreed_to_terms" class="text-sm text-gray-500">
-            Соглашаюсь на обработку персональных данных
+            Соглашаюсь с <a href="{{ route('privacy') }}" target="_blank" class="underline hover:text-[#d4af37] transition">политикой конфиденциальности</a> и на обработку персональных данных
             @error('agreed_to_terms') <span class="text-red-400">{{ $message }}</span> @enderror
         </label>
     </div>

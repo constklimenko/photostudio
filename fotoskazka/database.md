@@ -827,7 +827,22 @@ updated_at TIMESTAMP
 блок «Избранные работы».
 
 Фиксированные slug: `home`, `services`, `portfolio`, `blog`, `video`,
-`testimonials`, `faq`, `inquiry`, `shooting`.
+`testimonials`, `faq`, `inquiry`, `shooting`, `privacy`.
+
+Страница `privacy` («Политика конфиденциальности», 2026-11-07):
+
+* публичный маршрут `GET /privacy` (`PrivacyPolicyController`), `show_in_menu`
+  = false (в меню не выводится, ссылка — из футера и чекбокса формы заявки);
+* `content` — текст политики по 152-ФЗ с плейсхолдерами реквизитов оператора
+  (`[ФИО или наименование ИП]`, `[почтовый адрес]`); редактируется в Filament;
+  контакты для обращений подставляются на странице из `ContactSettings`
+  (site_settings/config), а не хранятся в контенте;
+* seeder: `Page::firstOrCreate` (а не `updateOrCreate`, как у остальных
+  страниц) — повторный `db:seed` не перезатирает вписанные владельцем
+  реквизиты; атрибуты по умолчанию — `PageSeeder::privacyAttributes()`;
+* slug `privacy` защищён от изменения в `PageForm` (SYSTEM_SLUGS), т.к. маршрут
+  и ссылки в футере/форме жёстко привязаны к `/privacy`;
+* `sitemap.xml` включает `/privacy`, только если страница опубликована.
 
 Foreign keys:
 

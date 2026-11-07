@@ -548,7 +548,8 @@ class ServiceCatalogControllerTest extends TestCase
 
         $response->assertSee('Оставить заявку');
         $response->assertSee(route('inquiry.store'));
-        $response->assertSee('Соглашаюсь на обработку персональных данных');
+        $response->assertSee('Соглашаюсь с');
+        $response->assertSee('политикой конфиденциальности');
         $response->assertSee('name="phone"', false);
     }
 

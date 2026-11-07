@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
 
 class PageForm
 {
-    private const SYSTEM_SLUGS = ['home', 'services', 'portfolio', 'blog', 'video'];
+    private const SYSTEM_SLUGS = ['home', 'services', 'portfolio', 'blog', 'video', 'privacy'];
 
     protected static function isHomePage(?callable $get): bool
     {

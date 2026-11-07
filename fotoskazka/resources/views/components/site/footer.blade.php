@@ -34,7 +34,7 @@
             <div>
                 <h3 class="font-heading text-white font-semibold tracking-wide mb-3">Информация</h3>
                 <ul class="space-y-2 text-sm">
-                    <li><a href="#" class="hover:text-[#d4af37] transition">Политика конфиденциальности</a></li>
+                    <li><a href="{{ route('privacy') }}" class="hover:text-[#d4af37] transition">Политика конфиденциальности</a></li>
                 </ul>
             </div>
 

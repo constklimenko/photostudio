@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Album;
 use App\Models\Category;
+use App\Models\Page;
 use App\Models\Post;
 use App\Models\Service;
 use Illuminate\Support\Collection;
@@ -32,6 +33,15 @@ class SitemapService
         $urls->push($this->entry(url('/services'), now()));
         $urls->push($this->entry(url('/portfolio'), now()));
         $urls->push($this->entry(url('/blog'), now()));
+
+        $privacyPage = Page::query()
+            ->where('slug', 'privacy')
+            ->where('is_published', true)
+            ->first();
+
+        if ($privacyPage !== null) {
+            $urls->push($this->entry(url('/privacy'), $privacyPage->updated_at));
+        }
 
         Category::query()
             ->where('type', 'service')
