@@ -37,6 +37,8 @@
 
     <title>@yield('title', config('app.name'))</title>
 
+    <x-site.organization-schema />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
     <link rel="icon" href="/favicon.ico" sizes="any">

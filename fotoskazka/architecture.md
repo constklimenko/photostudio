@@ -318,6 +318,23 @@ resources/views/
 - Источник данных — существующие `seo_title` / `seo_description`; новых полей
   БД и моделей нет.
 
+## Структурированные данные (JSON-LD)
+
+- `x-site.organization-schema` (в `<head>` `layouts/site.blade.php`) выводит
+  `@graph` из `ProfessionalService` (NAP: телефон из `ContactSettings`,
+  `PostalAddress` и `areaServed`=Уфа из `config('contacts.address'/'city')`,
+  `sameAs` из активных `social_links`) и `WebSite`. Телефон нормализуется в
+  E.164. `sameAs` строится из соцссылок с иконками `instagram`, `vk`,
+  `telegram`, `whatsapp`, `viber`, `youtube`.
+- `x-site.breadcrumbs` — `BreadcrumbList` (позиции + URL).
+- Страница услуги (`services/show.blade.php`) — `Service` + `provider`
+  (`ProfessionalService`, `@id` `…#organization`) + `areaServed` + `offers`
+  (`Offer`, RUB при `price_from`).
+- Страница категории (`services/category.blade.php`) — `CollectionPage` +
+  `mainEntity` (`ItemList` из `ListItem` услуг категории).
+- Блог (`blog/show.blade.php`) — `Article`/`BlogPosting` не выводится
+  (на перспективу; `og_type` = `article` уже есть).
+
 ## Канонический адрес и meta description
 
 - В production (`APP_ENV=production`) `AppServiceProvider` вызывает

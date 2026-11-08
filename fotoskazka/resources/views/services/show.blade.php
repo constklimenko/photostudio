@@ -9,9 +9,19 @@
 @php
     $serviceSchema = [
         '@context' => 'https://schema.org',
-        '@type' => 'Product',
+        '@type' => 'Service',
         'name' => $service->title,
+        'serviceType' => $service->title,
         'description' => trim(strip_tags($service->seo_description ?: $service->short_description ?: $service->description ?: '')) ?: $service->title,
+        'provider' => [
+            '@type' => 'ProfessionalService',
+            '@id' => url('/').'#organization',
+            'name' => config('app.name'),
+        ],
+        'areaServed' => [
+            '@type' => 'City',
+            'name' => config('contacts.city'),
+        ],
     ];
 
     if ($service->cover) {

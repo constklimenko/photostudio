@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-11-08 — SEO: LocalBusiness schema и корректные типы Service/CollectionPage
+
+### Цель
+
+Исправить критичные проблемы структурированных данных, найденные SEO-аудитом:
+
+* на сайте не было `Organization`/`LocalBusiness` schema (ни NAP, ни `sameAs`
+  на соцсети, ни гео) — критично для локального ранжирования;
+* страницы услуг и категорий были размечены как `@type: Product` (с
+  `AggregateOffer` у категорий), что неверно для фотоуслуг.
+
+### Реализация
+
+- `config/contacts.php`: добавлены `address` (`CONTACT_ADDRESS`,
+  по умолчанию «ул. 50 лет СССР») и `city` (`CONTACT_CITY`, «Уфа»).
+  `.env.example` дополнен `CONTACT_ADDRESS` / `CONTACT_CITY`.
+- Новый компонент `x-site.organization-schema`
+  (`resources/views/components/site/organization-schema.blade.php`) — JSON-LD
+  `@graph` из `ProfessionalService` (name, url, image, telephone, email,
+  `PostalAddress`, `areaServed`=Уфа, `sameAs` из активных соцссылок) и
+  `WebSite`. Телефон нормализуется в E.164 (`+79874847476`), `email` — из
+  `ContactSettings`, `sameAs` — из активных `social_links` (иконки instagram,
+  vk, telegram, whatsapp, viber, youtube).
+- Компонент подключён в `<head>` базового layout (`layouts/site.blade.php`).
+- `resources/views/services/show.blade.php`: `Product` → `Service` +
+  `provider` (`ProfessionalService` со ссылкой на `#organization`) +
+  `areaServed`; `offers` (`Offer`, RUB) при `price_from` сохранён.
+- `resources/views/services/category.blade.php`: `Product`+`AggregateOffer` →
+  `CollectionPage` + `mainEntity` (`ItemList` из `ListItem` услуг этой
+  категории).
+
+### Проверка
+
+- `tests/Feature/Http/SchemaMarkupTest.php` — 4 теста: `ProfessionalService` +
+  `WebSite` на главной (адрес, город, телефон E.164), `sameAs` из соцссылок
+  (через `Blade::render`), `Service` вместо `Product` на странице услуги,
+  `CollectionPage`+`ItemList` вместо `Product`/`AggregateOffer` на странице
+  категории.
+- `php artisan test` (SchemaMarkupTest + SeoMetaTest + OpenGraphTest +
+  ServiceCatalogControllerTest): 63 теста, все проходят; `pint --dirty` — чисто.
+
+### Замечание
+
+На проде `sameAs` наполнится автоматически при наличии активных соцссылок в
+админке (`/admin/social-links`). Адрес можно переопределить через `.env`
+(`CONTACT_ADDRESS` / `CONTACT_CITY`) без миграции БД.
+
 ## 2026-11-07 — страница «Политика конфиденциальности» (/privacy)
 
 ### Цель

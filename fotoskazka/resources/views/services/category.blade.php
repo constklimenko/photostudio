@@ -9,7 +9,7 @@
 @php
     $categorySchema = [
         '@context' => 'https://schema.org',
-        '@type' => 'Product',
+        '@type' => 'CollectionPage',
         'name' => $category->name,
         'description' => trim(strip_tags($category->seo_description ?: $category->description ?: '')) ?: $category->name,
     ];
@@ -18,21 +18,24 @@
         $categorySchema['image'] = $category->cover->getUrl();
     }
 
-    $categoryPrices = $category->services
-        ->pluck('price_from')
-        ->concat($category->children->pluck('price_from'))
-        ->concat([$category->price_from])
-        ->filter()
-        ->map(fn ($price) => (float) $price);
+    $itemList = [];
 
-    if ($categoryPrices->isNotEmpty()) {
-        $categorySchema['offers'] = [
-            '@type' => 'AggregateOffer',
-            'priceCurrency' => 'RUB',
-            'lowPrice' => $categoryPrices->min(),
-            'highPrice' => $categoryPrices->max(),
-            'offerCount' => $categoryPrices->count(),
-            'availability' => 'https://schema.org/InStock',
+    foreach ($category->services as $index => $service) {
+        $itemList[] = [
+            '@type' => 'ListItem',
+            'position' => $index + 1,
+            'item' => [
+                '@type' => 'Service',
+                'name' => $service->title,
+                'url' => url('/services/'.$service->catalogPath()),
+            ],
+        ];
+    }
+
+    if ($itemList !== []) {
+        $categorySchema['mainEntity'] = [
+            '@type' => 'ItemList',
+            'itemListElement' => $itemList,
         ];
     }
 @endphp
