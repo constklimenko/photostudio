@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Models;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Album;
 use App\Models\Category;
 use App\Models\Inquiry;
@@ -234,6 +235,94 @@ class ModelRelationshipsTest extends TestCase
 
         $this->assertCount(2, $service->albums);
         $this->assertInstanceOf(Album::class, $service->albums->first());
+    }
+
+    public function test_service_belongs_to_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $service = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $this->assertTrue($service->shootingAlbum->is($album));
+    }
+
+    public function test_deleting_shooting_album_sets_service_album_to_null(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $service = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $album->delete();
+        $service->refresh();
+
+        $this->assertNull($service->shootingAlbum);
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'shooting_album_id' => null,
+        ]);
+    }
+
+    public function test_multiple_services_can_share_the_same_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $first = Service::factory()->create(['shooting_album_id' => $album->id]);
+        $second = Service::factory()->create(['shooting_album_id' => $album->id]);
+
+        $this->assertTrue($first->shootingAlbum->is($album));
+        $this->assertTrue($second->shootingAlbum->is($album));
+    }
+
+    public function test_category_belongs_to_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $this->assertTrue($category->shootingAlbum->is($album));
+    }
+
+    public function test_service_shooting_album_display_defaults_to_card_and_casts_to_enum(): void
+    {
+        $service = Service::factory()->create();
+
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+        $this->assertSame(ShootingAlbumDisplay::Card, $service->shooting_album_display);
+    }
+
+    public function test_category_shooting_album_display_defaults_to_card_and_casts_to_enum(): void
+    {
+        $category = Category::factory()->create(['type' => 'service']);
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_display' => ShootingAlbumDisplay::Card->value,
+        ]);
+        $this->assertSame(ShootingAlbumDisplay::Card, $category->shooting_album_display);
+    }
+
+    public function test_deleting_shooting_album_sets_category_album_to_null(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $category = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $album->delete();
+        $category->refresh();
+
+        $this->assertNull($category->shootingAlbum);
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'shooting_album_id' => null,
+        ]);
+    }
+
+    public function test_multiple_categories_can_share_the_same_shooting_album(): void
+    {
+        $album = Album::factory()->create(['type' => 'behind_the_scenes']);
+        $first = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+        $second = Category::factory()->create(['type' => 'service', 'shooting_album_id' => $album->id]);
+
+        $this->assertTrue($first->shootingAlbum->is($album));
+        $this->assertTrue($second->shootingAlbum->is($album));
     }
 
     public function test_inquiry_belongs_to_project(): void

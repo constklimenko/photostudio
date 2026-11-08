@@ -51,6 +51,10 @@ class CabinetController extends Controller
             abort(404);
         }
 
+        $project->load([
+            'comments' => fn ($q) => $q->with('user')->oldest(),
+        ]);
+
         $albums = $user->hasRole('class_manager')
             ? $project->albums->where('type', 'client')
             : $project->albums;

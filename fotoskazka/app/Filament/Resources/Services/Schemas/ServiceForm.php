@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Services\Schemas;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Media;
 use App\Models\Service;
 use Filament\Forms\Components\Hidden;
@@ -12,7 +13,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class ServiceForm
@@ -74,6 +78,13 @@ class ServiceForm
                             ->integer()
                             ->default(0),
                     ]),
+                Section::make('Главная страница')
+                    ->schema([
+                        Toggle::make('show_on_home')
+                            ->label('Выводить в виде кнопки на главной')
+                            ->helperText('Управляет отображением ссылки-кнопки в Hero главной страницы. Учитываются только опубликованные услуги, порядок — по полю «Порядок сортировки»')
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('SEO')
                     ->schema([
                         TextInput::make('seo_title')
@@ -129,6 +140,38 @@ class ServiceForm
                             ->preload()
                             ->searchable()
                             ->nullable()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Фото со съёмок')
+                    ->schema([
+                        Select::make('shooting_album_id')
+                            ->label('Альбом «Фото со съёмок»')
+                            ->relationship('shootingAlbum', 'title', function (Builder $query, ?Service $record): Builder {
+                                $query->where('type', 'behind_the_scenes')
+                                    ->where('is_published', true);
+
+                                if ($record?->shooting_album_id) {
+                                    $query->orWhere('id', $record->shooting_album_id);
+                                }
+
+                                return $query;
+                            })
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Без фото со съёмок')
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                if (! $state) {
+                                    $set('shooting_album_display', ShootingAlbumDisplay::Card->value);
+                                }
+                            })
+                            ->columnSpanFull(),
+                        Select::make('shooting_album_display')
+                            ->label('Отображение фото со съёмок')
+                            ->options(ShootingAlbumDisplay::options())
+                            ->default(ShootingAlbumDisplay::Card->value)
+                            ->visible(fn (Get $get): bool => filled($get('shooting_album_id')))
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

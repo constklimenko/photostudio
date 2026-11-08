@@ -52,6 +52,7 @@ class ImportFromYandexDisk extends Page
                                 'homepage' => 'Главная страница',
                                 'service' => 'Услуга',
                                 'client' => 'Клиентская галерея',
+                                'behind_the_scenes' => 'Фото со съёмок',
                             ])
                             ->live(),
                         Select::make('folder_top')

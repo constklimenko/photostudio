@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1648" height="1248" viewBox="0 0 1648 1248">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101826"/>
+      <stop offset="0.5" stop-color="#14324a"/>
+      <stop offset="1" stop-color="#0b1a2a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.7" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#22e05a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#22e05a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d8b25a"/>
+      <stop offset="1" stop-color="#f0d488"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1648" height="1248" fill="url(#bg)"/>
+  <rect width="1648" height="1248" fill="url(#glow)"/>
+
+  <g stroke="#ffffff" stroke-opacity="0.14" stroke-width="2">
+    <path d="M0 416 H1648 M0 832 H1648 M412 0 V1248 M824 0 V1248 M1236 0 V1248"/>
+  </g>
+
+  <g stroke="url(#gold)" stroke-width="10" fill="none">
+    <path d="M24 200 H1624"/>
+    <path d="M24 1048 H1624"/>
+    <path d="M24 200 V1048"/>
+    <path d="M1624 200 V1048"/>
+  </g>
+
+  <g fill="none" stroke="#22e05a" stroke-width="14">
+    <path d="M24 120 H120 M24 120 V216"/>
+    <path d="M1624 120 H1528 M1624 120 V216"/>
+    <path d="M24 1128 H120 M24 1128 V1032"/>
+    <path d="M1624 1128 H1528 M1624 1128 V1032"/>
+  </g>
+
+  <g stroke="#22e05a" stroke-width="6">
+    <path d="M764 624 H884 M824 564 V684"/>
+  </g>
+  <circle cx="824" cy="624" r="46" fill="none" stroke="#22e05a" stroke-width="6"/>
+
+  <text x="824" y="452" text-anchor="middle"
+        font-family="system-ui, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-size="92" font-weight="700" fill="#f2f5fa" letter-spacing="4">ОЖИВАЮЩАЯ ФОТОГРАФИЯ</text>
+  <text x="824" y="536" text-anchor="middle"
+        font-family="system-ui, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-size="46" fill="#22e05a" letter-spacing="8">AR CONTENT · TARGET REPLACED</text>
+  <text x="824" y="896" text-anchor="middle"
+        font-family="system-ui, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-size="40" fill="#d8b25a" letter-spacing="3">MindAR · FS-001 · этому прямоугольнику следует за распечаткой</text>
+
+  <text x="824" y="1000" text-anchor="middle"
+        font-family="system-ui, 'Segoe UI', Roboto, Arial, sans-serif"
+        font-size="34" fill="#8b93a5">вверху кадра — верх таргета, слева — лево (проверка ориентации)</text>
+</svg>

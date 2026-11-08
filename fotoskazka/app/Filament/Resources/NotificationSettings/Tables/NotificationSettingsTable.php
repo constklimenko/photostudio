@@ -27,6 +27,9 @@ class NotificationSettingsTable
                 IconColumn::make('telegram_enabled')
                     ->label('Telegram')
                     ->boolean(),
+                IconColumn::make('max_enabled')
+                    ->label('MAX')
+                    ->boolean(),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -22,6 +22,22 @@ class PageContentService
         return $data ? Page::hydrate([$data])->first() : null;
     }
 
+    public function arTeaser(): array
+    {
+        $page = $this->get('home');
+
+        $page?->loadMissing('arTeaserMedia');
+
+        return [
+            'enabled' => $page?->ar_teaser_enabled ?? true,
+            'title' => $page?->ar_teaser_title,
+            'accent' => $page?->ar_teaser_accent,
+            'subtitle' => $page?->ar_teaser_subtitle,
+            'footer' => $page?->ar_teaser_footer,
+            'media' => $page?->arTeaserMedia,
+        ];
+    }
+
     public function getHomeSections(): array
     {
         $data = Cache::rememberForever('pages_home_sections', function () {
@@ -40,20 +56,25 @@ class PageContentService
             ->all();
     }
 
+    /**
+     * Отмечена ли страница в `Pages → Отображать на главной`.
+     */
+    public function isHomeSection(string $slug): bool
+    {
+        return array_key_exists($slug, $this->getHomeSections());
+    }
+
     public function getMenuItems(): array
     {
         return Cache::rememberForever('pages_menu', function () {
             return Page::where('is_published', true)
-                ->whereIn('slug', ['home', 'services', 'portfolio', 'blog', 'video'])
+                ->where('show_in_menu', true)
                 ->orderBy('sort_order')
                 ->get(['slug', 'title', 'menu_title'])
                 ->map(fn (Page $page) => [
                     'slug' => $page->slug,
                     'title' => $page->menu_title ?: $page->title,
-                    'url' => match ($page->slug) {
-                        'home' => '/',
-                        default => "/{$page->slug}",
-                    },
+                    'url' => $page->slug === 'home' ? '/' : "/{$page->slug}",
                 ])
                 ->all();
         });
@@ -63,6 +84,8 @@ class PageContentService
     {
         if ($slug) {
             Cache::forget("page_content_{$slug}");
+            Cache::forget('pages_home_sections');
+            Cache::forget('pages_menu');
         } else {
             Cache::flush();
         }

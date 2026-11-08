@@ -2,105 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Album;
-use App\Models\Category;
-use App\Models\FaqItem;
 use App\Models\Inquiry;
-use App\Models\Post;
-use App\Models\Service;
-use App\Models\SocialLink;
-use App\Models\Testimonial;
-use App\Models\Video;
+use App\Services\HomeContentService;
 use App\Services\PageContentService;
 use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    public function __invoke(PageContentService $pageContent)
+    public function __invoke(PageContentService $pageContent, HomeContentService $homeContent)
     {
         $page = $pageContent->get('home');
 
-        $homeSections = $pageContent->getHomeSections();
+        $heroImages = $homeContent->heroImages();
+        $heroButtons = $homeContent->heroButtons();
 
-        $homeCategories = Category::query()
-            ->where('type', 'service')
-            ->where('parent_id', null)
-            ->where('is_published', true)
-            ->orderBy('sort_order')
-            ->with('cover')
-            ->get(['id', 'cover_media_id', 'name', 'slug', 'description', 'price_from', 'sort_order']);
+        $socialLinks = $homeContent->socialLinks();
 
-        $featuredWorks = Album::query()
-            ->where('type', 'portfolio')
-            ->where('is_featured', true)
-            ->where('is_published', true)
-            ->with('cover')
-            ->get(['id', 'cover_media_id', 'title', 'slug']);
+        $featuredWorks = $homeContent->featuredWorks();
+        $featuredWorksBlock = $homeContent->blockText('portfolio', 'Избранные работы', 'Наши лучшие проекты');
 
-        $testimonials = Testimonial::query()
-            ->where('is_published', true)
-            ->with('photo')
-            ->get(['id', 'media_id', 'client_name', 'content']);
-
-        $latestPosts = Post::query()
-            ->where('is_published', true)
-            ->whereNotNull('published_at')
-            ->latest('published_at')
-            ->take(3)
-            ->with('cover')
-            ->get(['id', 'cover_media_id', 'title', 'slug', 'excerpt', 'published_at']);
-
-        $serviceList = Service::query()
-            ->where('is_published', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'title']);
-
-        $faqItems = FaqItem::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'question', 'answer']);
-
-        $socialLinks = SocialLink::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->get();
-
-        $videos = Video::query()
-            ->where('is_active', true)
-            ->where('show_on_home', true)
-            ->orderBy('sort_order')
-            ->get(['id', 'title', 'url', 'file_path', 'type', 'rotation', 'has_sound', 'sort_order']);
-
-        $arTeaser = [
-            'enabled' => $page?->ar_teaser_enabled ?? true,
-            'title' => $page?->ar_teaser_title,
-            'accent' => $page?->ar_teaser_accent,
-            'subtitle' => $page?->ar_teaser_subtitle,
-            'footer' => $page?->ar_teaser_footer,
-            'media' => $page?->arTeaserMedia,
-        ];
-
-        $heroAlbum = Album::query()
-            ->where('type', 'homepage')
-            ->where('is_published', true)
-            ->with(['photos' => fn ($q) => $q->orderBy('sort_order')->with('media')])
-            ->first();
-
-        $heroImages = $heroAlbum?->photos->pluck('media');
+        $reviewPhotos = $homeContent->reviewPhotos();
 
         return view('home', compact(
             'page',
-            'homeSections',
-            'homeCategories',
-            'featuredWorks',
-            'testimonials',
-            'latestPosts',
-            'serviceList',
             'heroImages',
-            'faqItems',
+            'heroButtons',
             'socialLinks',
-            'videos',
-            'arTeaser',
+            'featuredWorks',
+            'featuredWorksBlock',
+            'reviewPhotos',
         ));
     }
 
@@ -112,7 +42,7 @@ class HomeController extends Controller
             'email' => 'required|email|max:255',
             'service_id' => 'nullable|exists:services,id',
             'shooting_date' => 'nullable|date|after_or_equal:today',
-            'message' => 'nullable|string',
+            'message' => 'nullable|string|max:2000',
             'agreed_to_terms' => 'required|accepted',
         ]);
 

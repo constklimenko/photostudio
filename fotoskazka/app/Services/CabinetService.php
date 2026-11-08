@@ -67,7 +67,7 @@ class CabinetService
     {
         return Photo::query()
             ->where('album_id', $album->id)
-            ->with('media')
+            ->with(['media', 'comments.user', 'album.project'])
             ->orderBy('sort_order')
             ->paginate($perPage);
     }

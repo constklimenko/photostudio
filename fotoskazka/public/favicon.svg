@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Фотосказка</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6D4AFF"/>
+      <stop offset="1" stop-color="#33206F"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF4D6"/>
+      <stop offset="1" stop-color="#FFC66D"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <path d="M13 23.5h8l3.2-5h15.6l3.2 5h8A4 4 0 0 1 55 27.5v19a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4v-19a4 4 0 0 1 4-4Z" fill="#FFF9F0"/>
+  <circle cx="32" cy="36.5" r="12" fill="#49318D"/>
+  <circle cx="32" cy="36.5" r="9" fill="url(#lens)"/>
+  <circle cx="32" cy="36.5" r="5.8" fill="#6D4AFF"/>
+  <circle cx="29.8" cy="34.3" r="2.1" fill="#FFFFFF" opacity=".9"/>
+  <path d="M47.5 12.5l1.8 4.4 4.4 1.8-4.4 1.8-1.8 4.4-1.8-4.4-4.4-1.8 4.4-1.8 1.8-4.4Z" fill="#FFD27D"/>
+  <circle cx="17" cy="30" r="1.5" fill="#D8C9FF"/>
+</svg>

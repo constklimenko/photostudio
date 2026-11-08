@@ -49,7 +49,7 @@
     @endif
 
     <div>
-        <textarea name="message" id="message" rows="3" placeholder="Комментарий"
+        <textarea name="message" id="message" rows="3" maxlength="2000" placeholder="Комментарий"
                   class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition resize-none"></textarea>
     </div>
 

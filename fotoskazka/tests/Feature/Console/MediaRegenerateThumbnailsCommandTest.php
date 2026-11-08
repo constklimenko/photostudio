@@ -18,6 +18,7 @@ class MediaRegenerateThumbnailsCommandTest extends TestCase
 
         Storage::fake('public');
         Storage::fake('thumbnails');
+        Storage::fake('image_cache');
     }
 
     protected function createProcessedMedia(string $path = 'images/photo.jpg', int $width = 800, int $height = 600): Media

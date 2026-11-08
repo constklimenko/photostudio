@@ -179,6 +179,211 @@ section.bg-gray-900 {
     opacity: 1;
 }
 
+/* Табы блока «Стоимость альбомов» */
+.graduation-tab {
+    padding: 0.625rem 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid #2a2a2a;
+    background-color: #1a1a1a;
+    color: #9ca3af;
+    font-weight: 500;
+    transition: background-color .2s, color .2s, border-color .2s;
+    cursor: pointer;
+}
+
+.graduation-tab:hover:not(.is-active) {
+    background-color: #242424;
+    color: #d4af37;
+}
+
+.graduation-tab.is-active {
+    background-color: #d4af37;
+    border-color: #d4af37;
+    color: #000;
+}
+
+/* Слайдер фотоальбома услуги (slick) */
+.album-slider .slick-slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.album-slider .slick-prev,
+.album-slider .slick-next {
+    width: 40px;
+    height: 40px;
+    background: rgba(26, 26, 26, 0.9);
+    border: 1px solid #2a2a2a;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.album-slider .slick-prev:hover,
+.album-slider .slick-next:hover {
+    background: #2a2a2a;
+}
+
+.album-slider .slick-prev {
+    left: 10px;
+}
+
+.album-slider .slick-next {
+    right: 10px;
+}
+
+.album-slider .slick-prev::before,
+.album-slider .slick-next::before {
+    color: #d4af37;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 1;
+}
+
+/* Миниатюры слайдера: текущая фотография и две соседние */
+.album-slider-thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.album-slider-thumb {
+    display: block;
+    padding: 0;
+    aspect-ratio: 4 / 3;
+    border: 1px solid #2a2a2a;
+    border-radius: 0.75rem;
+    background-color: #0a0a0a;
+    overflow: hidden;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity .2s, border-color .2s, box-shadow .2s;
+}
+
+.album-slider-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.album-slider-thumb:hover {
+    opacity: 0.75;
+}
+
+.album-slider-thumb.is-active {
+    opacity: 1;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 1px #d4af37;
+}
+
+/* FAQ: HTML-ответ (RichEditor) — списки, выделения, ссылки, контрастный текст */
+.faq-answer {
+    color: #e0e0d8;
+    font-size: 0.875rem;
+    line-height: 1.7;
+}
+
+.faq-answer > *:first-child {
+    margin-top: 0;
+}
+
+.faq-answer > *:last-child {
+    margin-bottom: 0;
+}
+
+.faq-answer p {
+    margin: 0.5rem 0;
+}
+
+.faq-answer ul,
+.faq-answer ol {
+    margin: 0.75rem 0;
+    padding-left: 1.25rem;
+}
+
+.faq-answer ul {
+    list-style-type: disc;
+}
+
+.faq-answer ol {
+    list-style-type: decimal;
+}
+
+.faq-answer li {
+    margin: 0.3rem 0;
+    padding-left: 0.25rem;
+}
+
+.faq-answer li::marker {
+    color: #d4af37;
+}
+
+.faq-answer strong,
+.faq-answer b {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.faq-answer em,
+.faq-answer i {
+    color: #f0f0e8;
+}
+
+.faq-answer a {
+    color: #d4af37;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: color .2s;
+}
+
+.faq-answer a:hover {
+    color: #e6c14a;
+}
+
+.faq-answer h1,
+.faq-answer h2,
+.faq-answer h3,
+.faq-answer h4 {
+    font-family: var(--font-heading);
+    color: #ffffff;
+    line-height: 1.3;
+    margin: 1rem 0 0.5rem;
+}
+
+.faq-answer h3 {
+    font-size: 1.05rem;
+}
+
+.faq-answer h4 {
+    font-size: 0.95rem;
+}
+
+.faq-answer blockquote {
+    margin: 0.75rem 0;
+    padding-left: 1rem;
+    border-left: 2px solid #d4af37;
+    color: #c8c8c0;
+    font-style: italic;
+}
+
+.faq-answer code {
+    padding: 0.1rem 0.35rem;
+    border: 1px solid #2a2a2a;
+    border-radius: 0.25rem;
+    background-color: #1a1a1a;
+    color: #e6c14a;
+    font-size: 0.85em;
+}
+
+.faq-answer hr {
+    margin: 1rem 0;
+    border-color: #2a2a2a;
+}
+
 /* Hero — полноэкранное фото + overlay */
 #hero-block img {
     animation: heroZoom 12s ease-in-out infinite alternate;

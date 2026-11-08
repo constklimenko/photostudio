@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ShootingAlbumDisplay;
+use App\Models\Album;
 use App\Models\Category;
 use App\Models\Service;
 use App\Services\PageContentService;
 use App\Services\ServiceCatalogResolver;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class ServiceCatalogController extends Controller
@@ -74,6 +77,16 @@ class ServiceCatalogController extends Controller
 
                 $query->with(['cover', 'videos']);
             },
+            'shootingAlbum' => function ($query) use ($service) {
+                $query->where('is_published', true);
+
+                if ($service->shooting_album_display === ShootingAlbumDisplay::Grid) {
+                    $query->with('photos.media');
+                } else {
+                    $query->with('cover');
+                }
+            },
+            'faqItems' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
         ]);
 
         if ($service->show_album_photos && $service->featured_album_id) {
@@ -101,10 +114,35 @@ class ServiceCatalogController extends Controller
     {
         $page = $this->pageContent->get('services');
 
+        $isGraduation = (bool) $category->is_graduation_albums;
+
         $category->load([
             'cover',
             'parent',
-            'children' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover']),
+            'children' => function ($query) use ($isGraduation) {
+                $query->where('is_published', true)->orderBy('sort_order')->with(['cover']);
+
+                if ($isGraduation) {
+                    $query
+                        ->whereHas('services', fn ($sq) => $sq->where('is_published', true))
+                        ->with([
+                            'services' => fn ($sq) => $sq
+                                ->where('is_published', true)
+                                ->orderBy('sort_order')
+                                ->with([
+                                    'items.icon',
+                                    'videos',
+                                    'category.parent',
+                                    'featuredAlbum' => fn ($fq) => $fq
+                                        ->where('is_published', true)
+                                        ->with(['photos' => fn ($pq) => $pq->orderBy('sort_order')->with('media')]),
+                                ]),
+                            'ctaAlbum' => fn ($cq) => $cq->with([
+                                'photos' => fn ($pq) => $pq->orderBy('sort_order')->with('media'),
+                            ]),
+                        ]);
+                }
+            },
             'services' => fn ($query) => $query->where('is_published', true)->orderBy('sort_order')->with(['cover', 'items']),
             'videos',
             'items.icon',
@@ -118,6 +156,16 @@ class ServiceCatalogController extends Controller
 
                 $query->with(['cover', 'videos']);
             },
+            'shootingAlbum' => function ($query) use ($category) {
+                $query->where('is_published', true);
+
+                if ($category->shooting_album_display === ShootingAlbumDisplay::Grid) {
+                    $query->with('photos.media');
+                } else {
+                    $query->with('cover');
+                }
+            },
+            'faqItems' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order'),
         ]);
 
         if ($category->show_album_photos && $category->featured_album_id) {
@@ -130,6 +178,86 @@ class ServiceCatalogController extends Controller
             }
         }
 
-        return view('services.category', compact('page', 'category'));
+        $graduationCategories = $isGraduation ? collect([$category]) : collect();
+        $graduationBlock = [
+            'title' => 'Стоимость альбомов',
+            'subtitle' => 'Выберите свою возрастную категорию и комплектацию',
+            'content' => null,
+        ];
+        $arPrice = 500;
+        $arTeaser = ['enabled' => false];
+        $shootingWorks = collect();
+        $shootingBlock = [];
+
+        if ($isGraduation) {
+            $graduationPage = $this->pageContent->get('graduation-albums');
+
+            if ($graduationPage) {
+                $graduationBlock = [
+                    'title' => $graduationPage->home_title ?: ($graduationPage->title ?: $graduationBlock['title']),
+                    'subtitle' => $graduationPage->home_subtitle ?: ($graduationPage->subtitle ?: $graduationBlock['subtitle']),
+                    'content' => $this->plainText($graduationPage->home_content ?: $graduationPage->content),
+                ];
+            }
+
+            $arPrice = (int) ($this->pageContent->get('home')?->ar_price ?? $arPrice);
+            $arTeaser = $this->pageContent->arTeaser();
+            $shootingWorks = $this->shootingWorks();
+            $shootingBlock = $this->shootingBlock();
+        }
+
+        return view('services.category', compact(
+            'page',
+            'category',
+            'graduationCategories',
+            'graduationBlock',
+            'arPrice',
+            'arTeaser',
+            'shootingWorks',
+            'shootingBlock',
+        ));
+    }
+
+    private function shootingWorks(): Collection
+    {
+        return Album::query()
+            ->where('type', 'behind_the_scenes')
+            ->where('is_featured', true)
+            ->where('is_published', true)
+            ->orderBy('sort_order')
+            ->with('cover')
+            ->get(['id', 'cover_media_id', 'title', 'slug', 'description', 'sort_order']);
+    }
+
+    private function shootingBlock(): array
+    {
+        $block = [
+            'title' => 'Фото со съёмок',
+            'subtitle' => 'Загляните на съёмочную площадку',
+            'content' => null,
+        ];
+
+        $shootingPage = $this->pageContent->get('shooting');
+
+        if (! $shootingPage) {
+            return $block;
+        }
+
+        return [
+            'title' => $shootingPage->home_title ?: ($shootingPage->title ?: $block['title']),
+            'subtitle' => $shootingPage->home_subtitle ?: ($shootingPage->subtitle ?: $block['subtitle']),
+            'content' => $this->plainText($shootingPage->home_content ?: $shootingPage->content),
+        ];
+    }
+
+    private function plainText(?string $html): ?string
+    {
+        if (! $html) {
+            return null;
+        }
+
+        $text = trim(strip_tags($html));
+
+        return $text === '' ? null : $text;
     }
 }

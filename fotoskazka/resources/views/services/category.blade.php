@@ -1,9 +1,45 @@
 @extends('layouts.site')
 
 @section('title', $category->seo_title ?: ($category->name . ' — Фотосказка'))
-@section('meta_description', $category->seo_description ?: $category->description)
+@section('meta_description', $category->seo_description ?: $category->description ?: config('app.name'))
+@section('og_image', $category->cover?->getDisplayUrl() ?: '')
 
 @section('content')
+
+@php
+    $categorySchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $category->name,
+        'description' => trim(strip_tags($category->seo_description ?: $category->description ?: '')) ?: $category->name,
+    ];
+
+    if ($category->cover) {
+        $categorySchema['image'] = $category->cover->getUrl();
+    }
+
+    $categoryPrices = $category->services
+        ->pluck('price_from')
+        ->concat($category->children->pluck('price_from'))
+        ->concat([$category->price_from])
+        ->filter()
+        ->map(fn ($price) => (float) $price);
+
+    if ($categoryPrices->isNotEmpty()) {
+        $categorySchema['offers'] = [
+            '@type' => 'AggregateOffer',
+            'priceCurrency' => 'RUB',
+            'lowPrice' => $categoryPrices->min(),
+            'highPrice' => $categoryPrices->max(),
+            'offerCount' => $categoryPrices->count(),
+            'availability' => 'https://schema.org/InStock',
+        ];
+    }
+@endphp
+
+<script type="application/ld+json">
+    @json($categorySchema, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+</script>
 
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -25,56 +61,58 @@
             </div>
         @endif
 
-        <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $category->name }}</h1>
+        @if (! $category->is_graduation_albums)
+            <h1 class="font-heading text-3xl sm:text-4xl font-normal tracking-wide text-white">{{ $category->name }}</h1>
 
-        <div class="mt-6">
-            <x-site.share-button :title="$category->name" />
-        </div>
-
-        @if ($category->description)
-            <div class="mt-6 prose prose-invert max-w-none">
-                {!! $category->description !!}
+            <div class="mt-6">
+                <x-site.share-button :title="$category->name" />
             </div>
-        @endif
 
-        @if ($category->price_from)
-            <p class="mt-6 text-2xl font-bold text-[#d4af37]">от {{ number_format($category->price_from, 0, ',', ' ') }} ₽</p>
-            @if ($category->price_note)
-                <p class="mt-1 text-xs text-gray-500">{{ $category->price_note }}</p>
+            @if ($category->description)
+                <div class="mt-6 prose prose-invert max-w-none">
+                    {!! $category->description !!}
+                </div>
+            @endif
+
+            @if ($category->price_from)
+                <p class="mt-6 text-2xl font-bold text-[#d4af37]">от {{ number_format($category->price_from, 0, ',', ' ') }} ₽</p>
+                @if ($category->price_note)
+                    <p class="mt-1 text-xs text-gray-500">{{ $category->price_note }}</p>
+                @endif
+            @endif
+
+            @if ($category->items->isNotEmpty())
+                <div class="mt-8 p-6 bg-[#1a1a1a] rounded-xl shadow-lg shadow-black/30">
+                    <h3 class="font-heading text-lg font-semibold tracking-wide text-white mb-4">Что входит</h3>
+                    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                        @foreach ($category->items as $item)
+                            @php $included = $item->pivot->is_included ?? true; @endphp
+                            <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
+                                @if ($item->icon)
+                                    <img src="{{ $item->icon->getUrl() }}" alt="{{ $item->icon->name }}" class="w-5 h-5 shrink-0 object-contain">
+                                @elseif ($included)
+                                    <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                @else
+                                    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                    </svg>
+                                @endif
+                                <span>
+                                    {{ $item->label }}
+                                    @if ($item->subtitle)
+                                        <span class="text-gray-500 text-xs"> — {{ $item->subtitle }}</span>
+                                    @endif
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
             @endif
         @endif
 
-        @if ($category->items->isNotEmpty())
-            <div class="mt-8 p-6 bg-[#1a1a1a] rounded-xl shadow-lg shadow-black/30">
-                <h3 class="font-heading text-lg font-semibold tracking-wide text-white mb-4">Что входит</h3>
-                <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-                    @foreach ($category->items as $item)
-                        @php $included = $item->pivot->is_included ?? true; @endphp
-                        <li class="flex items-center gap-2 text-sm {{ $included ? 'text-gray-300' : 'text-gray-500' }}">
-                            @if ($item->icon)
-                                <img src="{{ $item->icon->getUrl() }}" alt="{{ $item->icon->name }}" class="w-5 h-5 shrink-0 object-contain">
-                            @elseif ($included)
-                                <svg class="w-4 h-4 shrink-0 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                </svg>
-                            @else
-                                <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                                </svg>
-                            @endif
-                            <span>
-                                {{ $item->label }}
-                                @if ($item->subtitle)
-                                    <span class="text-gray-500 text-xs"> — {{ $item->subtitle }}</span>
-                                @endif
-                            </span>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if ($category->ctaAlbum && $category->cta_button_text)
+        @if (! $category->is_graduation_albums && $category->ctaAlbum && $category->cta_button_text)
             <section class="py-12" data-aos="fade-up">
                 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <a href="{{ route('portfolio.show', $category->ctaAlbum->slug) }}"
@@ -85,9 +123,38 @@
             </section>
         @endif
     </div>
+    @if (! $category->is_graduation_albums)
 </section>
+@endif
 
-@if ($category->children->isNotEmpty())
+<x-site.graduation-pricing
+    :graduation-roots="$graduationCategories"
+    :title="$graduationBlock['title']"
+    :subtitle="$graduationBlock['subtitle']"
+    :content="$graduationBlock['content']"
+    :ar-price="$arPrice"
+/>
+
+<x-site.faq :items="$category->faqItems" />
+
+@if ($arTeaser['enabled'])
+    <x-site.ar-teaser
+        :title="$arTeaser['title'] ?? null"
+        :accent="$arTeaser['accent'] ?? null"
+        :subtitle="$arTeaser['subtitle'] ?? null"
+        :footer="$arTeaser['footer'] ?? null"
+        :media="$arTeaser['media'] ?? null"
+    />
+@endif
+
+<x-site.shooting-works
+    :albums="$shootingWorks"
+    :title="$shootingBlock['title'] ?? null"
+    :subtitle="$shootingBlock['subtitle'] ?? null"
+    :content="$shootingBlock['content'] ?? null"
+/>
+
+@if ($category->children->isNotEmpty() && ! $category->is_graduation_albums )
     <section class="py-24" data-aos="fade-up">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 class="font-heading text-2xl font-normal tracking-wide text-white mb-8">Разделы</h2>
@@ -141,7 +208,7 @@
                             @endif
                             <div class="mt-3 flex items-center justify-between">
                                 @if ($service->price_from)
-                                    <span class="text-sm font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                                    <span class="text-sm font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                                 @endif
                                 <span class="text-sm text-[#d4af37] font-semibold uppercase tracking-wider group-hover:opacity-70 transition">Подробнее</span>
                             </div>
@@ -216,7 +283,11 @@
     </section>
 @endif
 
-
+@if ($category->shootingAlbum)
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <x-site.shooting-album :album="$category->shootingAlbum" :display="$category->shooting_album_display" />
+    </div>
+@endif
 
 <section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">

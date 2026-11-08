@@ -4,7 +4,7 @@
 
 | Компонент     | Версия        |
 |---------------|---------------|
-| PHP           | 8.4.24        |
+| PHP           | 8.4.27        |
 | Laravel       | 13.16.1       |
 | MySQL         | 8.x           |
 | Filament      | 4.11.7        |
@@ -40,12 +40,19 @@ app/
 ├── Filesystem/
 │   └── YandexDiskPaginatedAdapter.php    # Листинг Яндекс.Диска с пагинацией (чанки по 100)
 ├── Jobs/
-│   ├── SendInquiryNotifications.php  # Очередь: email + Telegram уведомления
+│   ├── SendInquiryNotifications.php  # Очередь: email + Telegram + MAX уведомления
 │   ├── ProcessMedia.php              # Очередь: обработка Media (metadata + thumbnail)
 │   ├── RegenerateMediaImageCache.php # Очередь: прогрев кэша display/lightbox (media:regenerate-image-cache)
 │   └── ImportAlbumFromYandexDisk.php # Очередь: импорт альбома из папки Яндекс.Диска
 ├── Filament/
 │   ├── Resources/              # Filament ресурсы (CRUD)
+│   │   ├── ArTargets/          # «Оживающие фото» (D1.6): таргет + видео
+│   │   │   ├── ArTargetResource.php
+│   │   │   ├── Pages/          # Create/Edit/List; Concerns/HandlesCompiledTarget —
+│   │   │   │                   #   приём маркера и .mind из браузерного компилятора
+│   │   │   ├── RelationManagers/ContentsRelationManager.php  # загрузка видео MP4
+│   │   │   ├── Schemas/ArTargetForm.php   # поле-компилятор (ViewField)
+│   │   │   └── Tables/ArTargetsTable.php
 │   │   ├── Albums/
 │   │   │   ├── AlbumResource.php
 │   │   │   ├── Pages/
@@ -105,15 +112,20 @@ app/
 │   │   │   └── LoginController.php
 │   │   ├── BlogController.php
 │   │   ├── CabinetController.php
+│   │   ├── CommentController.php        # Создание комментариев (C2.8/C2.9)
 │   │   ├── HomeController.php
 │   │   ├── MediaController.php        # Прокси-отдача оригиналов с удалённых дисков
 │   │   ├── PortfolioController.php
 │   │   ├── ServiceCatalogController.php  # Иерархический каталог услуг (B11)
 │   │   └── VideoController.php
+│   ├── Requests/
+│   │   ├── StoreCommentRequest.php
+│   │   └── StorePhotoCommentRequest.php
 │   └── Middleware/
-├── Models/                     # Eloquent модели (18 шт.)
+├── Models/                     # Eloquent модели (19 шт.)
 │   ├── Album.php
 │   ├── Category.php
+│   ├── Comment.php              # Полиморфные комментарии (C2.8)
 │   ├── FaqItem.php
 │   ├── Icon.php
 │   ├── Inquiry.php
@@ -140,7 +152,9 @@ app/
 │   ├── PageContentService.php    # Кэшируемый сервис получения страниц
 │   ├── ServiceCatalogResolver.php # Разрешение иерархического пути /services (B11)
 │   ├── CategoryTreeService.php    # Дерево категорий услуг для админки (B11): flatten/options/move
-│   └── TelegramNotifier.php      # Отправка через Telegram API
+│   ├── ArTargetFileService.php   # Запись маркера и .mind таргета (D1.6), удаление прежних
+│   ├── TelegramNotifier.php      # Отправка через Telegram API
+│   └── MaxNotifier.php           # Отправка через Bot API MAX (platform-api2.max.ru)
 └── Providers/
     └── Filament/
         └── AdminPanelProvider.php
@@ -154,7 +168,12 @@ resources/views/
 │   └── site.blade.php          # Базовый layout (header, footer, @vite)
 ├── components/site/
 │   ├── album-photos.blade.php # Сетка фото альбома + lightbox (страница альбома и блок в услуге)
+│   ├── ar-teaser.blade.php    # AR-тизер «оживающие фотографии» (страница корневой категории is_graduation_albums)
+│   ├── shooting-album.blade.php # Блок «Фото со съёмок» (card-карточка либо grid через album-photos; используется на страницах услуги и категории)
+│   ├── shooting-works.blade.php # Блок «Фото со съёмок» из избранных behind_the_scenes альбомов (страница корневой категории is_graduation_albums)
+│   ├── graduation-pricing.blade.php # Блок «Стоимость альбомов» (страница корневой категории с флагом is_graduation_albums); в карточке услуги — кнопка «Посмотреть видео» (модалка x-site.video-modal)
 │   ├── breadcrumbs.blade.php     # Переиспользуемые хлебные крошки <x-site.breadcrumbs/>
+│   ├── faq.blade.php             # Блок «Частые вопросы» (страницы услуги и категории услуг; обёртка x-site.home.faq)
 │   ├── header.blade.php          # Шапка (меню, auth-условные ссылки, бургер)
 │   ├── footer.blade.php        # Подвал (контакты, политика)
 │   ├── inquiry-form.blade.php  # Форма заявки
@@ -162,10 +181,21 @@ resources/views/
 │   ├── share-button.blade.php  # Кнопка шаринга
 │   ├── social-links.blade.php  # Иконки соцсетей
 │   ├── video-player.blade.php  # Плеер видео: поворот ±90°, запрет скачивания, кастомные контролы
+│   ├── video-modal.blade.php   # Модальное окно с видео услуги (открывается кнопкой «Посмотреть видео» в graduation-pricing)
 │   └── videos.blade.php        # Блок видео (через x-site.video-player) (через x-site.video-player)
 ├── emails/
 │   └── new-inquiry.blade.php   # Шаблон письма о новой заявке
-├── home.blade.php              # Главная (hero, услуги, портфолио, отзывы, блог, форма)
+│   ├── home/                   # Блоки главной: активные (featured-works, reviews) + сохранённые (услуги, видео, блог, вопросы, о студии, форма заявки)
+│   │   ├── featured-works.blade.php # «Избранные работы» (альбомы портфолио с is_featured)
+│   │   ├── reviews.blade.php # «Отзывы» — фото из альбомов, привязанных к странице `home` (сетка + lightbox)
+│   │   ├── services.blade.php # Категории услуг карточками
+│   │   ├── videos.blade.php   # Видеогалерея (через x-site.videos)
+│   │   ├── testimonials.blade.php # Старый блок отзывов из таблицы `testimonials` (сохранён, на главной не выводится; отдельная страница — позже)
+│   │   ├── blog.blade.php     # Последние статьи
+│   │   ├── faq.blade.php      # Частые вопросы
+│   │   ├── about-studio.blade.php # «О студии» (HTML-текст из Page)
+│   │   └── inquiry.blade.php  # Форма заявки (через x-site.inquiry-form)
+├── home.blade.php              # Главная: Hero (x-site.hero) + соцсети (x-site.social-links) + «Избранные работы» (если страница portfolio помечена show_on_home) + «Отзывы» (фото из альбомов страницы home)
 ├── blog/
 │   ├── index.blade.php         # Список статей (сетка 2 колонки, сайдбар, пагинация)
 │   └── show.blade.php          # Детальная (контент, альбомы-слайдер, форма заявки)
@@ -174,7 +204,7 @@ resources/views/
 │   └── show.blade.php          # Фотоальбом (lightbox, услуги, форма заявки)
 ├── services/
 │   ├── index.blade.php         # Каталог услуг: корневые категории + услуги без категории (B11)
-│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, дети, услуги, альбомы-примеры, видео, форма (B11)
+│   ├── category.blade.php      # Страница категории: title, cover, описание, цена, «Что входит», дети, услуги, альбомы-примеры, видео, форма (B11); для категории с is_graduation_albums описание/цена/«Что входит» не выводятся, вместо них — «Стоимость альбомов» (x-site.graduation-pricing), AR-тизер (x-site.ar-teaser), «Фото со съёмок» (x-site.shooting-works)
 │   └── show.blade.php          # Детальная услуги (items, альбомы-примеры, видео, breadcrumbs, форма); опционально блок фото выбранного альбома
 ├── video/
 │   └── index.blade.php         # Раздел видео (горизонтальные + вертикальные)
@@ -213,6 +243,8 @@ resources/views/
 | GET | `/cabinet` | `CabinetController@index` | `auth` |
 | GET | `/cabinet/projects` | `CabinetController@projects` | `auth` |
 | GET | `/cabinet/projects/{project}` | `CabinetController@show` | `auth` |
+| POST | `/cabinet/projects/{project}/comments` | `CommentController@storeProject` | `auth` |
+| POST | `/cabinet/photos/{photo}/comments` | `CommentController@storePhoto` | `auth` |
 | GET | `/cabinet/albums/{album}` | `CabinetController@showAlbum` (галерея; `AlbumPolicy::view`) | `auth` |
 | GET | `/login` | `Auth\LoginController@create` | `guest` |
 | POST | `/login` | `Auth\LoginController@store` | `guest` |
@@ -257,6 +289,51 @@ resources/views/
 - `@vite()` загружается только при наличии `manifest.json` или `hot` файла
 - Условная загрузка позволяет тестам работать без Vite-билда
 
+## Open Graph и Twitter Card
+
+Единая точка вывода OG/Twitter-мета-тегов — `<head>` базового layout
+`layouts/site.blade.php`. Значения управляются Blade-секциями страниц:
+
+| Секция            | Назначение                                  | Фолбэк                         |
+|-------------------|---------------------------------------------|--------------------------------|
+| `og_title`        | `og:title` / `twitter:title`                | `title`                        |
+| `og_description`  | `og:description` / `twitter:description`    | `meta_description`             |
+| `og_type`         | `og:type`                                   | `website` (`article` — пост)   |
+| `og_url`          | `og:url`                                    | `url()->current()`             |
+| `og_image`        | `og:image` / `twitter:image`                | `web-app-manifest-512x512.png` |
+
+- `og:site_name` — `config('app.name')`, `og:locale` — из `app()->getLocale()`
+  (нормализуется до `ru_RU`), `twitter:card` — `summary_large_image`.
+- Секции читаются через `$__env->yieldContent()` и выводятся «как есть»
+  (аналогично `@yield('title')`): Blade экранирует содержимое секции один раз,
+  повторное `{{ }}` привело бы к двойному экранированию `&` и кавычек.
+- Страницы с изображением задают `og_image` (обложка сущности или медиа первого
+  фото) в display-версии (`Media::getDisplayUrl()`, ≤800px WebP) — легче
+  оригинала и достаточно для превью; при отсутствии изображения (в т.ч. если
+  `getDisplayUrl()` вернул `null` для не-изображения) секция отдаёт пустую
+  строку — layout подставляет брендовое изображение. `@section('og_image', null)`
+  не используется: `null` открывает незакрытую буферизацию секции.
+- Источник данных — существующие `seo_title` / `seo_description`; новых полей
+  БД и моделей нет.
+
+## Канонический адрес и meta description
+
+- В production (`APP_ENV=production`) `AppServiceProvider` вызывает
+  `URL::forceRootUrl(APP_URL)` и `URL::forceScheme()` по схеме `APP_URL`:
+  все абсолютные ссылки (`url()`, `route()`, canonical, `og:url`,
+  `sitemap.xml`, строка `Sitemap:` в `robots.txt`) строятся от основного
+  домена, даже если запрос пришёл по IP или `www`. Иначе `sitemap.xml`,
+  кэшируемый на 24 часа, мог закэшироваться с хостом случайного запроса.
+  Поэтому `APP_URL` на проде обязан быть основным `https://`-доменом.
+- `layouts/site.blade.php` выводит `<link rel="canonical">`: по умолчанию
+  `url()->current()` (без query-параметров), переопределяется секцией
+  `canonical`; `og:url` по умолчанию совпадает с canonical.
+- `meta description` (и `og:description` по умолчанию) нормализуется в
+  layout: HTML-теги удаляются, пробелы и переносы схлопываются, длина
+  ограничивается 160 символами с `…`. Содержимое поля `seo_description`
+  в БД не меняется.
+- Заголовок Hero на главной — единственный `<h1>` страницы.
+
 ## Шапка (Header)
 
 - Пункты меню загружаются из таблицы `pages` через `PageContentService::getMenuItems()`
@@ -288,11 +365,19 @@ resources/views/
 | Метод            | Кэш                  | Назначение                                |
 |------------------|----------------------|-------------------------------------------|
 | `get(slug)`      | `page_content_{slug}` | Опубликованная страница по slug           |
+| `arTeaser()`     | через `page_content_home` | Данные AR-тизера из страницы `home` (`enabled`, `title`, `accent`, `subtitle`, `footer`, `media`) |
 | `getHomeSections`| `pages_home_sections` | Все страницы с show_on_home = true        |
 | `getMenuItems`   | `pages_menu`          | Пункты меню (menu_title ?? title)         |
 | `clearCache(slug?)` | —                  | Сброс кэша (одной страницы или всего)     |
 
 Кэш инвалидируется `PageObserver` при сохранении или удалении страницы.
+
+`arTeaser()` — единственное место, собирающее массив настроек AR-тизера из
+страницы `home`; используется страницей корневой категории выпускных альбомов
+(`ServiceCatalogController::showCategory`). Отсутствие страницы `home` даёт
+`enabled = true` с пустыми текстами — компонент подставляет собственные
+значения по умолчанию. Связь `arTeaserMedia` загружается явно (`loadMissing`),
+чтобы не плодить ленивые запросы.
 
 ## Наблюдатели (`app/Observers/`)
 
@@ -481,6 +566,36 @@ media:check [--fix-thumbnails] [--media-id=ID] [--limit=N]
 - `app/Actions/Media/MediaCheckResult.php` — результат проверки
 - `app/Console/Commands/MediaCheck.php` — Artisan-команда
 
+## Бэкап и перенос базы данных (db:backup / db:restore)
+
+Перенос базы между копиями сайта без сторонних пакетов (в Laravel 13 встроенных
+`db:dump`/`db:restore` нет — остался `schema:dump` без данных). Используются
+штатные бинарники `mysqldump`/`mysql` и файловая копия для SQLite.
+
+```text
+копия А: php artisan db:backup
+    ↓
+storage/app/backups/fotoskazka-2026-09-19_081852.sql.gz  (структура + данные)
+    ↓ (файл копируется на копию Б)
+копия Б: php artisan db:restore [файл]
+```
+
+- `app/Services/DatabaseTransferService.php` — единая логика: `backup()`
+  (дамп → проверка успешности → gzip), `restore()` (полная замена данных целевой
+  БД), `backups()`/`latestBackup()`/`prune()`.
+- MySQL: `mysqldump --no-tablespaces --single-transaction --quick
+  --default-character-set=utf8mb4`; пароль — через env `MYSQL_PWD`
+  (не попадает в `ps`); подключение по `config/database.php`
+  (`unix_socket`/`host`/`port`/`username`/`password`); проверка наличия
+  бинарников через `which`.
+- SQLite: бэкап — копия файла, восстановление — `cat`/`gzip -dc >`.
+- `db:backup` — опции `--database=`, `--path=`, `--no-compress`,
+  `--prune=N` (по умолчанию 7 — хранятся N последних бэкапов, `0` — без очистки).
+- `db:restore` — аргумент `dump` (путь или имя файла из стандартной директории),
+  без аргумента — последний бэкап либо интерактивный выбор; подтверждение перед
+  заменой, `--force` пропускает его.
+- Тесты: `tests/Feature/Console/DatabaseTransferTest.php` (SQLite-путь, 4 теста).
+
 ## Удаление Media — DeleteMedia (`app/Actions/Media/DeleteMedia.php`) — этапы B6/B7
 
 Удаление записи Media не всегда означает удаление оригинального файла.
@@ -651,6 +766,37 @@ Filament-UX (`MediaTable`, `EditMedia`):
 через `Str::slug($state)` при вводе названия. При дубликате добавляется
 числовой суффикс (`-1`, `-2`). Ручное редактирование прекращает автогенерацию.
 
+## FAQ — привязка к услугам и категориям услуг
+
+FAQ-вопрос может быть привязан к нескольким конкретным услугам и нескольким
+категориям услуг одновременно. Используются две обычные many-to-many
+pivot-таблицы с составным первичным ключом и `ON DELETE CASCADE`
+(`faq_item_service`, `category_faq_item`); полиморфная связь не применяется.
+
+- `FaqItem::services()` → `Service` (через `faq_item_service`);
+- `FaqItem::categories()` → `Category` (через `category_faq_item`), выборка
+  ограничена `categories.type = service`, поэтому в FAQ попадают только
+  категории услуг (дерево категорий и `type = post` не затрагиваются);
+- обратные связи: `Service::faqItems()`, `Category::faqItems()`.
+
+В форме Filament (`FaqItemForm`, секция «Привязка к каталогу услуг») — два
+множественных селекта: услуги и категории услуг.
+
+Публичный вывод — переиспользуемый компонент `x-site.faq`
+(`resources/views/components/site/faq.blade.php`):
+
+- страница услуги `/services/...` выводит FAQ, привязанные к этой услуге
+  (`ServiceCatalogController::showService`, eager load `faqItems`);
+- страница категории услуг `/services/...` — FAQ, привязанные к этой категории
+  (`ServiceCatalogController::showCategory`);
+- показываются только активные вопросы (`is_active = true`), порядок —
+  `sort_order`; привязки родительских категорий и связь «услуга ↔ категория» не
+  наследуются — выводится только то, что привязано непосредственно к сущности;
+- пустой набор вопросов блок не рендерит.
+
+Сохранённый блок главной `x-site.home.faq` оставлен как обёртка над `x-site.faq`
+(разметка FAQ не дублируется).
+
 ## Система ролей и доступа
 
 ### Модель доступа
@@ -752,6 +898,37 @@ Filament-UX (`MediaTable`, `EditMedia`):
   для client/class_manager в массовых проверках см. выше). Вызывающий код
   должен корректно подготавливать связь `photo->album` (и `album->project`);
 - Подключение стандартное — авто-дискавери Laravel (`App\Policies\{Model}Policy`).
+
+### Policy для комментариев (C2.8 / C2.9)
+
+`app/Policies/CommentPolicy.php` — право комментировать объект равно праву его
+видеть. Ролевая матрица **не дублируется**: единственный метод `create` целиком
+делегирован `$user->can('view', $commentable)` → `ProjectPolicy::view`
+(для Project) / `PhotoPolicy::view` (для Photo, C2.9 — наследует AlbumPolicy):
+
+- `client` / `class_manager` — комментируют собственный Project;
+- `photographer` / `admin` — полный доступ (как право `view`);
+- `parent` — права на Project не имеет, поэтому комментарии к Project **не
+  оставляет** (`403`), даже если в проекте есть назначенный ему через
+  `album_user` альбом. `ProjectPolicy` намеренно не расширялся: канал
+  `parent → album` (C1) действует только на альбом и не даёт доступа к проекту
+  (C2.5), а комментирование проекта по отдельному правилу создало бы
+  неконсистентную матрицу.
+- Комментарии к **Photo** (C2.9): `CommentPolicy::create` → `PhotoPolicy::view`
+  → `AlbumPolicy::view`. `parent` комментирует фото внутри назначенного
+  `client`-альбома; `client` — фото своих проектов (любой тип альбома);
+  `class_manager` — фото `client`-альбомов своего проекта.
+- Комментарии выводятся на странице проекта (`cabinet.project`) и в галерее
+  альбома (`cabinet.album`), отсортированы по `created_at` ASC, `body`
+  рендерится с корректным escaping (`{{ }}` / `{!! nl2br(e($body)) !!}`),
+  автор сохраняется из сессии.
+- IDOR закрыт двумя уровнями: маршрут авторизует
+  `$user->can('create', [Comment::class, $project|$photo])` до валидации;
+  ID фото (комментарии фото) берётся только из URL-привязки, `photo_id` формы
+  игнорируется.
+- N+1: страница проекта грузит `comments.user` одним eager load; галерея альбома
+  — `comments.user` (+ `album.project` для policy), один gate-проверка на
+  страницу (доступ по альбому однороден).
 
 ### Защита системных ролей
 
@@ -942,22 +1119,44 @@ storage/app/public/
 ### Плеер видео: поворот ±90° и запрет скачивания
 
 - **Роут `GET /video/{video}/stream`** — сырой поток загруженного видео через
-  `VideoController@stream` (StreamedResponse, диск `filesystems.default_media_disk`).
+  `VideoController@stream` (диск `filesystems.default_media_disk`).
   Заголовки: `Content-Type: video/mp4`, `Content-Disposition: inline`,
   `Cache-Control: private, max-age=86400, immutable`, `X-Content-Type-Options: nosniff`,
   `Accept-Ranges: bytes`, `ETag`. 404 при отсутствии `file_path`/файла.
+- **Две ветки отдачи** (контроллер не вызывает `$disk->path()`, работает через
+  Laravel Filesystem):
+  - **nginx X-Accel-Redirect** — при `filesystems.video_x_accel = true`
+    (`VIDEO_X_ACCEL`, в Docker-проде включён) и **локальном** диске
+    (адаптер `LocalFilesystemAdapter`). PHP проверяет запись и наличие файла и
+    отвечает пустым телом с `X-Accel-Redirect: /protected-videos/<file_path>`
+    (сегменты пути `rawurlencode`, префикс — `filesystems.video_x_accel_location`)
+    и заголовками `Content-Type`/`Content-Disposition`/`Cache-Control`.
+    Файл, `Range` (206), `If-Range`, `ETag`/`If-None-Match` (304) и
+    `Accept-Ranges` обслуживает nginx: internal location `^~ /protected-videos/`
+    с `alias` на `storage/app/public/` (корень диска `public`) в обоих
+    server-блоках `docker/nginx/generate-config.sh`, `X-Content-Type-Options`
+    добавляет сам location. php-fpm воркер освобождается сразу — при
+    `pm.max_children = 4` несколько одновременных просмотров больше не
+    блокируют сайт. Прямой запрос к `/protected-videos/...` → 404 (`internal`).
+    Если `MEDIA_DISK` сменится на другой локальный диск, `alias` нужно
+    направить на его корень.
+  - **PHP-стрим (запасная ветка)** — флаг выключен (локальная разработка,
+    `php artisan serve`) или диск нелокальный. Размер — `$disk->size()`,
+    чтение — `$disk->readStream()`; seekable-поток позиционируется `fseek`,
+    поток без перемотки (удалённый диск) — пропуском байтов до начала диапазона.
+    ETag — `md5(file_path:size)`.
 - **Кэширование браузером**: `private max-age` позволяет хранить видео в
   кэше конкретного браузера (недоступно для CDN/прокси/промежуточных узлов);
   ETag + `If-None-Match` дают дешёвую ревалидацию (304). File не перезаписывается
   по содержимому, поэтому `immutable` оправдан.
-- **Поддержка HTTP Range (206 Partial Content)** для мгновенного старта
-  воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
+- **Поддержка HTTP Range (206 Partial Content)** в PHP-ветке для мгновенного
+  старта воспроизведения HTML5 `<video>` без ожидания всего файла (~41 МБ):
   одиночные `bytes=start-end`, открытые (`bytes=n-`), суффиксные (`bytes=-n`)
-  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`) диапазоны;
+  и множественные (`bytes=a-b,c-d` → `multipart/byteranges`, не более
+  `MAX_RANGES = 5` частей, иначе заголовок `Range` игнорируется) диапазоны;
   `If-None-Match` → `304`, неудовлетворимый диапазон → `416` с
-  `Content-Range: bytes */size`. Стрим читается локально
-  (`fopen` + `fseek`/`fread` чанками 8 КБ), между запросами полнотелого 200 и
-  сегмента 206 выставляются `Content-Length`/`Content-Range`.
+  `Content-Range: bytes */size`. Поток читается чанками 8 КБ, между запросами
+  полнотелого 200 и сегмента 206 выставляются `Content-Length`/`Content-Range`.
 - **`Video::source_url`** указывает на `video.stream` (прокси вместо `Storage::url`),
   чтобы не публиковать реальный путь файла напрямую.
 - **Компонент `x-site.video-player`** (`resources/views/components/site/video-player.blade.php`)
@@ -1068,7 +1267,7 @@ storage/app/public/
 
 ## База данных
 
-См. `database.md` — 18 бизнес-таблиц + 8 pivot-таблиц + служебные.
+См. `database.md` — 19 бизнес-таблиц + 8 pivot-таблиц + служебные.
 
 ### Pivot-таблицы
 - `service_service_item` — услуги ↔ пункты (с полями `is_included`, `sort_order`)
@@ -1161,8 +1360,10 @@ Category
 - `Category::catalogPath()` — иерархический slug-путь категории (`parent/sub`);
 - `Service::catalogPath()` — полный путь услуги с категориями (`parent/sub/service`),
   для услуги без категории — просто slug;
+- `Category::loadAncestorChains()` — пакетная загрузка цепочки предков любой
+  глубины перед вызовом `catalogPath()` для коллекции категорий (главная);
 - шаблоны строят ссылки через `route('services.show', $model->catalogPath())`;
-  единственное необходимое поле у `Service` для генерation — `category_id`
+  единственное необходимое поле у `Service` для генерации — `category_id`
   (добавлено в выборку `HomeController` и `ServiceCatalogController`).
 
 Страница категории (`services/category.blade.php`):
@@ -1212,6 +1413,88 @@ SEO (seo_title / seo_description, фоллбэк на Page services)
 
 Компонент `<x-site.album-photos>` расположил разметку сетки + lightbox и JS
 в одном месте, устранив дублирование со страницей альбома.
+
+### Блок «Фото со съёмок» на страницах услуги и категории
+
+Каждая из моделей `Service` / `Category` (B12) несёт привязку одного альбома
+`shooting_album_id` (BelongsTo → `albums`, `ON DELETE SET NULL`) и настройку
+`shooting_album_display` (`card` по умолчанию | `grid`; enum
+`App\Enums\ShootingAlbumDisplay`, trait `HasShootingAlbumDisplay` сбрасывает
+значение к `card`, если альбом не выбран).
+
+Публичный рендеринг — единый переиспользуемый компонент
+`<x-site.shooting-album :album="…" :display="…" />`:
+
+- блок выводится только если `shootingAlbum` загружен — т.е. альбом выбран
+  (`shooting_album_id` заполнен), существует и опубликован (`is_published = true`);
+  удалённый или неопубликованный альбом скрывает блок автоматически;
+- `card` — компактная карточка (обложка через `media.thumbnail` / плейсхолдер,
+  название, краткое описание при наличии), ссылка ведёт на
+  `route('portfolio.show', $album->slug)`;
+- `grid` — фотографии альбома прямо на странице через
+  `<x-site.album-photos :album="$album" />` (сетка + lightbox), ссылка-карточка
+  на альбом не выводится;
+- контроллер (`ServiceCatalogController::showService` / `showCategory`) грузит
+  `shootingAlbum` с `where('is_published', true)` и **без лишних данных**:
+  для `card` — только обложку, для `grid` — `photos.media`;
+- расположение — после блока видео («Видео»), при его отсутствии — после
+  основного контента страницы (в `services/show.blade.php` блок идёт сразу
+  после `<x-site.videos>`, в `services/category.blade.php` — после секции видео
+  перед формой заявки).
+
+### Блок «Фото со съёмок» на странице выпускных альбомов
+
+`ServiceCatalogController::showCategory()` для категории с флагом
+`is_graduation_albums` выводит опубликованные альбомы `type = 'behind_the_scenes'`
+с `is_featured = true` и `is_published = true` переменной `$shootingWorks`,
+отсортированные по `sort_order`, с eager load `cover` одним IN-запросом (без N+1).
+Разметка вынесена в переиспользуемый компонент
+`<x-site.shooting-works :albums="…" :title="…" :subtitle="…" :content="…" />`
+(обложка через `cover->getThumbnailUrl()` либо плейсхолдер, название, описание
+при наличии, ссылка ведёт на `route('portfolio.show')`). Компонент выводится
+**только** при непустом `$shootingWorks` — пустые блоки не создаются.
+
+Тексты блока — цепочка фоллбэка из страницы `shooting`
+(`home_title ?: title ?: 'Фото со съёмок'`, аналогично подзаголовок; контент —
+plain-text из `home_content ?: content`), по тому же принципу, что и тексты
+блока «Стоимость альбомов».
+
+Блок «Избранные работы» на главной не зависит от этого перечисления и по
+прежнему фильтрует `type = 'portfolio'`, поэтому `behind_the_scenes` туда
+не попадают. Схема БД не изменялась (используются существующие `albums.type`,
+`is_featured`, `is_published`, `sort_order`).
+
+Этот блок — отдельный от `<x-site.shooting-album>`: последний отвечает за один
+явно привязанный альбом (`shooting_album_id`) и остаётся на страницах услуги и
+категории, `shooting-works` — за подборку избранных `behind_the_scenes` альбомов
+на странице выпускных альбомов. Блок с главной страницы перенесён, а не
+продублирован: разметка переехала в компонент и на главной больше не
+выводится.
+
+### Специальная страница категории «Выпускные альбомы»
+
+Корневая категория каталога услуг с флагом `categories.is_graduation_albums = true`
+рендерится тем же шаблоном `services/category.blade.php`, но с особым составом
+(`ServiceCatalogController::showCategory`, ветка `$isGraduation`):
+
+```text
+[Стоимость альбомов]              x-site.graduation-pricing
+        ↓
+[AR-тизер «Оживающие фотографии»] x-site.ar-teaser
+        ↓
+[Фото со съёмок]                  x-site.shooting-works
+```
+
+- описание категории, `price_from`/`price_note` и блок «Что входит» для такой
+  категории не выводятся — их заменяет блок «Стоимость альбомов»;
+- данные всех трёх блоков грузятся в `showCategory()` (для обычных категорий —
+  пустые коллекции и `$arTeaser = ['enabled' => false]`), второй реализации
+  блоков нет: разметка вынесена в переиспользуемые Blade-компоненты;
+- тексты берутся из страниц: «Стоимость альбомов» — `graduation-albums`,
+  AR-тизер — настройки страницы `home` (`PageContentService::arTeaser()`),
+  «Фото со съёмок» — страница `shooting`; `ar_price` — у страницы `home`;
+- блоки AR-тизера и «Фото со съёмок» перенесены с главной страницы, а не
+  продублированы: на `/` их нет.
 
 Хлебные крошки — переиспользуемый компонент `<x-site.breadcrumbs :items="…" />`,
 принимающий массив `['label' => …, 'url' => …]`; последний элемент без `url`
@@ -1282,12 +1565,77 @@ Filament-дерево категорий — следующая часть эт�
 - Воркер держит код в памяти: после обновления кода обязателен
   `php artisan queue:restart`, иначе Job'ы выполняются старой версией классов
 
+### Docker-развёртывание
+
+Прод-развёртывание выполняется через Docker Compose (не зависит от версии PHP
+на хосте — на сервере может стоять PHP 7.4):
+
+- `docker/php/Dockerfile` — образ `php:8.4.27-fpm-trixie` с обновлением
+  security-пакетов Debian (`apt-get upgrade`) и расширениями
+  `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip` (GD собран с
+  поддержкой WebP/JPEG/FreeType — нужно для `MediaProcessor`);
+- `docker-compose.yml` — сервисы `app` (php-fpm), `web` (nginx),
+  `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler` (`schedule:work`);
+- код проекта подключается bind-mount'ом (`./:/var/www/html`), `vendor`
+  и `public/build` ставятся/собираются внутри контейнеров;
+- настройки приложения — `.env` (шаблон `.env.docker.example`), `DB_HOST=db`;
+- `docker/php/entrypoint.sh` при старте готовит каталоги `storage`, создаёт
+  symlink `public/storage`, а для сервиса `app` (`RUN_SETUP=true`) выполняет
+  `migrate --force` и `optimize`;
+- кэш `public/build` собирается через сервис `node` (`docker compose run --rm node`);
+- `docker/nginx/generate-config.sh` генерирует конфиг nginx при старте: HTTP-блок
+  (отдача `public/`, ACME-challenge, fastcgi на `app:9000`) и HTTPS-блок (443),
+  если найден сертификат `/etc/letsencrypt/live/${DOMAIN}/fullchain.pem`;
+  индекс каталога — `index.php index.html` (статический `/webar/`); файлы
+  таргетов WebAR `*.mind` отдаются со сжатием gzip, в том числе на запросы
+  через CDN (`gzip_proxied any`). Скрипт смонтирован томом, поэтому после
+  его изменения нужен `docker compose restart web`;
+- HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
+  монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
+  deploy-hook `docker compose exec -T web nginx -s reload`;
+- после деплоя нового кода нужно перезапустить контейнеры (`docker compose up -d --build`),
+  т.к. `opcache.validate_timestamps=0`.
+
 ## Ключевые решения
 
 ### Album.type (вместо отдельных таблиц)
 Введено поле `type` (VARCHAR 20) вместо создания отдельных таблиц
 для портфолио, клиентских галерей, слайдеров и т.д.
 Простое и гибкое решение без избыточной нормализации.
+
+### «Оживающие фотографии» (WebAR, этап D1) — собственная реализация на MindAR
+Решение контрольной точки D1.5 (2026-10-27). Подробная схема —
+`docs/AR-ARCHITECTURE-D1.4.md`; таблицы появятся на D1.6 (в `database.md` —
+после создания миграций).
+- Трекинг — MindAR 1.2.5 (MIT, self-hosted, без облака); в данных — только
+  `tracker`/`tracker_version`, поэтому трекер можно заменить, пересобрав
+  таргеты из хранимого маркера.
+- Сущности `ar_targets` → `ar_contents` (видео в строке) → `ar_events`;
+  связи с `projects`/`photos`/`users` — `SET NULL`: удаление альбома или
+  фото не трогает AR. Таблицы `media` и `videos` для AR не используются.
+- Публичная ссылка `/ar/{token}` (12 символов base62, не меняется при
+  правках) и QR-код для печати рядом с фото; одна ссылка — одно фото.
+- Файлы — отдельный диск Laravel Filesystem `ar` (MVP — локальный, затем
+  S3), своя копия маркера; хранение без срока, пока оплачено хранилище.
+- Таргет `.mind` компилируется в браузере в форме Filament (7–10 с):
+  поле `resources/views/filament/forms/components/ar-marker-compiler.blade.php`
+  + Alpine-компонент `public/js/ar/ar-marker-compiler.js` (загружается
+  `x-load`), компилятор — self-hosted `public/vendor/mindar/1.2.5/`. Маркер
+  (JPEG ≤ 1600 px) и `.mind` уходят во временные загрузки Livewire
+  (`data.marker_upload`, `data.mind_upload`), страница проверяет их и
+  передаёт `ArTargetFileService`. Имена файлов уникальны на каждую
+  компиляцию (кэш CDN), прежние удаляются.
+- Видео со звуком: звук включается жестом «Старт» или кнопкой.
+- Публичная страница `GET /ar/{token}` (`ArPageController`, `throttle:60,1`,
+  `X-Robots-Tag: noindex, nofollow`): 404 — неизвестный токен, 410 —
+  выключенная ссылка, «Видео ещё не загружено» — нет `.mind` или активного
+  видео. Шаблоны `resources/views/ar/{layout,show,unavailable}.blade.php`
+  (свой лёгкий layout без `@vite`), конфиг таргета — JSON в
+  `<script id="ar-config">`, просмотрщик `public/js/ar/ar-viewer.js`
+  (MindAR из `public/vendor/mindar/1.2.5/`, предзагрузка `.mind`, видео
+  на плоскости по пропорциям маркера, пауза при потере фото, звук).
+- Проверка на iPhone отложена до D1.9 (решение владельца).
+- Прототип и замеры — `prototypes/webar` (копия `public/webar`).
 
 ### MediaObserver + ProcessMedia Job вместо логики в Observer
 Обработка Media централизована в `MediaProcessor` (metadata, размеры, WebP-превью).
@@ -1318,12 +1666,65 @@ Slug генерируется уникальным сразу (base + `-N`), в�
 Контент блоков (услуги, альбомы, статьи, отзывы) продолжает загружаться
 из соответствующих моделей.
 
+### Главная: Hero, соцсети, «Избранные работы» и «Отзывы»
+`home.blade.php` выводит четыре блока: первый экран (`x-site.hero`), блок соцсетей
+(`x-site.social-links`), «Избранные работы» (`x-site.home.featured-works`) и
+«Отзывы» (`x-site.home.reviews`).
+Остальные блоки (услуги, видео, блог, вопросы, «О студии», форма заявки)
+в разметке главной не выводятся, но компоненты `x-site.home.*` и методы
+`HomeContentService` сохранены — чтобы вернуть блок, достаточно вызвать нужный
+метод в `HomeController` и добавить компонент в `home.blade.php`.
+Старый блок `x-site.home.testimonials` (данные из таблицы `testimonials`)
+тоже сохранён, но на главной не выводится: секция «Отзывы» показывает
+фото-скриншоты из альбомов, привязанных к странице `home`.
+
+Кнопки первого экрана берутся из самих сущностей: опубликованные категории
+(`categories.type = service`, любой уровень вложенности) и опубликованные услуги
+с `show_on_home = true`. Новая таблица или сущность не создавалась — флаг
+переиспользует существующий паттерн `show_on_home` (страницы, видео). Ссылки
+строятся существующими `catalogPath()`, порядок: `sort_order` ASC → категории
+раньше услуг → название без учёта регистра.
+
+Отдельная кнопка заявки в Hero удалена: заявка отправляется через модальное окно
+из шапки (`x-site.inquiry-modal`), которое остаётся на всех страницах.
+
+Блок «Избранные работы» управляется страницей `portfolio`: если у неё снят
+флаг `Pages → Отображать на главной`, блок не выводится (`featuredWorks()`
+возвращает `null`). Тексты блока (заголовок, подзаголовок, описание) берутся из
+`home_title` / `home_subtitle` / `home_content` страницы с обычным фоллбэком
+на `title` / `subtitle` / `content` (`HomeContentService::blockText()`).
+
+Данные соцсетей запрашиваются в `HomeContentService::socialLinks()`, а не берутся
+из `ViewComposerServiceProvider`: composer раздаёт переменные один раз при старте
+приложения, поэтому правки из админки не попадали бы на сайт до перезапуска.
+
+### Загрузка данных главной без N+1
+`HomeController` запрашивает только то, что выводит текущая главная: фон Hero,
+кнопки Hero, соцсети, «Избранные работы» и страницу `home` для SEO-заголовков.
+Методы отключённых блоков в `HomeContentService` остаются, но не вызываются.
+
+Цепочка предков для кнопок Hero дочитывается целиком одним запросом на уровень
+через `Category::loadAncestorChains()` — фиксированной глубины eager loading
+(`with('parent.parent.parent')`) недостаточно, так как дерево категорий
+не ограничено по глубине, а `catalogPath()` обходит всю цепочку до корня.
+Связи между кнопками Hero и флагом `Page.show_on_home` нет: страницы управляют
+только блоком «Избранные работы».
+
+Фон Hero (`heroImages()`) берётся из первой фотографии альбома типа `homepage`:
+компонент `x-site.hero` использует только первое изображение, поэтому
+загружается одна строка `photos` и одна строка `media`, а не все фотографии
+альбома.
+
 ### Контекстная админская форма Page
 `Page` остаётся единой моделью CMS, но `PageForm` контекстно разделяет
 настройки главной страницы (`slug = home`) и обычных страниц.
 Общие поля: `title`, `menu_title`, `slug` (locked для системных slug).
-Для `home`: секции «Главная страница» и «Оживающие фотографии».
-Для остальных: «Заголовок страницы», «Альбомы», «SEO».
+Для `home`: секции «Главная страница» и «Оживающие фотографии»
+(`ar_teaser_*`, `ar_price`). Для остальных: «Заголовок страницы», «Альбомы», «SEO».
+
+Секция «Оживающие фотографии» по-прежнему редактируется у страницы `home` —
+это единый источник настроек AR-тизера, — но сам блок выводится на странице
+корневой категории выпускных альбомов, а не на главной.
 
 ## Правила разработки
 

@@ -13,6 +13,9 @@ class NotificationSetting extends Model
         'telegram_enabled',
         'telegram_bot_token',
         'telegram_chat_id',
+        'max_enabled',
+        'max_bot_token',
+        'max_chat_id',
     ];
 
     protected function casts(): array
@@ -20,6 +23,7 @@ class NotificationSetting extends Model
         return [
             'email_enabled' => 'boolean',
             'telegram_enabled' => 'boolean',
+            'max_enabled' => 'boolean',
             'email_recipients' => 'array',
         ];
     }

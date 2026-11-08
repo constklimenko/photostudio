@@ -15,6 +15,11 @@
         <p class="mt-3 text-gray-400 max-w-2xl mx-auto">
             {{ $page?->subtitle ?: 'Профессиональная фотосъёмка для любых событий. Выберите подходящий формат.' }}
         </p>
+        @if (filled($page?->content))
+            <div class="mt-6 max-w-3xl mx-auto text-left text-sm text-gray-400 leading-relaxed [&_a]:text-[#d4af37] [&_p]:mb-4">
+                {!! $page->content !!}
+            </div>
+        @endif
     </div>
 </section>
 
@@ -102,7 +107,7 @@
 
                             <div class="mt-6 flex items-center gap-6">
                                 @if ($service->price_from)
-                                    <span class="text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
+                                    <span class="text-2xl font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</span>
                                 @endif
                                 <a href="{{ route('services.show', $service->catalogPath()) }}"
                                    class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">

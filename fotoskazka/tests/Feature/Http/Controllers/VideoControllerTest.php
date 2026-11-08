@@ -4,9 +4,12 @@ namespace Tests\Feature\Http\Controllers;
 
 use App\Models\Page;
 use App\Models\Video;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\FilesystemAdapter as FlysystemAdapter;
+use Mockery;
 use Tests\TestCase;
 
 class VideoControllerTest extends TestCase
@@ -238,6 +241,137 @@ class VideoControllerTest extends TestCase
         $this->assertStringContainsString('bytes 7-8/10', $response->streamedContent());
         $this->assertStringContainsString('23', $response->streamedContent());
         $this->assertStringContainsString('78', $response->streamedContent());
+    }
+
+    public function test_stream_route_ignores_range_with_too_many_parts(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $range = 'bytes='.implode(',', array_fill(0, 100, '0-'));
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => $range]);
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Length', '10');
+        $this->assertSame('0123456789', $response->streamedContent());
+    }
+
+    public function test_stream_route_without_x_accel_streams_through_php(): void
+    {
+        config(['filesystems.video_x_accel' => false]);
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id));
+
+        $response->assertStatus(200);
+        $response->assertHeaderMissing('X-Accel-Redirect');
+        $this->assertSame('0123456789', $response->streamedContent());
+    }
+
+    public function test_stream_route_with_x_accel_delegates_file_to_nginx(): void
+    {
+        config(['filesystems.video_x_accel' => true]);
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/my clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/my clip.mp4',
+            'url' => '',
+        ]);
+
+        $response = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=2-5']);
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-Accel-Redirect', '/protected-videos/videos/my%20clip.mp4');
+        $response->assertHeader('Content-Type', 'video/mp4');
+        $response->assertHeader('Content-Disposition', 'inline; filename="my clip.mp4"');
+        $response->assertHeaderContains('Cache-Control', 'private');
+        $response->assertHeaderMissing('Content-Range');
+        $this->assertSame('', $response->getContent());
+    }
+
+    public function test_stream_route_with_x_accel_uses_configured_location(): void
+    {
+        config([
+            'filesystems.video_x_accel' => true,
+            'filesystems.video_x_accel_location' => '/internal-media',
+        ]);
+        Storage::fake('public');
+        Storage::disk('public')->put('videos/clip.mp4', '0123456789');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $this->get(route('video.stream', $video->id))
+            ->assertHeader('X-Accel-Redirect', '/internal-media/videos/clip.mp4');
+    }
+
+    public function test_stream_route_with_x_accel_returns_404_for_missing_file(): void
+    {
+        config(['filesystems.video_x_accel' => true]);
+        Storage::fake('public');
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/missing.mp4',
+            'url' => '',
+        ]);
+
+        $this->get(route('video.stream', $video->id))
+            ->assertStatus(404)
+            ->assertHeaderMissing('X-Accel-Redirect');
+    }
+
+    public function test_stream_route_streams_remote_disk_without_local_path(): void
+    {
+        config(['filesystems.video_x_accel' => true]);
+
+        $disk = $this->mockRemoteDisk(fn () => popen('printf 0123456789', 'r'));
+
+        Storage::shouldReceive('disk')->andReturn($disk);
+
+        $video = Video::factory()->create([
+            'file_path' => 'videos/clip.mp4',
+            'url' => '',
+        ]);
+
+        $full = $this->get(route('video.stream', $video->id));
+
+        $full->assertStatus(200);
+        $full->assertHeaderMissing('X-Accel-Redirect');
+        $full->assertHeader('Content-Length', '10');
+        $this->assertSame('0123456789', $full->streamedContent());
+
+        $partial = $this->get(route('video.stream', $video->id), ['Range' => 'bytes=6-8']);
+
+        $partial->assertStatus(206);
+        $partial->assertHeader('Content-Range', 'bytes 6-8/10');
+        $this->assertSame('678', $partial->streamedContent());
+    }
+
+    protected function mockRemoteDisk(callable $openStream): FilesystemAdapter
+    {
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('exists')->with('videos/clip.mp4')->andReturn(true);
+        $disk->shouldReceive('getAdapter')->andReturn(Mockery::mock(FlysystemAdapter::class));
+        $disk->shouldReceive('size')->with('videos/clip.mp4')->andReturn(10);
+        $disk->shouldReceive('readStream')->with('videos/clip.mp4')->andReturnUsing($openStream);
+        $disk->shouldNotReceive('path');
+
+        return $disk;
     }
 
     public function test_stream_route_returns_unsatisfiable_range(): void

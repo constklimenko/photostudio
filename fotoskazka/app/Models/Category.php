@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\ShootingAlbumDisplay;
+use App\Models\Concerns\HasShootingAlbumDisplay;
+use App\Observers\SitemapCacheObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,9 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
+#[ObservedBy(SitemapCacheObserver::class)]
 class Category extends Model
 {
     use HasFactory;
+    use HasShootingAlbumDisplay;
 
     protected $fillable = [
         'parent_id',
@@ -26,19 +32,26 @@ class Category extends Model
         'seo_title',
         'seo_description',
         'is_published',
+        'is_graduation_albums',
+        'show_on_home',
         'sort_order',
         'show_album_photos',
         'featured_album_id',
         'cta_album_id',
         'cta_button_text',
+        'shooting_album_id',
+        'shooting_album_display',
     ];
 
     protected function casts(): array
     {
         return [
             'is_published' => 'boolean',
+            'is_graduation_albums' => 'boolean',
+            'show_on_home' => 'boolean',
             'show_album_photos' => 'boolean',
             'price_from' => 'decimal:2',
+            'shooting_album_display' => ShootingAlbumDisplay::class,
         ];
     }
 
@@ -80,6 +93,11 @@ class Category extends Model
             ->orderByPivot('sort_order');
     }
 
+    public function faqItems(): BelongsToMany
+    {
+        return $this->belongsToMany(FaqItem::class, 'category_faq_item');
+    }
+
     public function albums(): BelongsToMany
     {
         return $this->belongsToMany(Album::class, 'category_album');
@@ -93,6 +111,11 @@ class Category extends Model
     public function ctaAlbum(): BelongsTo
     {
         return $this->belongsTo(Album::class, 'cta_album_id');
+    }
+
+    public function shootingAlbum(): BelongsTo
+    {
+        return $this->belongsTo(Album::class, 'shooting_album_id');
     }
 
     /**
@@ -136,10 +159,87 @@ class Category extends Model
     /**
      * Иерархический slug-путь для URL каталога: "родитель/подкатегория".
      * Для корневой категории — просто её slug.
+     *
+     * Требует загруженной цепочки предков: либо `with('parent.…')`,
+     * либо `Category::loadAncestorChains()` для дерева любой глубины.
      */
     public function catalogPath(): string
     {
         return collect($this->path(true))->pluck('slug')->implode('/');
+    }
+
+    /**
+     * Загрузить цепочки предков указанных категорий целиком, без ограничения
+     * глубины: каждый уровень дочитывается одним запросом на все категории
+     * сразу, поэтому `catalogPath()` не порождает N+1 в глубоком дереве.
+     *
+     * Из моделей выбираются только поля, нужные для построения пути.
+     */
+    public static function loadAncestorChains(iterable $categories): void
+    {
+        $instances = [];
+        $byId = [];
+
+        foreach ($categories as $category) {
+            if (! $category instanceof self) {
+                continue;
+            }
+
+            $instances[spl_object_id($category)] = $category;
+            $byId[(int) $category->getKey()] ??= $category;
+        }
+
+        $requested = [];
+
+        while (true) {
+            $missing = [];
+
+            foreach ($byId as $parentId => $category) {
+                $candidate = $category->parent_id;
+
+                if ($candidate === null) {
+                    continue;
+                }
+
+                $candidate = (int) $candidate;
+
+                if (isset($byId[$candidate]) || isset($requested[$candidate])) {
+                    continue;
+                }
+
+                $missing[$candidate] = true;
+            }
+
+            if ($missing === []) {
+                break;
+            }
+
+            $requested += $missing;
+
+            $parents = self::query()
+                ->whereIn('id', array_keys($missing))
+                ->get(['id', 'parent_id', 'slug']);
+
+            foreach ($parents as $parent) {
+                $id = (int) $parent->getKey();
+
+                if (isset($byId[$id])) {
+                    continue;
+                }
+
+                $byId[$id] = $parent;
+                $instances[spl_object_id($parent)] = $parent;
+            }
+        }
+
+        foreach ($instances as $category) {
+            $parentId = $category->parent_id;
+
+            $category->setRelation(
+                'parent',
+                $parentId === null ? null : ($byId[(int) $parentId] ?? null),
+            );
+        }
     }
 
     /**

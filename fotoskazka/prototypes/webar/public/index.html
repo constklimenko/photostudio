@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>WebAR prototype — Фотосказка D1.3</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css?v=20261025-2">
+</head>
+<body>
+
+  <div id="app">
+    <div id="ar-container"></div>
+
+    <div id="hud">
+      <div class="hud-top">
+        <div class="title">WebAR prototype <span class="dim">· D1.3 · MindAR</span></div>
+        <div id="camera-state" class="pill">camera: —</div>
+      </div>
+
+      <div id="status" class="status">Нажмите «Старт». Кадр камеры транслируется на всю страницу; поверх распознанной <b>sample-photo</b> запускается видео.</div>
+
+      <div class="hud-row">
+        <span class="pill">таргет:</span>
+        <a class="btn" data-target="sample" href="?t=sample">образец</a>
+        <a class="btn" data-target="class" href="?t=class">фото класса</a>
+      </div>
+
+      <div class="hud-row">
+        <button id="btn-start" class="btn primary">Старт</button>
+        <button id="btn-stop" class="btn" disabled>Стоп</button>
+        <button id="btn-grid" class="btn">Сетка совмещения</button>
+      </div>
+
+      <div class="hud-row">
+        <span id="target-state" class="pill target">target: —</span>
+        <span id="hold" class="pill hold">удержание: —</span>
+      </div>
+      <div id="measurements-wrap" class="hud-row">
+        <span class="pill">удержания за сессию: </span><span id="measurements" class="pill dim"></span>
+      </div>
+
+      <details id="logwrap">
+        <summary>Журнал событий (удержание ≥ 5 сек = критерий D1.2)</summary>
+        <ol id="log"></ol>
+      </details>
+
+      <div class="note">
+        Изображение с камеры передаётся полностью; поверх распознанного таргета
+        проигрывается видео (без звука), при потере таргета — пауза. Требуется HTTPS и обычный браузер (Safari /
+        Chrome). Если открыто в Instagram/VK/Telegram — нажмите «открыть в
+        браузере». Камера запрашивается только по жесту (кнопка «Старт»).
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/renderers/CSS3DRenderer.js": "./vendor/three-addons/renderers/CSS3DRenderer.js"
+      }
+    }
+  </script>
+  <script type="module" src="./app.js?v=20261027"></script>
+</body>
+</html>

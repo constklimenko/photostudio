@@ -60,10 +60,18 @@ erDiagram
     CATEGORIES ||--o{ POSTS : categorizes
     CATEGORIES }o--o{ CATEGORIES : parent_child
 
+    FAQ_ITEMS }o--o{ SERVICES : describes
+    FAQ_ITEMS }o--o{ CATEGORIES : grouped_in
+
     PROJECTS ||--o{ ALBUMS : contains
     PROJECTS ||--o| INQUIRIES : source
     ALBUMS ||--o{ PHOTOS : contains
     ALBUMS }o--o{ VIDEOS : contains
+
+    USERS ||--o{ COMMENTS : author
+
+    PROJECTS ||--o{ COMMENTS : commented
+    PHOTOS ||--o{ COMMENTS : commented
 
     MEDIA ||--o{ PHOTOS : source
 
@@ -77,6 +85,11 @@ erDiagram
     SERVICES ||--o{ SERVICE_ITEMS : includes
 
     ICONS ||--o{ SERVICE_ITEMS : decorates
+
+    PROJECTS ||--o{ AR_TARGETS : groups
+    PHOTOS ||--o{ AR_TARGETS : source
+    USERS ||--o{ AR_TARGETS : created_by
+    AR_TARGETS ||--o{ AR_CONTENTS : shows
 
 ```
 
@@ -433,6 +446,64 @@ video_id -> videos.id ON DELETE CASCADE
 
 ---
 
+## faq_item_service
+
+Pivot для many-to-many связи вопросов FAQ и конкретных услуг.
+
+```sql
+faq_item_id BIGINT UNSIGNED
+service_id BIGINT UNSIGNED
+
+PRIMARY KEY(faq_item_id, service_id)
+```
+
+Foreign keys:
+
+```sql
+faq_item_id -> faq_items.id ON DELETE CASCADE
+service_id -> services.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(service_id)
+```
+
+---
+
+## category_faq_item
+
+Pivot для many-to-many связи категорий услуг и вопросов FAQ.
+
+```sql
+category_id BIGINT UNSIGNED
+faq_item_id BIGINT UNSIGNED
+
+PRIMARY KEY(category_id, faq_item_id)
+```
+
+Foreign keys:
+
+```sql
+category_id -> categories.id ON DELETE CASCADE
+faq_item_id -> faq_items.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(faq_item_id)
+```
+
+Привязка допустима только для категорий `type = service`: связь
+`FaqItem::categories()` ограничивает выборку `categories.type = 'service'`,
+поэтому категории блога (`type = post`) в FAQ не попадают. Обе таблицы —
+обычные many-to-many pivot (полиморфная связь не используется),
+дополнительных полей нет.
+
+---
+
 ### Система ролей
 
 Пользователи могут иметь неограниченное количество ролей (many-to-many через `role_user`).
@@ -479,13 +550,19 @@ price_note TEXT NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
+is_graduation_albums BOOLEAN DEFAULT FALSE INDEX
 sort_order INT DEFAULT 0
 show_album_photos BOOLEAN DEFAULT FALSE
+show_on_home BOOLEAN DEFAULT FALSE INDEX
 featured_album_id BIGINT NULL
 
 cta_album_id BIGINT NULL
 
 cta_button_text VARCHAR(255) NULL
+
+shooting_album_id BIGINT NULL
+
+shooting_album_display VARCHAR(20) DEFAULT 'card'
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -498,6 +575,7 @@ parent_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
 cta_album_id -> albums.id ON DELETE SET NULL
+shooting_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Иерархия: `categories.parent_id` → `categories.id` (self-referencing).
@@ -513,8 +591,10 @@ cta_album_id -> albums.id ON DELETE SET NULL
 | `posts()`   | Статьи блога, принадлежащие категории (HasMany)              |
 | `videos()`  | Видео, прикреплённые к категории (BelongsToMany)             |
 | `albums()`  | Альбомы-примеры категории (BelongsToMany через `category_album`) |
+| `faqItems()`| Вопросы FAQ, привязанные к категории (BelongsToMany через `category_faq_item`) |
 | `featuredAlbum()` | Альбом, отображаемый блоком с фото (BelongsTo → album) |
 | `ctaAlbum()` | Альбом, на который ведёт кнопка CTA (BelongsTo → album) |
+| `shootingAlbum()` | Альбом «Фото со съёмок» (BelongsTo → album) |
 | `ancestors()` | Цепочка предков от корня до родителя (корневая → `[]`)     |
 | `descendants()` | Все потомки в глубину любых уровней                       |
 | `path(true)` | Полный путь от корня до самой категории                     |
@@ -522,6 +602,25 @@ cta_album_id -> albums.id ON DELETE SET NULL
 Защита от циклов реализована на уровне модели (`saving` + `assertNotCyclic()`):
 запрещено выбирать категорию в качестве собственного родителя и делать
 потомка родителем предка (`A → B → C → A`).
+
+`shooting_album_id` — необязательная привязка одного альбома «Фото со съёмок»
+(`albums.type = 'behind_the_scenes'`) к категории. Один альбом может использоваться
+несколькими категориями (unique-ограничения нет); при удалении альбома ссылка
+обнуляется (`ON DELETE SET NULL`). Связь модели: `Category::shootingAlbum()`
+(BelongsTo → albums).
+
+`shooting_album_display` — способ отображения привязанного альбома на публичной
+странице категории. Допустимые значения:
+
+| Значение | Отображение                                |
+|----------|--------------------------------------------|
+| `card`   | Карточка альбома (по умолчанию)            |
+| `grid`   | Непосредственно сетка фотографий           |
+
+Ограничение целостности: если `shooting_album_id` пуст, значение
+`shooting_album_display` всегда сбрасывается к `card` (shared trait
+`HasShootingAlbumDisplay` в моделях Service и Category). Единый список значений —
+enum `App\Enums\ShootingAlbumDisplay` (методы `label()`, `options()`).
 
 Поля показа альбома блоком (аналогично услугам):
 
@@ -537,6 +636,14 @@ cta_album_id -> albums.id ON DELETE SET NULL
 |-------------------|---------------------------------------------------------------------------|
 | cta_album_id      | Альбом, на который ведёт кнопка (BelongsTo → albums)                     |
 | cta_button_text   | Текст кнопки (например, «Посмотреть варианты обложек»)                   |
+
+`show_on_home` — переключатель показа категории в виде кнопки в первом экране
+(`Hero`) главной страницы. Учитывается только для `type = service` и только для
+опубликованных категорий; в админке поле видно при выбранном типе `service`.
+Порядок кнопок на главной: `sort_order` по возрастанию, при равенстве — сначала
+категории, затем услуги, при равенстве типа — по названию (алфавит, без учёта
+регистра). Ссылка кнопки строится из полного пути категории
+(`services/{путь категории}`).
 
 При `show_album_photos = true` выбранный альбом исключается из списка
 альбомов-примеров (карточек) и выводится ниже списка в виде сетки фотографий
@@ -554,6 +661,8 @@ INDEX(cover_media_id)
 INDEX(is_published)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
+INDEX(shooting_album_id)
+INDEX(show_on_home)
 ```
 
 ---
@@ -654,9 +763,20 @@ excerpt TEXT NULL
 content LONGTEXT NULL
 home_title VARCHAR(255) NULL
 home_subtitle TEXT NULL
+home_content LONGTEXT NULL
 show_on_home BOOLEAN DEFAULT FALSE
 home_sort_order INT DEFAULT 0
 menu_title VARCHAR(255) NULL
+show_in_menu BOOLEAN DEFAULT TRUE
+ar_teaser_enabled BOOLEAN DEFAULT TRUE
+ar_teaser_title VARCHAR(255) NULL
+ar_teaser_subtitle TEXT NULL
+ar_teaser_accent VARCHAR(255) NULL
+ar_teaser_footer VARCHAR(255) NULL
+ar_teaser_media_id BIGINT NULL
+ar_price INT UNSIGNED NULL
+about_studio_text LONGTEXT NULL
+about_studio_title VARCHAR(255) NULL
 seo_title VARCHAR(255) NULL
 seo_description TEXT NULL
 is_published BOOLEAN DEFAULT TRUE
@@ -672,17 +792,48 @@ updated_at TIMESTAMP
 | title           | Заголовок страницы                              |
 | subtitle        | Подзаголовок страницы                           |
 | menu_title      | Название пункта меню (если пусто → title)       |
-| home_title      | Заголовок блока на главной                      |
-| home_subtitle   | Подзаголовок блока на главной                   |
-| show_on_home    | Показывать блок на главной                      |
+| show_in_menu    | Показывать пункт верхнего меню (url `/{slug}`, для `home` — `/`) |
+| home_title      | Заголовок блока на главной (если пусто → title) |
+| home_subtitle   | Подзаголовок блока на главной (если пусто → subtitle) |
+| home_content    | Описание блока на главной (если пусто → content) |
+| show_on_home    | Отображать блок «Избранные работы» на главной (учитывается только у страницы `portfolio`). Не влияет на кнопки Hero — ими управляет `show_on_home` у категорий и услуг |
 | home_sort_order | Порядок блока на главной                        |
+| about_studio_text | SEO-текст «О студии» внизу главной страницы (пусто → блок не выводится) |
+| about_studio_title | Заголовок блока «О студии» (пусто → «О студии») |
+| ar_teaser_enabled | Показывать AR-тизер «Оживающие фотографии» на странице категории выпускных альбомов (настройки хранятся у страницы `home`; default TRUE) |
+| ar_teaser_title | Заголовок секции AR                          |
+| ar_teaser_subtitle | Описание секции AR                           |
+| ar_teaser_accent | Акцент заголовка AR (золотая строка)         |
+| ar_teaser_footer | Нижняя строка секции AR                      |
+| ar_teaser_media_id | Изображение секции AR                        |
+| ar_price | Цена AR-фото для плашки «AR + N руб.» в блоке «Стоимость альбомов» (NULL → fallback 500 ₽) |
 
-Фиксированные slug: `home`, `services`, `portfolio`, `blog`.
+Цепочка фоллбэка текстов блоков главной: `home_title/home_subtitle/home_content` →
+`title/subtitle/content` → тексты по умолчанию в шаблоне.
+
+Два независимых механизма отображения на главной: `pages.show_on_home` управляет
+блоком «Избранные работы» (учитывается у страницы `portfolio`), а
+`categories.show_on_home` / `services.show_on_home` — кнопками первого экрана
+(Hero). Флаги не влияют друг на друга.
+
+Поля `ar_teaser_*` и `ar_price` хранятся у страницы `home`, но выводятся на
+странице корневой категории выпускных альбомов
+(`categories.is_graduation_albums = true`): AR-тизер — отдельным блоком,
+`ar_price` — плашкой «AR + N руб.» в блоке «Стоимость альбомов».
+
+Блоки «услуги», «видео», «отзывы», «блог», FAQ, «О студии» и форма заявки на
+главной сейчас не выводятся (компоненты `x-site.home.*` и соответствующие поля
+сохранены для возможного включения); на `/` выводятся только Hero, соцсети и
+блок «Избранные работы».
+
+Фиксированные slug: `home`, `services`, `portfolio`, `blog`, `video`,
+`testimonials`, `faq`, `inquiry`, `shooting`.
 
 Foreign keys:
 
 ```sql
 cover_media_id -> media.id ON DELETE SET NULL
+ar_teaser_media_id -> media.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -717,11 +868,17 @@ examples_title VARCHAR(255) NULL
 
 show_album_photos BOOLEAN DEFAULT FALSE
 
+show_on_home BOOLEAN DEFAULT FALSE INDEX
+
 featured_album_id BIGINT NULL
 
 cta_album_id BIGINT NULL
 
 cta_button_text VARCHAR(255) NULL
+
+shooting_album_id BIGINT NULL
+
+shooting_album_display VARCHAR(20) DEFAULT 'card'
 
 price_from DECIMAL(10,2) NULL
 
@@ -745,6 +902,7 @@ category_id -> categories.id ON DELETE SET NULL
 cover_media_id -> media.id ON DELETE SET NULL
 featured_album_id -> albums.id ON DELETE SET NULL
 cta_album_id -> albums.id ON DELETE SET NULL
+shooting_album_id -> albums.id ON DELETE SET NULL
 ```
 
 Indexes:
@@ -756,7 +914,21 @@ INDEX(is_published)
 INDEX(sort_order)
 INDEX(featured_album_id)
 INDEX(cta_album_id)
+INDEX(shooting_album_id)
+INDEX(show_on_home)
 ```
+
+`shooting_album_id` — необязательная привязка одного альбома «Фото со съёмок»
+(`albums.type = 'behind_the_scenes'`) к услуге. Один альбом может использоваться
+несколькими услугами (unique-ограничения нет); при удалении альбома ссылка
+обнуляется (`ON DELETE SET NULL`). Связь модели: `Service::shootingAlbum()`
+(BelongsTo → albums).
+
+`shooting_album_display` — способ отображения привязанного альбома на публичной
+странице услуги. Допустимые значения: `card` («Карточка альбома», по умолчанию)
+и `grid` («Сетка фотографий»). Если `shooting_album_id` пуст, значение всегда
+сбрасывается к `card` (shared trait `HasShootingAlbumDisplay`; единый список
+значений — enum `App\Enums\ShootingAlbumDisplay`).
 
 Поля показа альбома блоком:
 
@@ -770,6 +942,17 @@ INDEX(cta_album_id)
 с lightbox (как на странице альбома). Если список карточек остаётся непустым
 (осталось ≥ 1 альбом), он рендерится перед сеткой. Настройка доступна только
 для услуги (категории не затрагиваются).
+
+`show_on_home` — переключатель показа услуги в виде кнопки в первом экране
+(`Hero`) главной страницы. Учитывается только для опубликованных услуг; в
+админке переключатель находится в секции публикации. Ссылка кнопки строится из
+полного пути услуги (`services/{путь категории/услуги}`), у услуги без категории —
+`services/{slug}`. Порядок кнопок общий с категориями: `sort_order` по
+возрастанию, при равенстве — категории раньше услуг, затем по названию (алфавит,
+без учёта регистра).
+
+`faqItems()` — вопросы FAQ, привязанные к услуге (BelongsToMany через
+`faq_item_service`); удаление услуги каскадно удаляет pivot-записи.
 
 ---
 
@@ -914,6 +1097,7 @@ seo_description TEXT NULL
 | homepage   | Слайдеры главной страницы  |
 | service    | Галереи услуг              |
 | client     | Клиентские галереи         |
+| behind_the_scenes | Фото со съёмок     |
 
 Foreign keys:
 
@@ -965,6 +1149,63 @@ INDEX(album_id)
 INDEX(media_id)
 INDEX(sort_order)
 ```
+
+---
+
+## comments
+
+Единая polymorphic-модель комментариев аудитории (C2.8). Комментарии пишутся
+к `Project` (страница проекта) и `Photo` (галерея альбома, C2.9) — сущность
+задаётся парой `commentable_type` / `commentable_id` без изменения схемы.
+
+```sql
+id BIGINT PRIMARY KEY
+
+user_id BIGINT UNSIGNED
+
+commentable_type VARCHAR(255)
+
+commentable_id BIGINT UNSIGNED
+
+body TEXT
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+user_id -> users.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(user_id)
+INDEX(commentable_type, commentable_id)
+INDEX(commentable_type, commentable_id, created_at)
+```
+
+Право оставить комментарий равно праву видеть комментируемый объект
+(`CommentPolicy::create` делегирует в `ProjectPolicy::view` / `PhotoPolicy::view`).
+`parent` комментарии к Project не оставляет: у него нет доступа к Project
+(доступ через `album_user` действует только на альбом) — см. «Система ролей
+и доступа» в `architecture.md`. К фото внутри назначенного альбома `parent`
+комментарий оставить может (цепочка `PhotoPolicy::view` → `AlbumPolicy::view`).
+
+Связи моделей:
+
+| Модель    | Метод         | Связь                                             |
+|-----------|---------------|---------------------------------------------------|
+| Project   | `comments()`  | MorphMany (полиморфный `commentable`)             |
+| Photo     | `comments()`  | MorphMany (полиморфный `commentable`)             |
+| User      | `comments()`  | HasMany к `comments.user_id`                      |
+| Comment   | `commentable()` | MorphTo → Project/Photo                         |
+| Comment   | `user()`      | BelongsTo → users                                 |
+
+Вывод комментариев на странице проекта и в галерее альбома отсортирован
+по `created_at` ASC.
 
 ---
 
@@ -1216,7 +1457,7 @@ INDEX(name)
 
 ## notification_settings
 
-Настройки уведомлений (email, Telegram). Единая запись.
+Настройки уведомлений (email, Telegram, MAX). Единая запись.
 
 ```sql
 id BIGINT PRIMARY KEY
@@ -1232,6 +1473,34 @@ telegram_enabled BOOLEAN DEFAULT FALSE
 telegram_bot_token VARCHAR(500) NULL
 
 telegram_chat_id VARCHAR(100) NULL
+
+max_enabled BOOLEAN DEFAULT FALSE
+
+max_bot_token VARCHAR(500) NULL
+
+max_chat_id VARCHAR(100) NULL
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+---
+
+## site_settings
+
+Ключ-значение настройки сайта. Записи создаются/удаляются через
+`SiteSetting::get()` / `SiteSetting::set()` (кэш-ключ `site_settings`,
+сбрасывается при записи). Пустое значение ключа трактуется как отсутствие
+настройки (fallback на конфиг). Используется для контактов сайта
+(`contacts.phone`, `contacts.email`), редактируемых в Filament на странице
+Контакты (`/admin/contacts`).
+
+```sql
+id BIGINT PRIMARY KEY
+
+key VARCHAR(255) UNIQUE
+
+value TEXT NULL
 
 created_at TIMESTAMP
 updated_at TIMESTAMP
@@ -1264,6 +1533,23 @@ Indexes:
 INDEX(is_active)
 INDEX(sort_order)
 ```
+
+Связи с услугами и категориями услуг (many-to-many, две отдельные
+pivot-таблицы `faq_item_service` и `category_faq_item`; полиморфной связи нет).
+Один вопрос может быть привязан к нескольким услугам и нескольким категориям
+одновременно.
+
+| Модель  | Метод         | Связь                                                              |
+|---------|---------------|--------------------------------------------------------------------|
+| FaqItem | `services()`  | Услуги вопроса (BelongsToMany через `faq_item_service`)            |
+| FaqItem | `categories()`| Категории услуг вопроса (BelongsToMany через `category_faq_item`, выборка ограничена `type = service`) |
+| Service | `faqItems()`  | Вопросы FAQ, привязанные к услуге (BelongsToMany через `faq_item_service`) |
+| Category| `faqItems()`  | Вопросы FAQ, привязанные к категории (BelongsToMany через `category_faq_item`) |
+
+Публичный вывод: привязанные вопросы выводятся блоком `x-site.faq` на странице
+услуги (привязка к услуге) и на странице категории услуг (привязка к категории).
+Показываются только активные вопросы (`is_active = true`), порядок — `sort_order`.
+Наследования привязок (родительская категория → категория → услуга) нет.
 
 ---
 
@@ -1373,6 +1659,135 @@ INDEX(type)
 
 ---
 
+## ar_targets
+
+«Оживающая фотография» (этап D1): напечатанное фото, которое распознаёт
+камера, и публичная ссылка `/ar/{token}`. Схема — `docs/AR-ARCHITECTURE-D1.4.md`.
+
+```sql
+id BIGINT PRIMARY KEY
+
+token VARCHAR(32) UNIQUE
+
+title VARCHAR(255)
+
+project_id BIGINT NULL
+
+photo_id BIGINT NULL
+
+disk VARCHAR(50)
+
+marker_path VARCHAR(1000)
+
+marker_width INT UNSIGNED
+
+marker_height INT UNSIGNED
+
+tracker VARCHAR(30) DEFAULT 'mindar'
+
+tracker_version VARCHAR(20) NULL
+
+target_path VARCHAR(1000) NULL
+
+feature_points INT UNSIGNED NULL
+
+compiled_at TIMESTAMP NULL
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_by BIGINT NULL
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+project_id -> projects.id ON DELETE SET NULL
+photo_id -> photos.id ON DELETE SET NULL
+created_by -> users.id ON DELETE SET NULL
+```
+
+Indexes:
+
+```sql
+UNIQUE(token)
+INDEX(project_id)
+INDEX(photo_id)
+INDEX(created_by)
+INDEX(is_active)
+```
+
+- `token` — 12 символов `[A-Za-z0-9]`, генерируется моделью при создании
+  (`ArTarget::newToken()`), не входит в `$fillable` и не меняется при
+  правках; перевыпуск — только `regenerateToken()` (напечатанные QR перестают
+  работать).
+- `disk` по умолчанию — `config('filesystems.ar_disk')` (env `AR_DISK`).
+- `marker_*` — изображение, из которого собран таргет; `markerAspect()` =
+  `marker_height / marker_width` — пропорции плоскости видео.
+- `tracker` / `tracker_version` / `target_path` — файл трекера (`.mind` MindAR);
+  при смене трекера таргеты пересобираются из маркера.
+- Удаление альбома/фото/проекта не удаляет таргет (`SET NULL`). Удаление
+  таргета удаляет его `ar_contents` (с файлами), маркер и `.mind` с диска.
+
+---
+
+## ar_contents
+
+Контент поверх таргета — видео. Файл и метаданные хранятся в строке (таблицы
+`videos` и `media` для AR не используются).
+
+```sql
+id BIGINT PRIMARY KEY
+
+ar_target_id BIGINT
+
+type VARCHAR(20) DEFAULT 'video'
+
+disk VARCHAR(50)
+
+file_path VARCHAR(1000)
+
+mime_type VARCHAR(100) NULL
+
+file_size BIGINT UNSIGNED NULL
+
+width INT UNSIGNED NULL
+
+height INT UNSIGNED NULL
+
+duration_ms INT UNSIGNED NULL
+
+has_sound BOOLEAN DEFAULT TRUE
+
+sort_order INT DEFAULT 0
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at TIMESTAMP
+updated_at TIMESTAMP
+```
+
+Foreign keys:
+
+```sql
+ar_target_id -> ar_targets.id ON DELETE CASCADE
+```
+
+Indexes:
+
+```sql
+INDEX(ar_target_id, is_active, sort_order)
+```
+
+- `ArTarget::contents()` — по `sort_order`, затем `id`;
+  `activeContents()` — только `is_active`. Страница показывает первый
+  активный контент.
+- Удаление `ArContent` удаляет его файл с диска (`deleted`).
+
+---
+
 # Storage Strategy
 
 Актуальная схема (B2 — Яндекс.Диск подключён):
@@ -1386,9 +1801,13 @@ Laravel Filesystem
     │
     ├── thumbnails disk (Local)      → WebP превью 400px (Media::thumbnail_path)
     │
-    └── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
-                                       lightbox (PNG ≤1600px), формат и лимит
-                                       IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    ├── image_cache disk (Local)     → ленивый кэш display (WebP ≤800px) /
+    │                                  lightbox (PNG ≤1600px), формат и лимит
+    │                                  IMAGE_CACHE_MAX_MB, вытеснение по возрасту
+    │
+    └── ar_disk (AR_DISK, сейчас public) → файлы «оживающих фотографий»:
+                                       маркер, .mind, видео (ArTarget/ArContent);
+                                       на D1.7 — S3, отдельно от оригиналов
 ```
 
 - MediaProcessor генерирует WebP-превью (400px) через стримы (`readStream`/`put`), без использования `path()`.

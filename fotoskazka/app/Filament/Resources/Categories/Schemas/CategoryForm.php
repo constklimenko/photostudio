@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Enums\ShootingAlbumDisplay;
 use App\Models\Category;
 use App\Services\CategoryTreeService;
 use Filament\Forms\Components\Hidden;
@@ -15,6 +16,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class CategoryForm
@@ -98,6 +100,18 @@ class CategoryForm
                         Toggle::make('is_published')
                             ->label('Опубликована')
                             ->default(true),
+                        Toggle::make('is_graduation_albums')
+                            ->label('Услуга «Выпускные альбомы»')
+                            ->helperText('Категория и её подкатегории выводятся блоком «Стоимость альбомов» на главной')
+                            ->visible(fn (Get $get): bool => (string) $get('type') === 'service'),
+                    ]),
+                Section::make('Главная страница')
+                    ->visible(fn (Get $get): bool => (string) $get('type') === 'service')
+                    ->schema([
+                        Toggle::make('show_on_home')
+                            ->label('Выводить в виде кнопки на главной')
+                            ->helperText('Управляет отображением ссылки-кнопки в Hero главной страницы. Учитываются только опубликованные категории, порядок — по полю «Порядок сортировки»')
+                            ->columnSpanFull(),
                     ]),
                 Section::make('Описание')
                     ->schema([
@@ -150,6 +164,38 @@ class CategoryForm
                             ->preload()
                             ->searchable()
                             ->nullable()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Фото со съёмок')
+                    ->schema([
+                        Select::make('shooting_album_id')
+                            ->label('Альбом «Фото со съёмок»')
+                            ->relationship('shootingAlbum', 'title', function (Builder $query, ?Category $record): Builder {
+                                $query->where('type', 'behind_the_scenes')
+                                    ->where('is_published', true);
+
+                                if ($record?->shooting_album_id) {
+                                    $query->orWhere('id', $record->shooting_album_id);
+                                }
+
+                                return $query;
+                            })
+                            ->preload()
+                            ->searchable()
+                            ->nullable()
+                            ->placeholder('Без фото со съёмок')
+                            ->live()
+                            ->afterStateUpdated(function (Set $set, ?int $state): void {
+                                if (! $state) {
+                                    $set('shooting_album_display', ShootingAlbumDisplay::Card->value);
+                                }
+                            })
+                            ->columnSpanFull(),
+                        Select::make('shooting_album_display')
+                            ->label('Отображение фото со съёмок')
+                            ->options(ShootingAlbumDisplay::options())
+                            ->default(ShootingAlbumDisplay::Card->value)
+                            ->visible(fn (Get $get): bool => filled($get('shooting_album_id')))
                             ->columnSpanFull(),
                     ]),
                 Section::make('Видео')

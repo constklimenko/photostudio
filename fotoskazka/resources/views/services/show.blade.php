@@ -2,8 +2,35 @@
 
 @section('title', $service->seo_title ?: ($service->title . ' — Фотосказка'))
 @section('meta_description', $service->seo_description ?: $service->short_description)
+@section('og_image', $service->cover?->getDisplayUrl() ?: '')
 
 @section('content')
+
+@php
+    $serviceSchema = [
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $service->title,
+        'description' => trim(strip_tags($service->seo_description ?: $service->short_description ?: $service->description ?: '')) ?: $service->title,
+    ];
+
+    if ($service->cover) {
+        $serviceSchema['image'] = $service->cover->getUrl();
+    }
+
+    if ($service->price_from) {
+        $serviceSchema['offers'] = [
+            '@type' => 'Offer',
+            'price' => (float) $service->price_from,
+            'priceCurrency' => 'RUB',
+            'availability' => 'https://schema.org/InStock',
+        ];
+    }
+@endphp
+
+<script type="application/ld+json">
+    @json($serviceSchema, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+</script>
 
 <section class="py-24" data-aos="fade-up">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -35,7 +62,7 @@
         </div>
 
         @if ($service->price_from)
-            <p class="mt-4 text-2xl font-bold text-[#d4af37]">от {{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
+            <p class="mt-4 text-2xl font-bold text-[#d4af37]">{{ number_format($service->price_from, 0, ',', ' ') }} ₽</p>
             @if ($service->price_note)
                 <p class="mt-1 text-xs text-gray-500">{{ $service->price_note }}</p>
             @endif
@@ -143,8 +170,14 @@
 
         <x-site.videos :videos="$service->videos" title="Видео" />
 
+        @if ($service->shootingAlbum)
+            <x-site.shooting-album :album="$service->shootingAlbum" :display="$service->shooting_album_display" />
+        @endif
+
     </div>
 </section>
+
+<x-site.faq :items="$service->faqItems" />
 
 <section id="inquiry-form" class="py-24 bg-[#111111]" data-aos="fade-up">
     <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">

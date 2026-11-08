@@ -93,6 +93,41 @@
             </div>
         @endif
 
+        <div class="mt-16">
+            <h2 class="font-heading text-xl font-normal tracking-wide text-white">Комментарии</h2>
+
+            <div class="mt-6 space-y-4 max-w-3xl">
+                @forelse($project->comments as $comment)
+                    <div class="bg-[#111111] rounded-xl border border-[#1a1a1a] p-5">
+                        <div class="flex items-center justify-between text-sm text-gray-500">
+                            <span class="font-medium text-gray-300">{{ $comment->user->name }}</span>
+                            <span>{{ $comment->created_at->format('d.m.Y H:i') }}</span>
+                        </div>
+                        <p class="mt-3 text-gray-300">{!! nl2br(e($comment->body)) !!}</p>
+                    </div>
+                @empty
+                    <p class="text-gray-500">Комментариев пока нет</p>
+                @endforelse
+            </div>
+
+            <form method="POST" action="{{ route('cabinet.project.comments.store', $project) }}" class="mt-8 max-w-3xl" novalidate>
+                @csrf
+
+                <label for="comment-body" class="block text-sm font-medium text-gray-400">Ваш комментарий</label>
+                <textarea id="comment-body" name="body" rows="4" required
+                          class="mt-2 w-full rounded-lg bg-[#111111] border border-[#1a1a1a] text-white p-3 focus:border-[#d4af37]/50 focus:outline-none">{{ old('body') }}</textarea>
+
+                @error('body')
+                    <p class="mt-2 text-sm text-red-400">{{ $message }}</p>
+                @enderror
+
+                <button type="submit"
+                        class="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#d4af37] px-6 py-3 text-sm font-semibold text-black hover:bg-[#e3c25e] transition">
+                    Оставить комментарий
+                </button>
+            </form>
+        </div>
+
     </div>
 </section>
 @endsection

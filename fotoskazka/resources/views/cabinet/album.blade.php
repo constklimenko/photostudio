@@ -38,7 +38,7 @@
                 <p class="text-gray-400">В альбоме пока нет фотографий</p>
             </div>
         @else
-            <x-site.album-photos :album="$album" :photos="$photos" />
+            <x-site.album-photos :album="$album" :photos="$photos" :comments="true" />
 
             @if($photos->hasPages())
                 <div class="mt-10">

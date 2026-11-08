@@ -1,0 +1,15 @@
+compatibility_level = 3.6
+
+myhostname = fotoskazkaufa.ru
+myorigin = $myhostname
+mydestination =
+local_recipient_maps =
+
+inet_interfaces = loopback-only
+inet_protocols = ipv4
+
+smtputf8_enable = yes
+smtp_tls_security_level = may
+smtp_host_lookup = dns
+
+maillog_file = /var/log/mail.log

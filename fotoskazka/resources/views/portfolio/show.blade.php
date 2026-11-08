@@ -2,6 +2,7 @@
 
 @section('title', $album->title . ' — Портфолио — Фотосказка')
 @section('meta_description', $album->seo_description ?: $album->description)
+@section('og_image', $album->cover?->getDisplayUrl() ?: ($album->photos->first()?->media?->getDisplayUrl() ?: ''))
 
 @section('content')
 

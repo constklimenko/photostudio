@@ -17,6 +17,24 @@ return [
 
     'default_media_disk' => env('MEDIA_DISK', 'public'),
 
+    /*
+    | Диск файлов «оживающих фотографий» (маркер, .mind, видео — ArTarget,
+    | ArContent). Отдельно от оригиналов клиентских альбомов; на D1.7 —
+    | S3-совместимое хранилище.
+    */
+    'ar_disk' => env('AR_DISK', 'public'),
+
+    /*
+    | Отдача загруженных видео (VideoController@stream) через nginx
+    | X-Accel-Redirect: PHP только проверяет запись и отвечает пустым телом,
+    | файл и Range/ETag обслуживает nginx. Работает только для локального
+    | диска; internal location с alias на корень этого диска описан в
+    | docker/nginx/generate-config.sh. Без nginx (php artisan serve) — false.
+    */
+    'video_x_accel' => (bool) env('VIDEO_X_ACCEL', false),
+
+    'video_x_accel_location' => env('VIDEO_X_ACCEL_LOCATION', '/protected-videos/'),
+
     'yandex_import' => [
         'max_files' => env('YANDEX_IMPORT_MAX_FILES', 500),
     ],
