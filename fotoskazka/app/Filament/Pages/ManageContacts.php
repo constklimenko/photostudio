@@ -36,6 +36,8 @@ class ManageContacts extends Page
         $this->form->fill([
             'phone' => SiteSetting::get('contacts.phone', ''),
             'email' => SiteSetting::get('contacts.email', ''),
+            'address' => SiteSetting::get('contacts.address', ''),
+            'city' => SiteSetting::get('contacts.city', ''),
         ]);
     }
 
@@ -60,6 +62,18 @@ class ManageContacts extends Page
                             ->email()
                             ->maxLength(255),
                     ]),
+                Section::make('Адрес студии')
+                    ->description('Используется в schema.org LocalBusiness для локального SEO.')
+                    ->schema([
+                        TextInput::make('city')
+                            ->label('Город')
+                            ->maxLength(255)
+                            ->placeholder('Уфа'),
+                        TextInput::make('address')
+                            ->label('Адрес (улица)')
+                            ->maxLength(255)
+                            ->placeholder('ул. 50 лет СССР'),
+                    ]),
             ]);
     }
 
@@ -69,6 +83,8 @@ class ManageContacts extends Page
 
         SiteSetting::set('contacts.phone', $data['phone'] ?? null);
         SiteSetting::set('contacts.email', $data['email'] ?? null);
+        SiteSetting::set('contacts.address', $data['address'] ?? null);
+        SiteSetting::set('contacts.city', $data['city'] ?? null);
 
         Notification::make()
             ->success()

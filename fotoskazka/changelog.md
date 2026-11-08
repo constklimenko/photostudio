@@ -16,12 +16,18 @@
 - `config/contacts.php`: добавлены `address` (`CONTACT_ADDRESS`,
   по умолчанию «ул. 50 лет СССР») и `city` (`CONTACT_CITY`, «Уфа»).
   `.env.example` дополнен `CONTACT_ADDRESS` / `CONTACT_CITY`.
+- `App\Services\ContactSettings`: добавлены `address()` и `city()` —
+  значения, как и телефон/email, берутся из `site_settings` (админка) с
+  fallback на `config('contacts.*')`.
+- Страница админки «Контакты» (`ManageContacts`): секция «Адрес студии»
+  с полями «Город» и «Адрес (улица)» — сохраняются в `site_settings`
+  (`contacts.city` / `contacts.address`).
 - Новый компонент `x-site.organization-schema`
   (`resources/views/components/site/organization-schema.blade.php`) — JSON-LD
   `@graph` из `ProfessionalService` (name, url, image, telephone, email,
-  `PostalAddress`, `areaServed`=Уфа, `sameAs` из активных соцссылок) и
-  `WebSite`. Телефон нормализуется в E.164 (`+79874847476`), `email` — из
-  `ContactSettings`, `sameAs` — из активных `social_links` (иконки instagram,
+  `PostalAddress`, `areaServed`, `sameAs` из активных соцссылок) и
+  `WebSite`. Телефон нормализуется в E.164 (`+79874847476`), email и адрес —
+  из `ContactSettings`, `sameAs` — из активных `social_links` (иконки instagram,
   vk, telegram, whatsapp, viber, youtube).
 - Компонент подключён в `<head>` базового layout (`layouts/site.blade.php`).
 - `resources/views/services/show.blade.php`: `Product` → `Service` +
@@ -44,8 +50,9 @@
 ### Замечание
 
 На проде `sameAs` наполнится автоматически при наличии активных соцссылок в
-админке (`/admin/social-links`). Адрес можно переопределить через `.env`
-(`CONTACT_ADDRESS` / `CONTACT_CITY`) без миграции БД.
+админке (`/admin/social-links`). Адрес и город, как и телефон/email, задаются
+в админке (`/admin/contacts`); `.env` (`CONTACT_ADDRESS` / `CONTACT_CITY`) —
+только fallback по умолчанию.
 
 ## 2026-11-07 — страница «Политика конфиденциальности» (/privacy)
 

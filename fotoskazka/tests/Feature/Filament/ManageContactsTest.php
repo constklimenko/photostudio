@@ -45,10 +45,14 @@ class ManageContactsTest extends TestCase
     {
         SiteSetting::set('contacts.phone', '+7 (999) 123-45-67');
         SiteSetting::set('contacts.email', 'hello@example.com');
+        SiteSetting::set('contacts.address', 'ул. 50 лет СССР');
+        SiteSetting::set('contacts.city', 'Уфа');
 
         Livewire::test(ManageContacts::class)
             ->assertSet('data.phone', '+7 (999) 123-45-67')
-            ->assertSet('data.email', 'hello@example.com');
+            ->assertSet('data.email', 'hello@example.com')
+            ->assertSet('data.address', 'ул. 50 лет СССР')
+            ->assertSet('data.city', 'Уфа');
     }
 
     public function test_save_persists_settings(): void
@@ -56,11 +60,15 @@ class ManageContactsTest extends TestCase
         Livewire::test(ManageContacts::class)
             ->set('data.phone', '+7 (999) 555-00-11')
             ->set('data.email', 'admin@example.com')
+            ->set('data.address', 'ул. 50 лет СССР')
+            ->set('data.city', 'Уфа')
             ->call('save')
             ->assertHasNoActionErrors();
 
         $this->assertSame('+7 (999) 555-00-11', SiteSetting::get('contacts.phone'));
         $this->assertSame('admin@example.com', SiteSetting::get('contacts.email'));
+        $this->assertSame('ул. 50 лет СССР', SiteSetting::get('contacts.address'));
+        $this->assertSame('Уфа', SiteSetting::get('contacts.city'));
     }
 
     public function test_email_validation_rejects_invalid_value(): void

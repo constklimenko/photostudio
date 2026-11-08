@@ -16,6 +16,16 @@ class ContactSettings
         return SiteSetting::get('contacts.email', config('contacts.email'));
     }
 
+    public static function address(): ?string
+    {
+        return SiteSetting::get('contacts.address', config('contacts.address'));
+    }
+
+    public static function city(): ?string
+    {
+        return SiteSetting::get('contacts.city', config('contacts.city'));
+    }
+
     public static function phoneHref(): ?string
     {
         $phone = self::phone();

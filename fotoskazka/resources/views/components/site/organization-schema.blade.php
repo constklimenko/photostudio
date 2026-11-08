@@ -1,6 +1,7 @@
 @php
     $phoneDigits = preg_replace('/\D+/', '', (string) \App\Services\ContactSettings::phone());
     $email = \App\Services\ContactSettings::email();
+    $city = \App\Services\ContactSettings::city() ?: config('contacts.city');
 
     $sameAs = collect($socialLinks ?? [])
         ->filter(fn ($link) => in_array($link->icon, ['instagram', 'vk', 'telegram', 'whatsapp', 'viber', 'youtube'], true))
@@ -19,13 +20,13 @@
         'priceRange' => '₽₽',
         'address' => [
             '@type' => 'PostalAddress',
-            'streetAddress' => config('contacts.address'),
-            'addressLocality' => config('contacts.city'),
+            'streetAddress' => \App\Services\ContactSettings::address() ?: config('contacts.address'),
+            'addressLocality' => $city,
             'addressCountry' => 'RU',
         ],
         'areaServed' => [
             '@type' => 'City',
-            'name' => config('contacts.city'),
+            'name' => $city,
         ],
     ];
 

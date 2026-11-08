@@ -16,6 +16,10 @@ class ContactSettingsTest extends TestCase
 
     protected string $fallbackEmail = 'fallback@example.org';
 
+    protected string $fallbackAddress = 'ул. Тестовая, 1';
+
+    protected string $fallbackCity = 'Уфа';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -23,6 +27,8 @@ class ContactSettingsTest extends TestCase
         config([
             'contacts.phone' => $this->fallbackPhone,
             'contacts.email' => $this->fallbackEmail,
+            'contacts.address' => $this->fallbackAddress,
+            'contacts.city' => $this->fallbackCity,
         ]);
     }
 
@@ -37,15 +43,21 @@ class ContactSettingsTest extends TestCase
     {
         $this->assertSame($this->fallbackPhone, ContactSettings::phone());
         $this->assertSame($this->fallbackEmail, ContactSettings::email());
+        $this->assertSame($this->fallbackAddress, ContactSettings::address());
+        $this->assertSame($this->fallbackCity, ContactSettings::city());
     }
 
     public function test_db_value_overrides_config(): void
     {
         SiteSetting::set('contacts.phone', '+7 (999) 123-45-67');
         SiteSetting::set('contacts.email', 'hello@example.com');
+        SiteSetting::set('contacts.address', 'пр. Октября, 100');
+        SiteSetting::set('contacts.city', 'Стерлитамак');
 
         $this->assertSame('+7 (999) 123-45-67', ContactSettings::phone());
         $this->assertSame('hello@example.com', ContactSettings::email());
+        $this->assertSame('пр. Октября, 100', ContactSettings::address());
+        $this->assertSame('Стерлитамак', ContactSettings::city());
     }
 
     public function test_clearing_db_value_returns_to_config(): void

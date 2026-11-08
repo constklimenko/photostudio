@@ -321,8 +321,9 @@ resources/views/
 ## Структурированные данные (JSON-LD)
 
 - `x-site.organization-schema` (в `<head>` `layouts/site.blade.php`) выводит
-  `@graph` из `ProfessionalService` (NAP: телефон из `ContactSettings`,
-  `PostalAddress` и `areaServed`=Уфа из `config('contacts.address'/'city')`,
+  `@graph` из `ProfessionalService` (NAP: телефон/email/адрес из
+  `ContactSettings` — значение задаётся в админке `/admin/contacts`
+  (`site_settings`), fallback на `config('contacts.*')`; `areaServed`=город,
   `sameAs` из активных `social_links`) и `WebSite`. Телефон нормализуется в
   E.164. `sameAs` строится из соцссылок с иконками `instagram`, `vk`,
   `telegram`, `whatsapp`, `viber`, `youtube`.
