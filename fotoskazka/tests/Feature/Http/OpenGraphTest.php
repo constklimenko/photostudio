@@ -21,12 +21,12 @@ class OpenGraphTest extends TestCase
         $response->assertOk()
             ->assertSee('<meta property="og:type" content="website">', false)
             ->assertSee('<meta property="og:site_name" content="Фотосказка">', false)
-            ->assertSee('<meta property="og:title" content="Фотосказка — профессиональная фотосъёмка">', false)
+            ->assertSee('<meta property="og:title" content="Фотосказка — фотограф в Уфе">', false)
             ->assertSee('<meta property="og:description" content="Профессиональная фотосъёмка для ваших важных событий. Услуги фотографа, портфолио, выпускные альбомы.">', false)
             ->assertSee('<meta property="og:image" content="'.url('web-app-manifest-512x512.png').'">', false)
             ->assertSee('<meta property="og:url" content="'.rtrim(url('/'), '/').'">', false)
             ->assertSee('<meta name="twitter:card" content="summary_large_image">', false)
-            ->assertSee('<meta name="twitter:title" content="Фотосказка — профессиональная фотосъёмка">', false);
+            ->assertSee('<meta name="twitter:title" content="Фотосказка — фотограф в Уфе">', false);
     }
 
     public function test_blog_post_page_uses_article_type_and_cover_image(): void
@@ -93,7 +93,7 @@ class OpenGraphTest extends TestCase
         $response = $this->get(route('services.show', $service->catalogPath()));
 
         $response->assertOk()
-            ->assertSee('<meta property="og:title" content="Семейная фотосессия — Фотосказка">', false)
+            ->assertSee('<meta property="og:title" content="Семейная фотосессия в Уфе — Фотосказка">', false)
             ->assertSee('<meta property="og:image" content="'.e($media->getDisplayUrl()).'">', false);
     }
 

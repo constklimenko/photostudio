@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', $service->seo_title ?: ($service->title . ' — Фотосказка'))
+@section('title', $service->seo_title ?: ($service->title . ' в Уфе — Фотосказка'))
 @section('meta_description', $service->seo_description ?: $service->short_description)
 @section('og_image', $service->cover?->getDisplayUrl() ?: '')
 

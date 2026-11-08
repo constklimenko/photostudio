@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', $page?->seo_title ?: 'Портфолио — Фотосказка')
+@section('title', $page?->seo_title ?: 'Портфолио фотографа в Уфе — Фотосказка')
 @section('meta_description', $page?->seo_description ?: 'Фотопортфолио профессионального фотографа. Свадебные, семейные, индивидуальные фотосессии и выпускные альбомы.')
 @section('og_image', $albums->first()?->cover?->getDisplayUrl() ?: '')
 

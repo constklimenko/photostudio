@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', $page?->seo_title ?: 'Услуги — Фотосказка')
+@section('title', $page?->seo_title ?: 'Услуги фотографа в Уфе — Фотосказка')
 @section('meta_description', $page?->seo_description ?: 'Профессиональная фотосъёмка для выпускных альбомов, детских садов, школ, семейных и индивидуальных фотосессий, мероприятий и свадеб.')
 
 @section('content')

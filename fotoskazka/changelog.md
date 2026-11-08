@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-11-08 — SEO: локализация title и дефолтный meta description
+
+### Цель
+
+Пункты «высокого эффекта» SEO-аудита: заголовки страниц не содержали город
+(локальный бизнес), а meta description категорий/услуг был пустым (поле
+`description` хранит пустой HTML — `strip_tags` в layout обнулял итог).
+
+### Реализация
+
+- Фолбэки `@section('title', ...)` теперь с гео-ключом:
+  - главная — «Фотосказка — фотограф в Уфе»;
+  - услуга/категория — «{название} в Уфе — Фотосказка»;
+  - `/services`, `/portfolio`, `/blog` — «… фотографа в Уфе — Фотосказка».
+  Явный `seo_title` из админки по-прежнему в приоритете.
+- `layouts/site.blade.php`: при пустом итоговом meta description подставляется
+  дефолт «Фотограф в Уфе — Фотосказка. Семейные, детские и индивидуальные
+  фотосессии, выпускные альбомы. С 2008 года.»
+- `tests/Feature/Http/OpenGraphTest.php`: ожидаемые og/twitter title обновлены
+  под новые фолбэки.
+
+### Проверка
+
+- `php artisan test` (SeoMetaTest, OpenGraphTest, SchemaMarkupTest,
+  ServiceCatalogControllerTest, HomeControllerTest): 90 тестов — все проходят;
+  `pint --dirty` — чисто.
+
 ## 2026-11-08 — SEO: LocalBusiness schema и корректные типы Service/CollectionPage
 
 ### Цель

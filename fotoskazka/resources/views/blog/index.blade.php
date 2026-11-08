@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', $page?->seo_title ?: 'Блог — Фотосказка')
+@section('title', $page?->seo_title ?: 'Блог фотографа в Уфе — Фотосказка')
 @section('meta_description', $page?->seo_description ?: 'Полезные статьи о фотосъёмке, подготовке к выпускному и семейных фотосессиях.')
 
 @section('content')

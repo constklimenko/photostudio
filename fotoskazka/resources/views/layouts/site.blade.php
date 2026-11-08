@@ -6,6 +6,11 @@
     @php
         $metaDescription = trim($__env->yieldContent('meta_description', e(config('app.name'))));
         $metaDescription = e(Str::of(strip_tags(html_entity_decode($metaDescription, ENT_QUOTES)))->squish()->limit(160, '…'));
+
+        if ($metaDescription === '') {
+            $metaDescription = 'Фотограф в Уфе — Фотосказка. Семейные, детские и индивидуальные фотосессии, выпускные альбомы. С 2008 года.';
+        }
+
         $canonicalUrl = trim($__env->yieldContent('canonical')) ?: e(url()->current());
     @endphp
 

@@ -1,6 +1,6 @@
 @extends('layouts.site')
 
-@section('title', $category->seo_title ?: ($category->name . ' — Фотосказка'))
+@section('title', $category->seo_title ?: ($category->name . ' в Уфе — Фотосказка'))
 @section('meta_description', $category->seo_description ?: $category->description ?: config('app.name'))
 @section('og_image', $category->cover?->getDisplayUrl() ?: '')
 
