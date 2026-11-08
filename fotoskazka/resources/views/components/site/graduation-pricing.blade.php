@@ -41,12 +41,14 @@
                                                 @if ($serviceSlides->isNotEmpty())
                                                     <div class="album-slider" data-album-slider>
                                                         @foreach ($serviceSlides as $servicePhoto)
-                                                            <div data-slide-thumb="{{ $servicePhoto->media->getThumbnailUrl() }}">
+                                                            <div data-slide-thumb="{{ $servicePhoto->media->getThumbnailUrl() }}"
+                                                                 data-slide-full="{{ $servicePhoto->media->getLightboxUrl() ?: $servicePhoto->media->getUrl() }}"
+                                                                 data-slide-caption="{{ $servicePhoto->caption }}">
                                                                 <div class="aspect-[4/3] rounded-xl overflow-hidden bg-black">
                                                                     <img src="{{ $servicePhoto->media->getDisplayUrl() ?: $servicePhoto->media->getUrl() }}"
-                                                                         alt="{{ $service->title }}"
+                                                                         alt="{{ $servicePhoto->caption ?: $service->title }}"
                                                                          {{ $loop->first ? 'fetchpriority="high"' : 'loading="lazy"' }}
-                                                                         class="w-full h-full object-cover">
+                                                                         class="album-slide-image w-full h-full object-cover cursor-zoom-in">
                                                                 </div>
                                                             </div>
                                                         @endforeach
@@ -169,4 +171,25 @@
             @endforeach
         @endforeach
     @endforeach
+
+    <div id="albumSliderLightbox" class="fixed inset-0 z-50 hidden bg-black/90"
+         style="backdrop-filter: blur(4px);">
+        <button type="button" data-album-lightbox-close
+                aria-label="Закрыть"
+                class="fixed top-4 right-4 text-white/70 hover:text-white text-4xl leading-none z-10 w-12 h-12 flex items-center justify-center">&times;</button>
+        <button type="button" data-album-lightbox-prev
+                aria-label="Предыдущее фото"
+                class="fixed left-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white text-5xl leading-none z-10 w-12 h-12 flex items-center justify-center">&lsaquo;</button>
+
+        <div class="absolute inset-0 flex flex-col items-center justify-center px-4 pt-20 pb-24 z-[3]">
+            <img data-album-lightbox-image src="" alt=""
+                 class="max-h-[46vh] max-w-[92vw] sm:max-h-[calc(100vh-13rem)] sm:max-w-[calc(100vw-4rem)] object-contain rounded-lg shadow-2xl select-none">
+            <p data-album-lightbox-caption
+               class="hidden mt-4 max-w-[min(80vw,40rem)] text-center text-sm text-gray-300"></p>
+        </div>
+
+        <button type="button" data-album-lightbox-next
+                aria-label="Следующее фото"
+                class="fixed right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white text-5xl leading-none z-10 w-12 h-12 flex items-center justify-center">&rsaquo;</button>
+    </div>
 @endif

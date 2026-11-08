@@ -50,14 +50,80 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const albumLightbox = document.getElementById('albumSliderLightbox');
+    const albumLightboxImage = albumLightbox?.querySelector('[data-album-lightbox-image]');
+    const albumLightboxCaption = albumLightbox?.querySelector('[data-album-lightbox-caption]');
+    let albumLightboxItems = [];
+    let albumLightboxIndex = 0;
+
+    if (albumLightbox && albumLightbox.parentElement !== document.body) {
+        document.body.appendChild(albumLightbox);
+    }
+
+    const showAlbumLightboxImage = () => {
+        const item = albumLightboxItems[albumLightboxIndex];
+        if (!item || !albumLightboxImage) return;
+
+        albumLightboxImage.src = item.src;
+        albumLightboxImage.alt = item.alt;
+
+        if (albumLightboxCaption) {
+            albumLightboxCaption.textContent = item.caption;
+            albumLightboxCaption.classList.toggle('hidden', !item.caption);
+        }
+    };
+
+    const openAlbumLightbox = (items, index) => {
+        if (!albumLightbox || !items.length) return;
+
+        albumLightboxItems = items;
+        albumLightboxIndex = index;
+        showAlbumLightboxImage();
+        albumLightbox.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeAlbumLightbox = () => {
+        if (!albumLightbox) return;
+        albumLightbox.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+
+    const stepAlbumLightbox = (delta) => {
+        if (!albumLightboxItems.length) return;
+        albumLightboxIndex = (albumLightboxIndex + delta + albumLightboxItems.length) % albumLightboxItems.length;
+        showAlbumLightboxImage();
+    };
+
+    albumLightbox?.querySelector('[data-album-lightbox-close]')?.addEventListener('click', closeAlbumLightbox);
+    albumLightbox?.querySelector('[data-album-lightbox-prev]')?.addEventListener('click', () => stepAlbumLightbox(-1));
+    albumLightbox?.querySelector('[data-album-lightbox-next]')?.addEventListener('click', () => stepAlbumLightbox(1));
+
+    albumLightbox?.addEventListener('click', (e) => {
+        if (e.target === albumLightbox) closeAlbumLightbox();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (!albumLightbox || albumLightbox.classList.contains('hidden')) return;
+        if (e.key === 'Escape') closeAlbumLightbox();
+        if (e.key === 'ArrowLeft') stepAlbumLightbox(-1);
+        if (e.key === 'ArrowRight') stepAlbumLightbox(1);
+    });
+
     const initAlbumSlider = ($slider) => {
         if ($slider.hasClass('slick-initialized')) return;
 
         const slides = [];
+        const lightboxItems = [];
         $slider.children().each(function () {
             const $slide = $(this);
             const $img = $slide.find('img').first();
             slides.push($slide.attr('data-slide-thumb') || $img.attr('src') || '');
+            lightboxItems.push({
+                src: $slide.attr('data-slide-full') || $img.attr('src') || '',
+                alt: $img.attr('alt') || '',
+                caption: $slide.attr('data-slide-caption') || '',
+            });
         });
 
         $slider.slick({
@@ -66,6 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
             infinite: slides.length > 1,
             arrows: true,
             dots: false,
+        });
+
+        const wrapIndex = (index) => ((index % slides.length) + slides.length) % slides.length;
+        const currentIndex = () => wrapIndex($slider.slick('slickCurrentSlide') || 0);
+
+        $slider.on('click', '.slick-current img.album-slide-image', (e) => {
+            e.preventDefault();
+            openAlbumLightbox(lightboxItems, currentIndex());
         });
 
         const $thumbs = $slider.nextAll('[data-album-thumbs]').first();
@@ -92,9 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return $button;
         });
-
-        const wrapIndex = (index) => ((index % slides.length) + slides.length) % slides.length;
-        const currentIndex = () => wrapIndex($slider.slick('slickCurrentSlide') || 0);
 
         const syncThumbs = () => {
             const current = currentIndex();

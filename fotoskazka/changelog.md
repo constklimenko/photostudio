@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-08 — Lightbox для слайдера выпускных альбомов
+
+### Цель
+
+По клику на центральное фото в слайдере `slick-list draggable` на странице
+категории с `is_graduation_albums` (например, `/services/vypusknye-albomy-1`)
+открывать увеличенное изображение.
+
+### Реализация
+
+- `components/site/graduation-pricing.blade.php`
+  - слайды слайдера получили `data-slide-full` (lightbox-версия) и
+    `data-slide-caption` (подпись фото);
+  - добавлено модальное окно `#albumSliderLightbox` с навигацией вперёд/назад,
+    подписью и закрытием по фону/`Esc`.
+- `resources/js/app.js`
+  - клик по `img.album-slide-image` в текущем слайде открывает lightbox
+    с фотографиями этой услуги;
+  - поддержка стрелок клавиатуры (←/→) и `Escape`.
+
+### Проверка
+
+- `npm run build` — успешно;
+- на локальной странице `/services/vypusknye-albomy` клик по фото открывает
+  лайтбокс, навигация и закрытие работают, ошибок в консоли нет.
+
 ## 2026-11-08 — SEO: локализация title и дефолтный meta description
 
 ### Цель
