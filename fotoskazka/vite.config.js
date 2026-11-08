@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
+import { local } from 'laravel-vite-plugin/fonts';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
@@ -9,11 +9,11 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
             fonts: [
-                bunny('Ubuntu', {
-                    weights: [300, 400, 500, 700],
+                local('Ubuntu', {
+                    src: 'resources/fonts/ubuntu/*.{woff2,woff}',
                 }),
-                bunny('Forum', {
-                    weights: [400],
+                local('Forum', {
+                    src: 'resources/fonts/forum/*.{woff2,woff}',
                 }),
             ],
         }),
