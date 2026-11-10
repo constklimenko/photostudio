@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Фотосказка",
+  "short_name": "Фотосказка",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
