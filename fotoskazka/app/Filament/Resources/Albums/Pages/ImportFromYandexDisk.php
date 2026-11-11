@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Albums\Pages;
 
 use App\Filament\Resources\Albums\AlbumResource;
 use App\Jobs\ImportAlbumFromYandexDisk;
+use App\Models\Album;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -35,6 +36,7 @@ class ImportFromYandexDisk extends Page
     public function form(Schema $schema): Schema
     {
         return $schema
+            ->model(Album::class)
             ->components([
                 Grid::make(2)
                     ->schema([

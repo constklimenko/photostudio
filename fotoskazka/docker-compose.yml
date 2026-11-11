@@ -8,6 +8,11 @@ x-app: &app
   depends_on:
     db:
       condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
   networks:
     - fotoskazka
 
@@ -25,7 +30,7 @@ services:
     <<: *app
     environment:
       RUN_SETUP: "false"
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=60", "--max-time=3600"]
 
   scheduler:
     <<: *app
@@ -34,7 +39,7 @@ services:
     command: ["php", "artisan", "schedule:work"]
 
   web:
-    image: nginx:1.27-alpine
+    image: nginx:1.30.6-alpine
     restart: unless-stopped
     environment:
       DOMAIN: fotoskazkaufa.ru
@@ -49,6 +54,11 @@ services:
       - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - app
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - fotoskazka
 
@@ -72,6 +82,11 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - fotoskazka
 

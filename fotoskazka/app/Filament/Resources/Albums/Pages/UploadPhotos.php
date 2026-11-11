@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Albums\Pages;
 
 use App\Actions\Album\CreateAlbum;
 use App\Filament\Resources\Albums\AlbumResource;
+use App\Models\Album;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -31,6 +32,7 @@ class UploadPhotos extends Page
         $defaultDisk = Config::get('filesystems.default_media_disk', 'public');
 
         return $schema
+            ->model(Album::class)
             ->components([
                 Grid::make(2)
                     ->schema([
