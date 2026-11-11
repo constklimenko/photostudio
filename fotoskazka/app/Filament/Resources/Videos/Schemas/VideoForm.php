@@ -53,7 +53,7 @@ class VideoForm
                             ->helperText('Либо загрузите файл ниже'),
                         FileUpload::make('file_path')
                             ->nullable()
-                            ->disk('public')
+                            ->disk(config('filesystems.video_disk', 'public'))
                             ->visibility('public')
                             ->directory('videos')
                             ->acceptedFileTypes([

@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-11-11 — S3-хранилище (Reg.ru Cloud) как альтернатива Яндекс.Диску
+
+### Реализация
+
+- добавлена зависимость `league/flysystem-aws-s3-v3` (драйвер `s3`);
+- диск `s3` в `config/filesystems.php` настроен для Reg.ru Cloud:
+  `endpoint`, `bucket`, `url`, path-style, `visibility: public`,
+  `remote: true`;
+- `.env.example`: `AWS_ENDPOINT`, `AWS_URL`, `AWS_BUCKET=fotoskazka`,
+  `AWS_USE_PATH_STYLE_ENDPOINT=true` и переключатель
+  `MEDIA_DISK=public|s3|yandex_disk`;
+- новый документ `docs/S3-STORAGE.md`: настройка, проверка, включение,
+  миграция, ограничения публичного бакета;
+- команда `media:migrate-to-s3` (`--dry-run`, `--limit`, `--media-id`,
+  `--keep-source`): upload → проверка размера и sha256 → обновление
+  `media.disk` → удаление источника; поддерживаются изображения и
+  не-изображения, для записей без метаданных определяются mime/размеры;
+- видео вынесены на отдельный `VIDEO_DISK` (по умолчанию `public`),
+  чтобы переключение `MEDIA_DISK=s3` не ломало таблицу `videos`;
+- ключи доступа добавлены только в `.env` (в репозиторий не попадают).
+
+### Проверка
+
+- локально и на проде: `php artisan media:test-storage --disk=s3` —
+  создание папки, запись, чтение, сверка и удаление файла;
+- публичный URL объекта отдаёт `200 image/jpeg` без авторизации;
+- `Storage::disk('s3')->url()` возвращает
+  `https://s3.regru.cloud/fotoskazka/<path>`;
+- `readStream()` работает (используется `MediaProcessor`/`MediaController`);
+- загрузка с `visibility: public` проходит (ACL поддерживается).
+
+### Важно
+
+- `MEDIA_DISK` пока оставлен `public`; для новых загрузок в S3 нужно
+  поставить `MEDIA_DISK=s3` и перезапустить `app`/`queue`;
+- существующие Media не мигрируют автоматически — у них в БД остаётся
+  прежний `disk`;
+- бакет публичный: оригиналы клиентских/проектных альбомов туда класть
+  нельзя, для C2 понадобится приватный бакет или приватный диск;
+- хост `fotoskazka.website.regru.cloud` для объектов этого бакета отдаёт
+  404; используются path-style `s3.regru.cloud/fotoskazka/...` или
+  `fotoskazka.s3.regru.cloud/...`.
+
 ## 2026-11-11 — security-заголовки, кэш статики, autocomplete и размеры изображений
 
 ### nginx

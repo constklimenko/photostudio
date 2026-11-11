@@ -41,7 +41,7 @@ class VideoController extends Controller
         abort_unless($video->file_path, 404);
 
         $file = $video->file_path;
-        $disk = Storage::disk(Config::get('filesystems.default_media_disk', 'public'));
+        $disk = Storage::disk(Config::get('filesystems.video_disk', 'public'));
 
         if (! $disk->exists($file)) {
             abort(404);

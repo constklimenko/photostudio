@@ -18,6 +18,12 @@ return [
     'default_media_disk' => env('MEDIA_DISK', 'public'),
 
     /*
+    | Диск загруженных видео (таблица videos): отдельно от MEDIA_DISK,
+    | чтобы переключение оригиналов изображений на S3 не ломало видео.
+    */
+    'video_disk' => env('VIDEO_DISK', 'public'),
+
+    /*
     | Диск файлов «оживающих фотографий» (маркер, .mind, видео — ArTarget,
     | ArContent). Отдельно от оригиналов клиентских альбомов; на D1.7 —
     | S3-совместимое хранилище.
@@ -132,15 +138,41 @@ return [
             'report' => false,
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | S3-совместимое хранилище (альтернатива Яндекс.Диску)
+        |----------------------------------------------------------------------
+        |
+        | Оригиналы изображений в публичном бакете. Параметры — только через
+        | environment variables:
+        |   AWS_ENDPOINT   — API endpoint (например, https://s3.regru.cloud);
+        |   AWS_URL        — публичный базовый URL (например,
+        |                    https://fotoskazka.website.regru.cloud);
+        |   AWS_BUCKET     — имя бакета;
+        |   AWS_USE_PATH_STYLE_ENDPOINT=true — для провайдеров без
+        |                    virtual-hosted-style (Reg.ru Cloud).
+        |
+        | "remote" => true — диск удалённый: файлы отдаются через
+        | прокси-роут media.original, миграция на Яндекс.Диск такие записи
+        | пропускает.
+        |
+        | ВАЖНО: бакет публичный (read-only для всех). Хранить в нём
+        | приватные материалы клиентских галерей нельзя — для них нужен
+        | отдельный приватный бакет или локальный диск.
+        |
+        */
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
-            'region' => env('AWS_DEFAULT_REGION'),
+            'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
             'bucket' => env('AWS_BUCKET'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'public',
+            'remote' => true,
             'throw' => false,
             'report' => false,
         ],

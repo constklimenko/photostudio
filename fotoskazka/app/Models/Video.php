@@ -25,15 +25,15 @@ class Video extends Model
         ];
     }
 
-    protected function getDefaultDisk(): string
+    protected function getDisk(): string
     {
-        return Config::get('filesystems.default_media_disk', 'public');
+        return (string) Config::get('filesystems.video_disk', 'public');
     }
 
     public function getEmbedUrlAttribute(): ?string
     {
         if ($this->file_path) {
-            return Storage::disk($this->getDefaultDisk())->url($this->file_path);
+            return Storage::disk($this->getDisk())->url($this->file_path);
         }
 
         if (! $this->url) {
