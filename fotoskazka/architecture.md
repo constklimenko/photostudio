@@ -503,6 +503,27 @@ MediaProcessor::processOrFail(Media)
 Статусы обработки в БД не вводятся: «требует обработки» выводится из пустых
 полей и отсутствия файла thumbnail; повторный вызов `process()` безопасен.
 
+## S3-хранилище (альтернатива Яндекс.Диску)
+
+- Диск `s3` (драйвер `league/flysystem-aws-s3-v3`) хранит оригиналы Media;
+  параметры — `AWS_ENDPOINT`, `AWS_BUCKET`, `AWS_URL`,
+  `AWS_USE_PATH_STYLE_ENDPOINT` (Reg.ru Cloud — path-style).
+- `MEDIA_DISK` выбирает диск для новых Media (`public`, `s3`,
+  `yandex_disk`); у каждой записи `media.disk` хранится в БД, поэтому
+  смешанное хранение поддерживается.
+- Видео (`videos.file_path`) вынесены на отдельный `VIDEO_DISK`, чтобы
+  переключение `MEDIA_DISK=s3` не ломало существующие видео.
+- `media:migrate-to-s3` переносит оригиналы: upload → проверка размера и
+  sha256 → обновление `media.disk` → удаление источника; поддерживаются
+  изображения и не-изображения, для записей без метаданных определяются
+  `mime_type`/`width`/`height`. Команда идемпотентна.
+- Thumbnails и кэш display/lightbox остаются локальными; после смены
+  `disk` кэш генерируется заново (лениво или через
+  `media:regenerate-image-cache`).
+- Публичный бакет нельзя использовать для приватных клиентских
+  альбомов: прямой URL объекта обойдёт `MediaAccessService`. Для C2
+  нужен приватный бакет/подписанные ссылки или локальный приватный диск.
+
 ## Команда media:regenerate-thumbnails
 
 Выбор записей для регенерации (`no thumbnail`, `broken path`, `file missing`,
