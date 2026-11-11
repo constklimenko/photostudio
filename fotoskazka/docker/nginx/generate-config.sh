@@ -5,7 +5,24 @@ DOMAIN="${DOMAIN:-fotoskazka.ru}"
 CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
 CONF="/etc/nginx/conf.d/default.conf"
 
+mkdir -p /etc/nginx/snippets
+
+# Общие security-заголовки для публичных ответов (включаются в server/location).
+cat > /etc/nginx/snippets/security-headers.conf <<'HEADERS'
+add_header Strict-Transport-Security "max-age=31536000" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Content-Security-Policy $csp_policy always;
+HEADERS
+
 cat > "$CONF" <<EOF
+map \$request_uri \$csp_policy {
+    default "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src 'self' https://www.youtube.com https://youtube.com https://rutube.ru https://vk.com https://vkvideo.ru";
+    ~^/admin "";
+    ~^/livewire "";
+    ~^/ar/ "";
+}
 server {
     listen 80;
     listen [::]:80;
@@ -21,12 +38,22 @@ server {
     index index.php index.html;
     charset utf-8;
 
+    include /etc/nginx/snippets/security-headers.conf;
+
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
+
+    # Хэшированные ассеты Vite: годовой immutable-кэш.
+    location ^~ /build/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+        try_files \$uri =404;
+    }
 
     # Таргеты WebAR (.mind) сжимаются gzip примерно вдвое; gzip_proxied —
     # чтобы сжимать и запросы, пришедшие через CDN.
@@ -96,12 +123,22 @@ server {
     index index.php index.html;
     charset utf-8;
 
+    include /etc/nginx/snippets/security-headers.conf;
+
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
+
+    # Хэшированные ассеты Vite: годовой immutable-кэш.
+    location ^~ /build/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        access_log off;
+        try_files \$uri =404;
+    }
 
     # Таргеты WebAR (.mind) сжимаются gzip примерно вдвое; gzip_proxied —
     # чтобы сжимать и запросы, пришедшие через CDN.

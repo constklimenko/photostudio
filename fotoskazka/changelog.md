@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-11-11 — security-заголовки, кэш статики, autocomplete и размеры изображений
+
+### nginx
+
+- Добавлены security-заголовки: `Strict-Transport-Security`
+  (`max-age=31536000`), `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy:
+  strict-origin-when-cross-origin`, `Content-Security-Policy`;
+- CSP не отдаётся для `/admin`, `/livewire` и `/ar/` (Filament/Livewire и
+  WebAR требуют более свободный режим); для остальных страниц разрешены
+  inline-скрипты/стили, изображения `https:`/`data:`, фреймы YouTube,
+  Rutube, VK;
+- для `/build/` (хэшированные ассеты Vite) — `Cache-Control: public,
+  max-age=31536000, immutable`, `access_log off`, `try_files ... =404`.
+
+### UI
+
+- Форма заявки: `autocomplete="name" / "tel" / "email"`; форма входа —
+  `email` / `current-password` (устранены предупреждения браузера);
+- отзывы на главной: изображениям добавлены `width`/`height` из `Media`
+  (устранён CLS и предупреждение «lazy-loaded images should have explicit
+  dimensions»).
+
+### Обслуживание
+
+- Очищены `failed_jobs` (4 старые записи: 2 импорта Яндекс.Диска от
+  23.08 и 2 таймаута от 07.11);
+- после правки Blade выполнен `view:cache` и перезапуск `app`:
+  в php.ini `opcache.validate_timestamps=0`, поэтому изменения шаблонов
+  и PHP-кода подхватываются только после рестарта контейнера.
+
+### Проверка
+
+- главная — без сообщений в консоли (autocomplete/размеры/CSP);
+- `/admin` отвечает без CSP, админка и `/video` открываются без ошибок;
+- `/build/*` отдаётся с годовым immutable-кэшем;
+- `www.fotoskazkaufa.ru` на origin отвечает 200 (сертификат содержит
+  `www`), CDN для этого хоста ещё не настроен (403).
+
+### www: что добавить в DNS
+
+- Вариант через CDN (рекомендуется): добавить `www.fotoskazkaufa.ru` в
+  панели turboflare как алиас сайта и создать запись
+  `www CNAME fotoskazkaufa.ru.` (TTL 3600);
+- Вариант напрямую на origin: `www A 83.166.245.105` (TTL 3600) —
+  работает сразу, но обходит CDN; после этого желателен 301
+  `www → apex`.
+
 ## 2026-11-11 — обновление зависимостей и nginx, планы миграции ОС/MySQL
 
 ### Безопасность зависимостей

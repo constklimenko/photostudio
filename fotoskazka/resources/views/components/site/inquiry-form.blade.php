@@ -14,18 +14,21 @@
 
     <div>
         <input type="text" name="name" id="name" required placeholder="Имя"
+               autocomplete="name"
                class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition">
         @error('name') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
     </div>
 
     <div>
         <input type="tel" name="phone" id="phone" required placeholder="Телефон"
+               autocomplete="tel"
                class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition">
         @error('phone') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
     </div>
 
     <div>
         <input type="email" name="email" id="email" required placeholder="Email"
+               autocomplete="email"
                class="w-full border-b border-[#2a2a2a] bg-transparent px-2 py-3 text-sm text-white placeholder-gray-500 focus:border-[#d4af37] focus:ring-0 outline-none transition">
         @error('email') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
     </div>

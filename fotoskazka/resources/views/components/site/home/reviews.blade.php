@@ -27,6 +27,10 @@
                        data-aos="{{ $loop->even ? 'flip-left' : 'flip-right' }}">
                         <img src="{{ $photo->media->getDisplayUrl() }}"
                              alt="{{ $photoAlt }}"
+                             @if ($photo->media->width && $photo->media->height)
+                                 width="{{ $photo->media->width }}"
+                                 height="{{ $photo->media->height }}"
+                             @endif
                              class="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                              loading="lazy">
                     </a>

@@ -17,13 +17,13 @@
 
         <div>
             <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus
+            <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="email"
                    class="w-full rounded-lg border-gray-300 px-4 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
         </div>
 
         <div>
             <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-            <input type="password" name="password" id="password" required
+            <input type="password" name="password" id="password" required autocomplete="current-password"
                    class="w-full rounded-lg border-gray-300 px-4 py-2.5 text-sm focus:border-amber-500 focus:ring-amber-500">
         </div>
 
