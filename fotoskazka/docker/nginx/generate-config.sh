@@ -28,7 +28,9 @@ map \$request_uri \$csp_policy {
 # каталоги Laravel) отсекаются на уровне nginx — 403 без php-fpm. Именно 403,
 # а не 444: CDN превращает оборванное соединение в 502 и это пачкает
 # статистику 5xx; 4xx проходит через edge как есть.
-map \$request_uri \$blocked_probe {
+# Ключ — \$uri (нормализованный путь без query), иначе ?cb=123 обходил бы
+# правила по расширению.
+map \$uri \$blocked_probe {
     default 0;
     ~*^/\.(?!well-known)                                              1;
     ~*^/(wp-admin|wp-login|wp-content|wp-includes|wp-json|xmlrpc)     1;

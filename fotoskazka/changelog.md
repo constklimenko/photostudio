@@ -66,9 +66,10 @@
 ### nginx: обрыв сканерных проб
 
 - в `docker/nginx/generate-config.sh` добавлен
-  `map $request_uri $blocked_probe` и `if ($blocked_probe) { return 403; }`
+  `map $uri $blocked_probe` и `if ($blocked_probe) { return 403; }`
   в оба server-блока: nginx отвечает 403 сам, запрос не доходит до php-fpm
-  и не занимает воркер;
+  и не занимает воркер; ключ — `$uri` без query, иначе `?cb=123` обходил бы
+  правила по расширению;
 - блокируются `/.env`, `/.git`, `/.DS_Store` и прочие dot-пути (кроме
   `/.well-known`), `wp-admin|wp-login|wp-content|wp-includes|wp-json|xmlrpc`,
   `phpmyadmin|pma|adminer|myadmin`, `telescope|horizon|_debugbar|server-status|
