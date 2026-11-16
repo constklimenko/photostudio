@@ -23,6 +23,20 @@ map \$request_uri \$csp_policy {
     ~^/livewire "";
     ~^/ar/ "";
 }
+
+# Сканеры и боты: очевидные пробы (.env, .git, wp-*, бэкапы, внутренние
+# каталоги Laravel) обрываются на уровне nginx — 444 закрывает соединение
+# без ответа. Так запрос не доходит до php-fpm и не тратит воркер на 404.
+map \$request_uri \$blocked_probe {
+    default 0;
+    ~*^/\.(?!well-known)                                              1;
+    ~*^/(wp-admin|wp-login|wp-content|wp-includes|wp-json|xmlrpc)     1;
+    ~*^/(phpmyadmin|pma|adminer|myadmin|dbadmin|sqladmin)             1;
+    ~*^/(telescope|horizon|_debugbar|server-status|server-info|cgi-bin) 1;
+    ~*^/(composer\.(json|lock)|package(-lock)?\.json|yarn\.lock|artisan|phpunit\.xml|sftp-config\.json|\.ftpconfig) 1;
+    ~*^/(config|database|tests|routes|resources|bootstrap/cache|storage/(logs|framework|app/private))/ 1;
+    ~*\.(env|sql|bak|backup|old|orig|swp|swo|tar|tar\.gz|tgz|zip|log|ini|yml|yaml|sh|dist)$ 1;
+}
 server {
     listen 80;
     listen [::]:80;
@@ -39,6 +53,11 @@ server {
     charset utf-8;
 
     include /etc/nginx/snippets/security-headers.conf;
+
+    # Пробы сканеров (.env, .git, wp-*, бэкапы) — обрыв без ответа.
+    if (\$blocked_probe) {
+        return 444;
+    }
 
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
@@ -95,8 +114,9 @@ server {
         fastcgi_buffer_size 32k;
     }
 
+    # Вложенные dot-пути (/foo/.env): map ловит только начало URI.
     location ~ /\.(?!well-known).* {
-        deny all;
+        return 444;
     }
 }
 EOF
@@ -125,6 +145,11 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
+    # Пробы сканеров (.env, .git, wp-*, бэкапы) — обрыв без ответа.
+    if (\$blocked_probe) {
+        return 444;
+    }
+
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
     }
@@ -180,8 +205,9 @@ server {
         fastcgi_buffer_size 32k;
     }
 
+    # Вложенные dot-пути (/foo/.env): map ловит только начало URI.
     location ~ /\.(?!well-known).* {
-        deny all;
+        return 444;
     }
 }
 EOF
