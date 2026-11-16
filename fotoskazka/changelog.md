@@ -66,9 +66,9 @@
 ### nginx: обрыв сканерных проб
 
 - в `docker/nginx/generate-config.sh` добавлен
-  `map $request_uri $blocked_probe` и `if ($blocked_probe) { return 444; }`
-  в оба server-блока: соединение закрывается без ответа, запрос не доходит
-  до php-fpm и не занимает воркер;
+  `map $request_uri $blocked_probe` и `if ($blocked_probe) { return 403; }`
+  в оба server-блока: nginx отвечает 403 сам, запрос не доходит до php-fpm
+  и не занимает воркер;
 - блокируются `/.env`, `/.git`, `/.DS_Store` и прочие dot-пути (кроме
   `/.well-known`), `wp-admin|wp-login|wp-content|wp-includes|wp-json|xmlrpc`,
   `phpmyadmin|pma|adminer|myadmin`, `telescope|horizon|_debugbar|server-status|
@@ -78,16 +78,19 @@
   `bootstrap/cache/`, `storage/logs|framework|app/private`) и расширения
   `.env|.sql|.bak|.backup|.old|.orig|.swp|.swo|.tar|.tar.gz|.tgz|.zip|.log|
   .ini|.yml|.yaml|.sh|.dist`;
-- `location ~ /\.(?!well-known)` переведён с `deny all` (403) на `return 444`
-  для вложенных dot-путей (`/foo/.env`);
+- `location ~ /\.(?!well-known)` переведён с `deny all` на явный
+  `return 403` (закрывает вложенные dot-пути вроде `/foo/.env`);
 - fail2ban/`limit_req` по IP не подходят: за CDN `$remote_addr` — это edge,
-  лимит по нему затронул бы всех посетителей; обрыв на nginx дешевле и
+  лимит по нему затронул бы всех посетителей; ранний 403 на nginx дешевле и
   не требует разбора docker-логов;
 - проверено в отдельном nginx-контейнере и на проде: `/.env`, `/.git/config`,
   `/wp-admin`, `/phpmyadmin/`, `/config/app.php`, `/backup.zip`,
-  `/storage/logs/laravel.log` → 444 (0 байт ответа); `/`, `/services`,
+  `/storage/logs/laravel.log` → 403; `/`, `/services`,
   `/admin` (302), `/sitemap.xml`, `/site.webmanifest`, `/media/*`,
   `/build/*`, `/.well-known/acme-challenge/*` работают как раньше; 5xx — 0;
+- первая версия отвечала `444` (обрыв соединения), но CDN превращал это
+  в `502` для клиента и пачкал статистику 5xx — переключили на `403`,
+  который edge пропускает как есть;
 - **важно**: `generate-config.sh` смонтирован одним файлом, поэтому
   `git pull` его заменяет, а bind-mount держит старый inode. Применять через
   `docker compose up -d --force-recreate web` (а не `restart`); то же

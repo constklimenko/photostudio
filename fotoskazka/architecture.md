@@ -1642,7 +1642,7 @@ Filament-дерево категорий — следующая часть эт�
   `restart`/`up -d` без пересоздания оставляют в контейнере старую версию;
 - очевидные пробы сканеров (`/.env`, `/.git`, `wp-*`, `phpmyadmin`, бэкапы,
   внутренние каталоги Laravel) обрываются в `map $request_uri $blocked_probe`
-  через `return 444` до выбора location — запрос не доходит до php-fpm;
+  через `return 403` до выбора location — запрос не доходит до php-fpm;
 - HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
   монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
   deploy-hook `docker compose exec -T web nginx -s reload`;

@@ -25,8 +25,9 @@ map \$request_uri \$csp_policy {
 }
 
 # Сканеры и боты: очевидные пробы (.env, .git, wp-*, бэкапы, внутренние
-# каталоги Laravel) обрываются на уровне nginx — 444 закрывает соединение
-# без ответа. Так запрос не доходит до php-fpm и не тратит воркер на 404.
+# каталоги Laravel) отсекаются на уровне nginx — 403 без php-fpm. Именно 403,
+# а не 444: CDN превращает оборванное соединение в 502 и это пачкает
+# статистику 5xx; 4xx проходит через edge как есть.
 map \$request_uri \$blocked_probe {
     default 0;
     ~*^/\.(?!well-known)                                              1;
@@ -54,9 +55,9 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
-    # Пробы сканеров (.env, .git, wp-*, бэкапы) — обрыв без ответа.
+    # Пробы сканеров (.env, .git, wp-*, бэкапы) — 403 без php-fpm.
     if (\$blocked_probe) {
-        return 444;
+        return 403;
     }
 
     location / {
@@ -116,7 +117,7 @@ server {
 
     # Вложенные dot-пути (/foo/.env): map ловит только начало URI.
     location ~ /\.(?!well-known).* {
-        return 444;
+        return 403;
     }
 }
 EOF
@@ -145,9 +146,9 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
-    # Пробы сканеров (.env, .git, wp-*, бэкапы) — обрыв без ответа.
+    # Пробы сканеров (.env, .git, wp-*, бэкапы) — 403 без php-fpm.
     if (\$blocked_probe) {
-        return 444;
+        return 403;
     }
 
     location / {
@@ -207,7 +208,7 @@ server {
 
     # Вложенные dot-пути (/foo/.env): map ловит только начало URI.
     location ~ /\.(?!well-known).* {
-        return 444;
+        return 403;
     }
 }
 EOF
