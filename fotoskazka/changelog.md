@@ -63,6 +63,36 @@
   недоступности), после старта 5xx в логах нет; `README.md` и
   `architecture.md` обновлены под новое значение.
 
+### nginx: обрыв сканерных проб
+
+- в `docker/nginx/generate-config.sh` добавлен
+  `map $request_uri $blocked_probe` и `if ($blocked_probe) { return 444; }`
+  в оба server-блока: соединение закрывается без ответа, запрос не доходит
+  до php-fpm и не занимает воркер;
+- блокируются `/.env`, `/.git`, `/.DS_Store` и прочие dot-пути (кроме
+  `/.well-known`), `wp-admin|wp-login|wp-content|wp-includes|wp-json|xmlrpc`,
+  `phpmyadmin|pma|adminer|myadmin`, `telescope|horizon|_debugbar|server-status|
+  server-info|cgi-bin`, `composer.json/lock`, `package.json`, `artisan`,
+  `phpunit.xml`, `sftp-config.json`, внутренние каталоги Laravel
+  (`config/`, `database/`, `tests/`, `routes/`, `resources/`,
+  `bootstrap/cache/`, `storage/logs|framework|app/private`) и расширения
+  `.env|.sql|.bak|.backup|.old|.orig|.swp|.swo|.tar|.tar.gz|.tgz|.zip|.log|
+  .ini|.yml|.yaml|.sh|.dist`;
+- `location ~ /\.(?!well-known)` переведён с `deny all` (403) на `return 444`
+  для вложенных dot-путей (`/foo/.env`);
+- fail2ban/`limit_req` по IP не подходят: за CDN `$remote_addr` — это edge,
+  лимит по нему затронул бы всех посетителей; обрыв на nginx дешевле и
+  не требует разбора docker-логов;
+- проверено в отдельном nginx-контейнере и на проде: `/.env`, `/.git/config`,
+  `/wp-admin`, `/phpmyadmin/`, `/config/app.php`, `/backup.zip`,
+  `/storage/logs/laravel.log` → 444 (0 байт ответа); `/`, `/services`,
+  `/admin` (302), `/sitemap.xml`, `/site.webmanifest`, `/media/*`,
+  `/build/*`, `/.well-known/acme-challenge/*` работают как раньше; 5xx — 0;
+- **важно**: `generate-config.sh` смонтирован одним файлом, поэтому
+  `git pull` его заменяет, а bind-mount держит старый inode. Применять через
+  `docker compose up -d --force-recreate web` (а не `restart`); то же
+  уточнено в `architecture.md`.
+
 ---
 
 ## 2026-11-11 — S3-хранилище (Reg.ru Cloud) как альтернатива Яндекс.Диску

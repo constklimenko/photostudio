@@ -1636,8 +1636,13 @@ Filament-дерево категорий — следующая часть эт�
   если найден сертификат `/etc/letsencrypt/live/${DOMAIN}/fullchain.pem`;
   индекс каталога — `index.php index.html` (статический `/webar/`); файлы
   таргетов WebAR `*.mind` отдаются со сжатием gzip, в том числе на запросы
-  через CDN (`gzip_proxied any`). Скрипт смонтирован томом, поэтому после
-  его изменения нужен `docker compose restart web`;
+  через CDN (`gzip_proxied any`). Скрипт смонтирован томом (bind-mount одного
+  файла держит inode), поэтому после его изменения нужен
+  `docker compose up -d --force-recreate web`: `git pull` заменяет файл, а
+  `restart`/`up -d` без пересоздания оставляют в контейнере старую версию;
+- очевидные пробы сканеров (`/.env`, `/.git`, `wp-*`, `phpmyadmin`, бэкапы,
+  внутренние каталоги Laravel) обрываются в `map $request_uri $blocked_probe`
+  через `return 444` до выбора location — запрос не доходит до php-fpm;
 - HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
   монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
   deploy-hook `docker compose exec -T web nginx -s reload`;
