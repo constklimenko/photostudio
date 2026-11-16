@@ -46,6 +46,19 @@
   `/portfolio`, `/blog`, карточка услуги — 200 без ошибок;
 - Lighthouse на проде: accessibility 100, best practices 100, SEO 100.
 
+### PHP-FPM: `pm.max_children` 4 → 8
+
+- в логах `app` копились `WARNING: [pool www] server reached max_children
+  setting (4)` (5–12 раз в сутки): 4 воркера не хватало на пики —
+  генерация изображений, обходы ботов, Lighthouse;
+- `docker/php/Dockerfile`: `pm.max_children = 4` → **8** (RAM 965 МБ,
+  свободно ~450 МБ, `pm = ondemand` поднимает воркеры только под нагрузкой);
+- на проде: `git pull`, `docker compose build app`,
+  `docker compose up -d app queue scheduler` — образ `fotoskazka-app:latest`
+  пересобран, контейнеры пересозданы; entrypoint выполнил `optimize`;
+- проверка: в новом контейнере `pm.max_children = 8`, сайт 200, 5xx в логах
+  нет; `README.md` и `architecture.md` обновлены под новое значение.
+
 ---
 
 ## 2026-11-11 — S3-хранилище (Reg.ru Cloud) как альтернатива Яндекс.Диску

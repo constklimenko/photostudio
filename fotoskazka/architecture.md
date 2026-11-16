@@ -1184,7 +1184,7 @@ storage/app/public/
     с `alias` на `storage/app/public/` (корень диска `public`) в обоих
     server-блоках `docker/nginx/generate-config.sh`, `X-Content-Type-Options`
     добавляет сам location. php-fpm воркер освобождается сразу — при
-    `pm.max_children = 4` несколько одновременных просмотров больше не
+    `pm.max_children = 8` несколько одновременных просмотров больше не
     блокируют сайт. Прямой запрос к `/protected-videos/...` → 404 (`internal`).
     Если `MEDIA_DISK` сменится на другой локальный диск, `alias` нужно
     направить на его корень.

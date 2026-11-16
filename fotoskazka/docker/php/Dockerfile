@@ -41,7 +41,7 @@ WORKDIR /var/www/html
 
 RUN { \
         echo 'pm = ondemand'; \
-        echo 'pm.max_children = 4'; \
+        echo 'pm.max_children = 8'; \
         echo 'pm.process_idle_timeout = 10s'; \
         echo 'pm.max_requests = 500'; \
     } >> /usr/local/etc/php-fpm.d/www.conf

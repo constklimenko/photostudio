@@ -353,7 +353,7 @@ docker compose exec app php -v          # проверить версию PHP
 `X-Accel-Redirect: /protected-videos/<file_path>`, nginx берёт файл из
 internal location `^~ /protected-videos/` (`alias
 /var/www/html/storage/app/public/`) и сам обрабатывает `Range`, `ETag`, 304.
-Так просмотр видео не занимает php-fpm воркер (`pm.max_children = 4`).
+Так просмотр видео не занимает php-fpm воркер (`pm.max_children = 8`).
 
 - Включается `VIDEO_X_ACCEL=true` (уже стоит в `.env.docker.example`); для
   `php artisan serve` без nginx — `false` (по умолчанию), тогда видео стримит PHP.
