@@ -31,6 +31,21 @@
 - Lighthouse по локальной сборке: accessibility 100, best practices 100,
   SEO 100 (было 93/100/83).
 
+### Деплой на прод (83.166.245.105)
+
+- `git pull` в `/var/www/fotoskazka` (коммит `6291b11`);
+- `docker compose run --rm node` — новые ассеты `app-DbdK_rYe.css`,
+  `app-CNC4dOz4.js`;
+- `docker compose restart app` (entrypoint: `migrate --force` + `optimize`,
+  сбрасывает opcache при `validate_timestamps=0`); web/queue/scheduler
+  не пересоздавались — код и ассеты примонтированы;
+- проверка на живом домене: `/no-such-page` → 404 со своей страницей
+  и статусом 404, цвет футера `#888880`, `/` — hero: display (40 КБ)
+  за 263–359 мс, оригинал (146 КБ) стартует на 607 мс при `loadEventEnd`
+  506 мс, подмена `src` успешна, консоль без ошибок; `/services`,
+  `/portfolio`, `/blog`, карточка услуги — 200 без ошибок;
+- Lighthouse на проде: accessibility 100, best practices 100, SEO 100.
+
 ---
 
 ## 2026-11-11 — S3-хранилище (Reg.ru Cloud) как альтернатива Яндекс.Диску

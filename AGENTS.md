@@ -1,5 +1,13 @@
 # Laravel Project — Agents Guide
 
+## Расположение (важно)
+
+* Корень репозитория и рабочей сессии — `/home/www/laravel`.
+* Laravel-приложение находится в подкаталоге `fotoskazka/`.
+* **Пути к файлам и документам в тексте указаны от корня репозитория** (`/home/www/laravel`), например `fotoskazka/roadmap.md`.
+* **Все artisan/composer/npm-команды выполняются из `fotoskazka/`**, например: `cd fotoskazka && php artisan test`. Пути внутри команд (`tests/...`, `app/...`) — относительно `fotoskazka/`.
+* В этом же репозитории есть `blog/` — отдельный подпроект, правила ниже к нему не относятся.
+
 ## Project Structure
 
 ```
@@ -31,10 +39,10 @@ fotoskazka/
 
 Перед началом любой задачи агент ОБЯЗАН ознакомиться с файлами:
 
-* `./roadmap.md` — текущий план проекта и приоритеты разработки.
-* `./changelog.md` — журнал выполненных работ.
-* `./architecture.md` — архитектурные решения проекта.
-* `./database.md` — описание структуры БД и связей.
+* `fotoskazka/roadmap.md` — текущий план проекта и приоритеты разработки.
+* `fotoskazka/changelog.md` — журнал выполненных работ.
+* `fotoskazka/architecture.md` — архитектурные решения проекта.
+* `fotoskazka/database.md` — описание структуры БД и связей.
 
 Если задача противоречит roadmap или архитектуре, необходимо сообщить об этом до внесения изменений.
 
@@ -52,7 +60,7 @@ fotoskazka/
 * система клиентских галерей;
 * платформа для выпускных альбомов.
 
-Текущий этап разработки определяется файлом `roadmap.md`.
+Текущий этап разработки определяется файлом `fotoskazka/roadmap.md`.
 
 На этапе MVP реализуются:
 
@@ -73,8 +81,8 @@ fotoskazka/
 
 * Не создавать функциональность, отсутствующую в roadmap.
 * Не добавлять новые зависимости без необходимости.
-* Не изменять архитектуру БД без обновления `database.md`.
-* Не изменять архитектурные решения без обновления `architecture.md`.
+* Не изменять архитектуру БД без обновления `fotoskazka/database.md`.
+* Не изменять архитектурные решения без обновления `fotoskazka/architecture.md`.
 
 ---
 
@@ -85,7 +93,7 @@ fotoskazka/
 1. Изучить существующую реализацию.
 2. Предложить план изменений.
 3. Выполнить изменения.
-4. Обновить changelog.md.
+4. Обновить `fotoskazka/changelog.md`.
 5. Проверить работоспособность решения.
 
 ---
@@ -169,15 +177,15 @@ fotoskazka/
 
 После завершения каждой задачи необходимо:
 
-1. Обновить changelog.md.
-2. Если изменена архитектура — обновить architecture.md.
-3. Если изменена структура БД — обновить database.md.
+1. Обновить `fotoskazka/changelog.md`.
+2. Если изменена архитектура — обновить `fotoskazka/architecture.md`.
+3. Если изменена структура БД — обновить `fotoskazka/database.md`.
 
 ---
 
 # Приоритеты проекта
 
-Всегда ориентироваться на порядок из roadmap:
+Всегда ориентироваться на порядок из `fotoskazka/roadmap.md`:
 
 1. ER-диаграмма
 2. Структура таблиц
@@ -206,6 +214,8 @@ fotoskazka/
 
 
 ## Common Commands
+
+Все команды ниже выполняются из каталога `fotoskazka/` (см. раздел «Расположение»).
 
 | Action | Command |
 |---|---|
@@ -251,7 +261,7 @@ fotoskazka/
 
 ## Environment
 
-- `.env` file is **not** committed (only `.env.example` is)
+- `fotoskazka/.env` file is **not** committed (only `fotoskazka/.env.example` is)
 - To regenerate app key: `php artisan key:generate`
 - Database: check `.env` for `DB_*` values (default SQLite)
 
@@ -259,7 +269,7 @@ fotoskazka/
 
 - Run tests: `composer test` or `php artisan test`
 - CI test command: `php artisan config:clear && php artisan test`
-- Write tests under `tests/Feature/` for HTTP routes, `tests/Unit/` for isolated logic
+- Write tests under `fotoskazka/tests/Feature/` for HTTP routes, `fotoskazka/tests/Unit/` for isolated logic
 - Use `RefreshDatabase` trait when tests modify the database
 
 ## Useful Artisan Shortcuts
