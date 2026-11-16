@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-11-16 — кастомная 404, контраст футера, ленивый апгрейд фона Hero
+
+### Публичные страницы
+
+- `resources/views/errors/404.blade.php` — своя страница 404 в layout сайта:
+  заголовок, кнопки «На главную» / «Услуги» / «Портфолио», телефон; вместо
+  стандартной английской заглушки Laravel;
+- `resources/views/components/site/inquiry-form.blade.php` — `$errors`
+  инициализируется пустым `ViewErrorBag`, если переменная не передана:
+  модалка заявки из layout больше не падает при рендере вне web-middleware
+  (страницы ошибок);
+- `resources/css/app.css` — `footer .text-gray-500` с `#666660` на `#888880`:
+  контраст текста футера 3.52 → 5.68 на `#050505` (WCAG AA, минимум 4.5);
+- `x-site.hero` — `src` остаётся display-версией (WebP), оригинал —
+  в `data-original`, добавлен `decoding="async"`; если display-URL недоступен
+  (медиа не изображение), `src` сразу указывает на оригинал;
+- `resources/js/app.js` — оригинал фона Hero догружается после `load` в
+  `requestIdleCallback` (fallback 1200 мс); `src` подменяется только после
+  успешной загрузки, при ошибке остаётся display-версия.
+
+### Тесты
+
+- `tests/Feature/Http/NotFoundPageTest.php` — 404 отдаёт страницу сайта
+  с шапкой, футером и ссылками на главную/услуги/портфолио;
+- `tests/Feature/Http/HomeHeroImageTest.php` — display в `src`, оригинал в
+  `data-original`, fallback на оригинал для не-изображений;
+- полный прогон: 1296 тестов, 1294 passed; 2 ошибки — `MediaModelTest`
+  (нет доступа к `cloud-api.yandex.net` из окружения), к правкам не относятся;
+- Lighthouse по локальной сборке: accessibility 100, best practices 100,
+  SEO 100 (было 93/100/83).
+
+---
+
 ## 2026-11-11 — S3-хранилище (Reg.ru Cloud) как альтернатива Яндекс.Диску
 
 ### Реализация

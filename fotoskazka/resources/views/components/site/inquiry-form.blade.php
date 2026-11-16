@@ -5,6 +5,8 @@
     'buttonText' => 'Отправить заявку',
 ])
 
+@php($errors = $errors ?? new \Illuminate\Support\ViewErrorBag())
+
 <form method="POST" action="{{ route('inquiry.store') }}" {{ $attributes->merge(['class' => 'mt-8 space-y-5']) }}>
     @csrf
 

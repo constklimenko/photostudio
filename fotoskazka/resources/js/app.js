@@ -6,27 +6,50 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const heroImage = document.querySelector('#hero-block img[data-original]');
+    const upgradeHeroImage = () => {
+        const heroImage = document.querySelector('#hero-block img[data-original]');
 
-    if (heroImage) {
-        const swapToOriginal = () => {
-            const original = heroImage.dataset.original;
-            if (!original || heroImage.dataset.swapped) return;
+        if (!heroImage || heroImage.dataset.swapped) {
+            return;
+        }
+
+        const original = heroImage.dataset.original;
+
+        if (!original) {
+            return;
+        }
+
+        const preloader = new Image();
+        preloader.decoding = 'async';
+
+        preloader.onload = () => {
+            if (!heroImage.isConnected) {
+                return;
+            }
+
+            heroImage.src = original;
             heroImage.dataset.swapped = '1';
-
-            const image = new Image();
-            image.onload = () => {
-                heroImage.src = original;
-            };
-            image.src = original;
         };
 
-        if (heroImage.complete) {
-            swapToOriginal();
+        preloader.onerror = () => {
+            heroImage.dataset.originalFailed = '1';
+        };
+
+        preloader.src = original;
+    };
+
+    const scheduleHeroUpgrade = () => {
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(upgradeHeroImage, { timeout: 3000 });
         } else {
-            heroImage.addEventListener('load', swapToOriginal, { once: true });
-            heroImage.addEventListener('error', swapToOriginal, { once: true });
+            window.setTimeout(upgradeHeroImage, 1200);
         }
+    };
+
+    if (document.readyState === 'complete') {
+        scheduleHeroUpgrade();
+    } else {
+        window.addEventListener('load', scheduleHeroUpgrade, { once: true });
     }
 
     AOS.init({

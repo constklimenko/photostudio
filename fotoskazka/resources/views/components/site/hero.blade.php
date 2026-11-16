@@ -9,14 +9,17 @@
     @if ($images?->isNotEmpty())
         @php
             $heroBg = $images->first();
-            $heroCacheUrl = $heroBg->getDisplayUrl();
+            $heroDisplayUrl = $heroBg->getDisplayUrl();
             $heroOriginalUrl = $heroBg->getUrl();
+            $heroSrc = $heroDisplayUrl ?: $heroOriginalUrl;
+            $heroCanUpgrade = filled($heroDisplayUrl) && filled($heroOriginalUrl);
         @endphp
         <div class="absolute inset-0">
-            <img src="{{ $heroCacheUrl ?: $heroOriginalUrl }}"
-                 @if ($heroCacheUrl && $heroOriginalUrl) data-original="{{ $heroOriginalUrl }}" @endif
+            <img src="{{ $heroSrc }}"
+                 @if ($heroCanUpgrade) data-original="{{ $heroOriginalUrl }}" @endif
                  alt=""
                  fetchpriority="high"
+                 decoding="async"
                  class="w-full h-full object-cover">
         </div>
     @endif
