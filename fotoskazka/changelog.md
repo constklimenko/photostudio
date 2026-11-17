@@ -53,6 +53,42 @@
   `php-fpm -t` в `php:8.4.27-fpm-trixie`;
 - полный прогон: 1302 теста, все passed.
 
+### Деплой на прод (83.166.245.105)
+
+- `git pull` в `/var/www/fotoskazka` (c61893b, 5b09b8f, 5dab912), в `.env`
+  добавлен `IMAGE_X_ACCEL=true`;
+- `docker compose build app` (новый php-fpm-конфиг), `up -d app queue
+  scheduler`, `up -d --force-recreate web` (bind-mount скрипта nginx);
+  во время пересоздания `app` — обычное короткое окно 502;
+- первая проверка выявила **403** на `/media/{id}/display|lightbox`:
+  Flysystem создавал каталоги `display/` и `lightbox/` с правами `0700`
+  (видимость по умолчанию — private), nginx под своим пользователем не мог
+  их прочитать; исправлено `directory_visibility = public` у диска
+  `image_cache` + разовый `chmod 755` на проде;
+- проверка после фикса: `/media/2/{thumbnail,display,lightbox}` — 200,
+  `image/webp` / `image/png`, один `Cache-Control`; альбом
+  `/portfolio/detskie` — 200, картинки 200; при 12 параллельных lightbox
+  `urt` (время PHP) 0.03–0.14 с вместо прежнего удержания воркера на всю
+  передачу файла;
+- в логах появились тайминги: `rt=... urt=...` в nginx, `... ms` в php-fpm;
+  5xx/499 за 40 минут после деплоя — 0, запросов дольше 2 с — 0;
+- `/`, `/services`, `/portfolio`, `/blog`, `/video`, `/sitemap.xml` — 200,
+  `/no-such-page` — 404, `/admin` — 302.
+
+### Безопасность сервера
+
+- закрыт FTP: `ufw delete allow 21/tcp`, `systemctl stop/disable pure-ftpd`
+  (порт не слушается; успешных FTP-логинов за 7 дней не было, а скан-пробы
+  `*.probe.onyphe.net` шли постоянно);
+- fail2ban уже стоял с jail `sshd` (13 322 бана суммарно), добавлен
+  `/etc/fail2ban/jail.local`: `bantime = 1h` с инкрементом до 4 недель,
+  `findtime = 10m`, `maxretry = 4`, `ignoreip` с админской станцией;
+  включён jail `recidive` (повторные нарушители — на неделю) — сразу
+  забанено 6 IP;
+- не менялось (требует решения): `PermitRootLogin yes` и
+  `PasswordAuthentication yes` в sshd — переход на ключи отключил бы вход
+  по паролю всем пользователям.
+
 ---
 
 ## 2026-11-17 — Раздел без услуг на /services: картинка, описание и кнопка

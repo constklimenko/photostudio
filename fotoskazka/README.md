@@ -386,6 +386,10 @@ PHP-стрим занимал воркер на всю передачу, бот�
   `Cache-Control` — `immutable` для display/lightbox, сутки для превью.
 - Пока кэш-файла нет, его по-прежнему генерирует `ImageCacheService`
   (это единственная часть, остающаяся на PHP).
+- Каталоги `storage/app/image-cache/{display,lightbox}` должен читать nginx,
+  который работает под другим пользователем. Диск `image_cache` объявлен с
+  `visibility`/`directory_visibility = public` (0755), иначе Flysystem создаёт
+  их с правами 0700 и nginx отвечает `403`.
 - Для `php artisan serve` — `IMAGE_X_ACCEL=false` (по умолчанию).
 
 Проверка: `curl -sI https://example.com/media/<id>/lightbox` — в ответе

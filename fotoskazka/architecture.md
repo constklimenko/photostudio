@@ -1265,7 +1265,10 @@ storage/app/public/
   `storage/app/image-cache/` и `storage/app/public/thumbnails/` объявлены в
   обоих server-блоках `docker/nginx/generate-config.sh`, `Content-Type`
   выставляется по расширению (`types`), `Cache-Control` — `immutable` для
-  display/lightbox и сутки для превью. Иначе (флаг выключен, `php artisan serve`,
+  display/lightbox и сутки для превью. Каталоги кэша должен читать nginx,
+  поэтому диск `image_cache` объявлен с `visibility`/`directory_visibility
+  = public` (иначе Flysystem создаёт их с правами 0700 и nginx отдаёт 403).
+  Иначе (флаг выключен, `php artisan serve`,
   диск не локальный) работает PHP-стрим `fpassthru`. Причина: lightbox — PNG
   до 2 МБ, стриминг через php-fpm занимал воркер на всё время передачи, с
   `pm.max_children = 8` обходы ботов блокировали сайт (CDN отдавал 504);
