@@ -1257,6 +1257,18 @@ storage/app/public/
   где display — WebP (800px), lightbox — PNG (1600px); повторные
   запросы отдаются с диска (`Cache-Control: immutable`)
 - Источник — оригинал с любого диска (включая Яндекс.Диск) через временную копию;
+- **Отдача через nginx X-Accel-Redirect** (`IMAGE_X_ACCEL`, в Docker-проде
+  включено): когда файл кэша уже есть, `MediaController@display/lightbox`
+  отвечает пустым телом с `X-Accel-Redirect: /protected-images/{path}`
+  (`filesystems.image_x_accel_location`), а `media.thumbnail` — с
+  `/protected-thumbnails/{path}`; internal locations с `alias` на
+  `storage/app/image-cache/` и `storage/app/public/thumbnails/` объявлены в
+  обоих server-блоках `docker/nginx/generate-config.sh`, `Content-Type`
+  выставляется по расширению (`types`), `Cache-Control` — `immutable` для
+  display/lightbox и сутки для превью. Иначе (флаг выключен, `php artisan serve`,
+  диск не локальный) работает PHP-стрим `fpassthru`. Причина: lightbox — PNG
+  до 2 МБ, стриминг через php-fpm занимал воркер на всё время передачи, с
+  `pm.max_children = 8` обходы ботов блокировали сайт (CDN отдавал 504);
 - после генерации проверяется лимит размера кэша и при превышении вытесняются самые старые файлы;
   сбой LRU-обрезки не считается сбоем генерации (best-effort)
 - Ручное управление: `php artisan media:prune-image-cache [--stats|--all]`
@@ -1646,6 +1658,15 @@ Filament-дерево категорий — следующая часть эт�
 - HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
   монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
   deploy-hook `docker compose exec -T web nginx -s reload`;
+- **диагностика задержек**: `log_format timed` (объявлен в
+  `docker/nginx/generate-config.sh`) добавляет в access-лог `rt=$request_time`
+  и `urt=$upstream_response_time` — по ним видно медленные запросы, из-за
+  которых CDN отдаёт `504 Gateway Time-out` (собственных 5xx у nginx при этом
+  нет, запрос просто не успевает ответить);
+- **медленные PHP-запросы**: в пуле php-fpm включены `request_slowlog_timeout = 10s`
+  и `slowlog = /proc/self/fd/2` (в `docker/php/Dockerfile`), поэтому стек
+  запросов дольше 10 секунд попадает в `docker compose logs app`;
+  `access.format` дополнен длительностью запроса в миллисекундах;
 - после деплоя нового кода нужно перезапустить контейнеры (`docker compose up -d --build`),
   т.к. `opcache.validate_timestamps=0`.
 

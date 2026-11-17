@@ -44,6 +44,9 @@ RUN { \
         echo 'pm.max_children = 8'; \
         echo 'pm.process_idle_timeout = 10s'; \
         echo 'pm.max_requests = 500'; \
+        echo 'request_slowlog_timeout = 10s'; \
+        echo 'slowlog = /proc/self/fd/2'; \
+        echo 'access.format = "%R - %u %t \"%m %r\" %s %{milli}d ms"'; \
     } >> /usr/local/etc/php-fpm.d/www.conf
 
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini

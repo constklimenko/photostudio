@@ -7,6 +7,8 @@ use App\Services\ImageCacheService;
 use App\Services\MediaAccessService;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\Local\LocalFilesystemAdapter;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaController extends Controller
@@ -28,7 +30,7 @@ class MediaController extends Controller
         );
     }
 
-    public function thumbnail(Media $media, MediaAccessService $access): StreamedResponse
+    public function thumbnail(Media $media, MediaAccessService $access): Response
     {
         $this->authorizeView($media, $access);
 
@@ -36,12 +38,24 @@ class MediaController extends Controller
 
         abort_unless($media->thumbnail_path && $disk->exists($media->thumbnail_path), 404);
 
+        $path = (string) $media->thumbnail_path;
+
+        if ($this->xAccelEnabled() && $disk->getAdapter() instanceof LocalFilesystemAdapter) {
+            return $this->accel(
+                (string) config('filesystems.thumbnail_x_accel_location', '/protected-thumbnails/'),
+                $path,
+                'image/webp',
+                basename($path),
+                false,
+            );
+        }
+
         return $this->stream(
             $disk,
-            (string) $media->thumbnail_path,
+            $path,
             'image/webp',
             'inline',
-            basename((string) $media->thumbnail_path),
+            basename($path),
         );
     }
 
@@ -62,14 +76,14 @@ class MediaController extends Controller
         );
     }
 
-    public function display(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
+    public function display(Media $media, ImageCacheService $cache, MediaAccessService $access): Response
     {
         $this->authorizeView($media, $access);
 
         return $this->cachedImage($media, $cache, ImageCacheService::TIER_DISPLAY);
     }
 
-    public function lightbox(Media $media, ImageCacheService $cache, MediaAccessService $access): StreamedResponse
+    public function lightbox(Media $media, ImageCacheService $cache, MediaAccessService $access): Response
     {
         $this->authorizeView($media, $access);
 
@@ -89,15 +103,49 @@ class MediaController extends Controller
         abort_unless($access->canView($media, auth()->user()), 403);
     }
 
-    protected function cachedImage(Media $media, ImageCacheService $cache, string $tier): StreamedResponse
+    protected function cachedImage(Media $media, ImageCacheService $cache, string $tier): Response
     {
         $path = $cache->ensureCached($media, $tier);
 
         abort_if($path === null, 404);
 
         $disk = Storage::disk((string) config('filesystems.image_cache.disk', 'image_cache'));
+        $contentType = $cache->mimeType($tier);
 
-        return $this->stream($disk, $path, $cache->mimeType($tier), 'inline', basename($path), true);
+        if ($this->xAccelEnabled() && $disk->getAdapter() instanceof LocalFilesystemAdapter) {
+            return $this->accel(
+                (string) config('filesystems.image_x_accel_location', '/protected-images/'),
+                $path,
+                $contentType,
+                basename($path),
+                true,
+            );
+        }
+
+        return $this->stream($disk, $path, $contentType, 'inline', basename($path), true);
+    }
+
+    protected function xAccelEnabled(): bool
+    {
+        return (bool) config('filesystems.image_x_accel', false);
+    }
+
+    protected function accel(
+        string $location,
+        string $path,
+        string $contentType,
+        string $filename,
+        bool $immutable,
+    ): Response {
+        $prefix = rtrim($location, '/');
+        $uri = $prefix.'/'.implode('/', array_map('rawurlencode', explode('/', ltrim($path, '/'))));
+
+        return new Response('', 200, [
+            'X-Accel-Redirect' => $uri,
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'inline; filename="'.addslashes($filename).'"',
+            'Cache-Control' => $immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
+        ]);
     }
 
     protected function stream(

@@ -17,6 +17,11 @@ add_header Content-Security-Policy $csp_policy always;
 HEADERS
 
 cat > "$CONF" <<EOF
+# Формат access-лога с таймингами: rt — сколько занял запрос целиком,
+# urt — сколько отвечал php-fpm. Без них медленные запросы (причина 504
+# на CDN) в логе не видны.
+log_format timed '\$remote_addr - \$remote_user [\$time_local] "\$request" \$status \$body_bytes_sent "\$http_referer" "\$http_user_agent" "\$http_x_forwarded_for" rt=\$request_time urt=\$upstream_response_time';
+
 map \$request_uri \$csp_policy {
     default "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src 'self' https://www.youtube.com https://youtube.com https://rutube.ru https://vk.com https://vkvideo.ru";
     ~^/admin "";
@@ -46,6 +51,8 @@ server {
     server_name ${DOMAIN} www.${DOMAIN} _;
 
     client_max_body_size 210M;
+
+    access_log /var/log/nginx/access.log timed;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -99,6 +106,28 @@ server {
         add_header X-Content-Type-Options nosniff;
     }
 
+    # Производные изображения (display/lightbox) отдаёт nginx по
+    # X-Accel-Redirect из MediaController@display/lightbox (IMAGE_X_ACCEL=true):
+    # PHP проверяет доступ и наличие файла, тело (PNG до 2 МБ) отдаёт nginx,
+    # воркер php-fpm освобождается сразу.
+    location ^~ /protected-images/ {
+        internal;
+        alias /var/www/html/storage/app/image-cache/;
+        types { image/webp webp; image/png png; }
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # WebP-превью (thumbnails) — тоже через X-Accel-Redirect.
+    location ^~ /protected-thumbnails/ {
+        internal;
+        alias /var/www/html/storage/app/public/thumbnails/;
+        types { image/webp webp; }
+        default_type image/webp;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=86400" always;
+    }
+
     location ~ \.php\$ {
         try_files \$uri =404;
         # При каждом запросе заново резолвим docker-DNS: nginx кэширует
@@ -134,6 +163,8 @@ server {
     server_name ${DOMAIN} www.${DOMAIN};
 
     client_max_body_size 210M;
+
+    access_log /var/log/nginx/access.log timed;
 
     ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
@@ -188,6 +219,28 @@ server {
         types { }
         default_type video/mp4;
         add_header X-Content-Type-Options nosniff;
+    }
+
+    # Производные изображения (display/lightbox) отдаёт nginx по
+    # X-Accel-Redirect из MediaController@display/lightbox (IMAGE_X_ACCEL=true):
+    # PHP проверяет доступ и наличие файла, тело (PNG до 2 МБ) отдаёт nginx,
+    # воркер php-fpm освобождается сразу.
+    location ^~ /protected-images/ {
+        internal;
+        alias /var/www/html/storage/app/image-cache/;
+        types { image/webp webp; image/png png; }
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # WebP-превью (thumbnails) — тоже через X-Accel-Redirect.
+    location ^~ /protected-thumbnails/ {
+        internal;
+        alias /var/www/html/storage/app/public/thumbnails/;
+        types { image/webp webp; }
+        default_type image/webp;
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=86400" always;
     }
 
     location ~ \.php\$ {

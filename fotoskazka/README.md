@@ -372,6 +372,39 @@ internal location `^~ /protected-videos/` (`alias
 curl -sI -H 'Range: bytes=0-99' https://example.com/video/1/stream
 ```
 
+### Отдача производных изображений (X-Accel-Redirect)
+
+То же самое для картинок: при `IMAGE_X_ACCEL=true` `MediaController@display`,
+`@lightbox` и `@thumbnail` только проверяют доступ и наличие файла, а тело
+отдаёт nginx из internal locations `^~ /protected-images/` (alias
+`storage/app/image-cache/`) и `^~ /protected-thumbnails/` (alias
+`storage/app/public/thumbnails/`). Причина — lightbox это PNG до 2 МБ:
+PHP-стрим занимал воркер на всю передачу, боты выкачивали пачками, и
+8 воркеров `php-fpm` заканчивались.
+
+- `Content-Type` nginx берёт по расширению (`.webp` / `.png`),
+  `Cache-Control` — `immutable` для display/lightbox, сутки для превью.
+- Пока кэш-файла нет, его по-прежнему генерирует `ImageCacheService`
+  (это единственная часть, остающаяся на PHP).
+- Для `php artisan serve` — `IMAGE_X_ACCEL=false` (по умолчанию).
+
+Проверка: `curl -sI https://example.com/media/<id>/lightbox` — в ответе
+`200`, `Content-Type: image/png` и `Cache-Control: ... immutable`.
+
+### Диагностика медленных запросов
+
+- nginx: в access-логе есть `rt=$request_time` (весь запрос) и
+  `urt=$upstream_response_time` (сколько отвечал php-fpm) — по ним ищутся
+  запросы, на которых CDN отдаёт `504 Gateway Time-out`.
+- php-fpm: `request_slowlog_timeout = 10s`, стек запросов дольше 10 секунд
+  пишется в `docker compose logs app` (slowlog → stderr контейнера);
+  `access.format` содержит длительность запроса в миллисекундах.
+
+```bash
+docker compose logs --since 1h web | grep -oE 'rt=[0-9.]+' | sort -t= -k2 -rn | head
+docker compose logs --since 1h app | grep -i 'script_filename' | head
+```
+
 ### HTTPS (Let's Encrypt)
 
 Конфиг nginx генерируется скриптом `docker/nginx/generate-config.sh`: пока

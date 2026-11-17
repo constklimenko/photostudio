@@ -238,6 +238,90 @@ class MediaImageCacheTest extends TestCase
         $this->assertSame([], Storage::disk('image_cache')->allFiles());
     }
 
+    public function test_display_with_x_accel_delegates_file_to_nginx(): void
+    {
+        config(['filesystems.image_x_accel' => true]);
+
+        $media = $this->createImageMedia(1200, 800);
+        $path = app(ImageCacheService::class)->relativePath($media, ImageCacheService::TIER_DISPLAY);
+
+        $response = $this->get(route('media.display', ['media' => $media]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-Accel-Redirect', '/protected-images/'.$path);
+        $response->assertHeader('Content-Type', 'image/webp');
+        $response->assertHeaderContains('Cache-Control', 'immutable');
+        $this->assertSame('', $response->getContent());
+        $this->assertTrue(Storage::disk('image_cache')->exists($path));
+    }
+
+    public function test_lightbox_with_x_accel_delegates_png_to_nginx(): void
+    {
+        config(['filesystems.image_x_accel' => true]);
+
+        $media = $this->createImageMedia(2400, 1600);
+        $path = app(ImageCacheService::class)->relativePath($media, ImageCacheService::TIER_LIGHTBOX);
+
+        $response = $this->get(route('media.lightbox', ['media' => $media]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-Accel-Redirect', '/protected-images/'.$path);
+        $response->assertHeader('Content-Type', 'image/png');
+        $this->assertStringStartsWith('lightbox/', $path);
+        $this->assertStringEndsWith('.png', $path);
+        $this->assertSame('', $response->getContent());
+    }
+
+    public function test_display_with_x_accel_uses_configured_location(): void
+    {
+        config([
+            'filesystems.image_x_accel' => true,
+            'filesystems.image_x_accel_location' => '/internal-images/',
+        ]);
+
+        $media = $this->createImageMedia(1200, 800);
+        $path = app(ImageCacheService::class)->relativePath($media, ImageCacheService::TIER_DISPLAY);
+
+        $this->get(route('media.display', ['media' => $media]))
+            ->assertHeader('X-Accel-Redirect', '/internal-images/'.$path);
+    }
+
+    public function test_display_without_x_accel_streams_through_php(): void
+    {
+        config(['filesystems.image_x_accel' => false]);
+
+        $media = $this->createImageMedia(1200, 800);
+
+        $response = $this->get(route('media.display', ['media' => $media]));
+
+        $response->assertStatus(200);
+        $response->assertHeaderMissing('X-Accel-Redirect');
+        $response->assertHeader('Content-Type', 'image/webp');
+        $this->assertStringStartsWith('RIFF', $response->streamedContent());
+    }
+
+    public function test_thumbnail_with_x_accel_delegates_file_to_nginx(): void
+    {
+        config(['filesystems.image_x_accel' => true]);
+
+        Storage::disk('thumbnails')->put('photo.webp', 'thumb-bytes');
+
+        $media = Media::query()->create([
+            'album_id' => null,
+            'disk' => 'public',
+            'file_path' => 'albums/photo.jpg',
+            'mime_type' => 'image/jpeg',
+            'thumbnail_path' => 'photo.webp',
+        ]);
+
+        $response = $this->get(route('media.thumbnail', ['media' => $media]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-Accel-Redirect', '/protected-thumbnails/photo.webp');
+        $response->assertHeader('Content-Type', 'image/webp');
+        $this->assertSame('', $response->getContent());
+    }
+
     protected function createImageMedia(int $width, int $height): Media
     {
         Storage::disk('public')->put('albums/photo.jpg', $this->makeJpegBytes($width, $height));

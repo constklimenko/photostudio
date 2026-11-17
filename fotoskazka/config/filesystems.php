@@ -41,6 +41,18 @@ return [
 
     'video_x_accel_location' => env('VIDEO_X_ACCEL_LOCATION', '/protected-videos/'),
 
+    /*
+    | Отдача готовых производных изображений (display/lightbox и превью)
+    | через nginx X-Accel-Redirect: PHP проверяет доступ и наличие файла,
+    | тело отдаёт nginx. Снимает с php-fpm стриминг PNG по 2 МБ, из-за
+    | которого воркеры упирались в pm.max_children.
+    */
+    'image_x_accel' => (bool) env('IMAGE_X_ACCEL', false),
+
+    'image_x_accel_location' => env('IMAGE_X_ACCEL_LOCATION', '/protected-images/'),
+
+    'thumbnail_x_accel_location' => env('THUMBNAIL_X_ACCEL_LOCATION', '/protected-thumbnails/'),
+
     'yandex_import' => [
         'max_files' => env('YANDEX_IMPORT_MAX_FILES', 500),
     ],

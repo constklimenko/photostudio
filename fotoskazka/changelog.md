@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-11-17 — 504 от CDN: тайминги в логах, slowlog php-fpm, X-Accel для картинок
+
+### Разбор инцидента
+
+- жалоба «504 Gateway Time-out» на проде; в логах `web` за 18.5 ч **ноль**
+  ответов 5xx и **ноль** `499`, `upstream timed out` — 0; все запросы
+  посетителя (`/`, `/services`, `/portfolio`, `/blog`) — 200, TTFB 20–50 мс;
+- MySQL: 2 соединения, `Max_used_connections` 10/50; хост: load 0.00,
+  RAM 428 МБ свободно, диск 49%, ошибок/дропов на интерфейсе нет,
+  conntrack 27/32768, UFW 80/443 без лимитов; сертификат до 30.12.2026;
+- вывод: `504` сгенерировал CDN (TurboFlare/CDNVideo), origin запрос не
+  получил; но фон под него есть — `php-fpm` за сутки 4 раза упирался в
+  `pm.max_children = 8` (последний 08:01 MSK), всплески ботов 296–289
+  запросов/ч против обычных ~50;
+- настройки CDN проверены в панели: origin `83.166.245.105:80` по HTTP,
+  `use_stale` включён, query string входит в ключ кэша (`consider_args`),
+  cookies — нет; DNS-зона делегирована на `ns1-3c.trbcdn.net`,
+  `A fotoskazkaufa.ru` → 151.236.109.225 / 62.152.61.236, `www` — CNAME.
+
+### Наблюдаемость (пункт 1)
+
+- `docker/nginx/generate-config.sh`: объявлен `log_format timed` с
+  `rt=$request_time` и `urt=$upstream_response_time`, оба server-блока
+  пишут им в `/var/log/nginx/access.log`; раньше в логе не было таймингов,
+  поэтому медленные запросы было не видно;
+- `docker/php/Dockerfile`: в пул добавлены `request_slowlog_timeout = 10s`
+  и `slowlog = /proc/self/fd/2` (стек медленных запросов уходит в
+  `docker compose logs app`), `access.format` дополнен длительностью в мс.
+
+### Производные изображения через nginx (пункт 2)
+
+- `MediaController@display/lightbox/thumbnail` при `filesystems.image_x_accel`
+  отвечают пустым телом с `X-Accel-Redirect` (как уже сделано для видео);
+  в `docker/nginx/generate-config.sh` добавлены internal locations
+  `^~ /protected-images/` (`alias storage/app/image-cache/`) и
+  `^~ /protected-thumbnails/` (`alias storage/app/public/thumbnails/`),
+  `Content-Type` по расширению, `Cache-Control` — `immutable` для
+  display/lightbox и сутки для превью;
+- новые ключи `IMAGE_X_ACCEL`, `IMAGE_X_ACCEL_LOCATION`,
+  `THUMBNAIL_X_ACCEL_LOCATION` в `config/filesystems.php`, `.env.example`
+  (по умолчанию `false`) и `.env.docker.example` (`true`);
+- `pm.max_children` не менялся — сначала снимаем нагрузку с воркеров.
+
+### Тесты
+
+- `tests/Feature/Http/Controllers/MediaImageCacheTest.php` — 5 новых тестов:
+  display/lightbox отдают `X-Accel-Redirect` с путём кэша, кастомный префикс,
+  превью через `/protected-thumbnails/`, выключенный флаг — PHP-стрим;
+- конфиг nginx проверен `nginx -t` в контейнере `nginx:1.30.6-alpine`
+  (оба server-блока, с самоподписанным сертификатом), конфиг php-fpm —
+  `php-fpm -t` в `php:8.4.27-fpm-trixie`;
+- полный прогон: 1302 теста, все passed.
+
+---
+
 ## 2026-11-17 — Раздел без услуг на /services: картинка, описание и кнопка
 
 ### Публичные страницы
