@@ -115,7 +115,8 @@ server {
         alias /var/www/html/storage/app/image-cache/;
         types { image/webp webp; image/png png; }
         include /etc/nginx/snippets/security-headers.conf;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # Cache-Control приходит из контроллера (immutable) — add_header здесь
+        # дал бы дубль заголовка.
     }
 
     # WebP-превью (thumbnails) — тоже через X-Accel-Redirect.
@@ -125,7 +126,6 @@ server {
         types { image/webp webp; }
         default_type image/webp;
         include /etc/nginx/snippets/security-headers.conf;
-        add_header Cache-Control "public, max-age=86400" always;
     }
 
     location ~ \.php\$ {
@@ -230,7 +230,8 @@ server {
         alias /var/www/html/storage/app/image-cache/;
         types { image/webp webp; image/png png; }
         include /etc/nginx/snippets/security-headers.conf;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        # Cache-Control приходит из контроллера (immutable) — add_header здесь
+        # дал бы дубль заголовка.
     }
 
     # WebP-превью (thumbnails) — тоже через X-Accel-Redirect.
@@ -240,7 +241,6 @@ server {
         types { image/webp webp; }
         default_type image/webp;
         include /etc/nginx/snippets/security-headers.conf;
-        add_header Cache-Control "public, max-age=86400" always;
     }
 
     location ~ \.php\$ {
