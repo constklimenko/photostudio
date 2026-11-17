@@ -8,6 +8,12 @@
 * **Все artisan/composer/npm-команды выполняются из `fotoskazka/`**, например: `cd fotoskazka && php artisan test`. Пути внутри команд (`tests/...`, `app/...`) — относительно `fotoskazka/`.
 * В этом же репозитории есть `blog/` — отдельный подпроект, правила ниже к нему не относятся.
 
+## Прод
+
+* **Адрес прода: `83.166.245.105`** (домен `fotoskazkaufa.ru`).
+* Код на сервере — в `/var/www/fotoskazka`, деплой-ветка `fotoskazka`.
+* Обновление: `git pull`, при изменении JS/CSS — `docker compose run --rm node`, затем `docker compose restart app` (entrypoint делает `migrate --force` и `optimize`). Подробности — в `fotoskazka/README.md`.
+
 ## Project Structure
 
 ```
