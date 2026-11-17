@@ -116,6 +116,11 @@ return [
         'image_cache' => [
             'driver' => 'local',
             'root' => storage_path('app/image-cache'),
+            // Каталоги tier (display/lightbox) должен читать nginx при отдаче
+            // через X-Accel-Redirect, а он работает под другим пользователем.
+            // Без этого Flysystem создаёт их с правами 0700 → nginx отдаёт 403.
+            'visibility' => 'public',
+            'directory_visibility' => 'public',
             'throw' => false,
             'report' => false,
         ],
