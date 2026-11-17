@@ -30,6 +30,34 @@
                 <a href="{{ route('services.show', $category->catalogPath()) }}" class="hover:text-[#d4af37] transition">{{ $category->name }}</a>
             </h2>
 
+            @if ($category->children->isEmpty() && $category->services->isEmpty())
+                <article class="flex flex-col lg:flex-row gap-8" data-aos="fade-up">
+                    @if ($category->cover)
+                        <a href="{{ route('services.show', $category->catalogPath()) }}" class="lg:w-5/12 shrink-0">
+                            <img src="{{ $category->cover->getDisplayUrl() }}"
+                                 alt="{{ $category->name }}"
+                                 class="w-full h-80 object-cover rounded-xl shadow-lg shadow-black/30"
+                                 loading="lazy">
+                        </a>
+                    @endif
+
+                    <div class="flex-1 flex flex-col justify-center">
+                        @if (filled(strip_tags((string) $category->description)))
+                            <div class="prose prose-invert max-w-none text-gray-400 leading-relaxed [&_a]:text-[#d4af37] [&_p]:mb-4">
+                                {!! $category->description !!}
+                            </div>
+                        @endif
+
+                        <div class="mt-6">
+                            <a href="{{ route('services.show', $category->catalogPath()) }}"
+                               class="inline-flex items-center px-8 py-3 bg-gold text-black font-semibold uppercase tracking-wider text-sm rounded-lg hover:opacity-90 transition">
+                                Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            @endif
+
             @if ($category->children->isNotEmpty())
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
                     @foreach ($category->children as $child)

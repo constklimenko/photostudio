@@ -102,6 +102,34 @@ class ServiceCatalogControllerTest extends TestCase
         $response->assertSee('Подробнее');
     }
 
+    public function test_index_shows_category_details_when_it_has_no_children_and_services(): void
+    {
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'file_path' => 'covers/empty-category-cover.jpg',
+            'thumbnail_path' => null,
+        ]);
+
+        Category::factory()->create([
+            'type' => 'service',
+            'slug' => 'roditelskie-sobraniya',
+            'parent_id' => null,
+            'is_published' => true,
+            'name' => 'Родительские собрания',
+            'description' => '<p>Описание раздела без услуг</p>',
+            'cover_media_id' => $media->id,
+        ]);
+
+        $response = $this->get(route('services.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Родительские собрания');
+        $response->assertSee('Описание раздела без услуг');
+        $response->assertSee('/services/roditelskie-sobraniya');
+        $response->assertSee(route('media.display', ['media' => $media->id]), false);
+        $response->assertSee('alt="Родительские собрания"', false);
+    }
+
     public function test_index_hides_unpublished_root_category(): void
     {
         Category::factory()->create([
