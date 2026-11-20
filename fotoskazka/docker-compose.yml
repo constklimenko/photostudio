@@ -39,7 +39,7 @@ services:
     command: ["php", "artisan", "schedule:work"]
 
   web:
-    image: nginx:1.30.6-alpine
+    image: nginx:1.30.7-alpine
     restart: unless-stopped
     environment:
       DOMAIN: fotoskazkaufa.ru

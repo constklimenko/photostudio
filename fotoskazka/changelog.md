@@ -1,5 +1,121 @@
 # Changelog
 
+## 2026-11-20 — PHP обновлён до security-релиза 8.4.28
+
+### Обновлено
+
+- `docker/php/Dockerfile` — базовый образ `php:8.4.27-fpm-trixie` →
+  `php:8.4.28-fpm-trixie` (релиз 19.11.2026, security). В 8.4.28 закрыто
+  14 CVE, значимые для этого проекта:
+  - PHP-FPM: request smuggling при непрочитанном теле запроса
+    (CVE-2026-129289), XSS на status-странице (CVE-2026-129292),
+    use-after-free в epoll с локальным повышением привилегий
+    (CVE-2026-129291);
+  - сессии: RCE через частично перезаписанные файлы (CVE-2026-126714),
+    RCE при несовпадении сериализатора (CVE-2026-115560), use-after-free
+    при прерванном shutdown (CVE-2026-129481);
+  - даты/таймзоны: RCE через use-after-free кэша (CVE-2026-129496);
+  - SOAP: раскрытие данных (CVE-2026-15353), use-after-free с DTD
+    (CVE-2026-129506);
+  - Phar: обход OpenSSL-подписи (CVE-2026-128090); DOM: double free
+    (CVE-2026-129501); CGI: out-of-bounds (CVE-2026-129538);
+  - standard: HTTPS/FTPS URL в смешанном регистре могли уйти в plaintext
+    (CVE-2026-128064), DoS на сложенных заголовках ответа (CVE-2026-127960).
+- `README.md`, `architecture.md` — версия PHP 8.4.28; в README добавлено
+  примечание про сборку с `--network=host`, если контейнер сборки не видит
+  DNS из-за `systemd-resolved` на хосте.
+
+### Проверка
+
+- образ собран с `--pull`: `apt-get -s upgrade` внутри — 0 пакетов к
+  обновлению, Debian 13.7, security-пакеты Debian актуальны;
+- `php -v` — PHP 8.4.28; на месте `gd` (WebP), `intl`, `zip`, `opcache`,
+  `pcntl`, `pdo_mysql`, `pdo_sqlite`, `exif`, `bcmath`;
+- `php-fpm -t` — конфиг валиден; `upload_max_filesize=105M`,
+  `post_max_size=110M`, `expose_php` выключен;
+- полный прогон: **1302 теста, 3682 assertions — все passed**. Две ошибки
+  в первом прогоне были сетевыми (`ConnectException` в тестах
+  `MediaProcessor` из-за неработающего DNS в bridge-сети контейнера),
+  с `--network=host` проходят.
+
+### Деплой (требуется)
+
+- `docker compose build --pull app`
+  (при DNS-ошибке — `docker build --network=host -t fotoskazka-app:latest
+  -f docker/php/Dockerfile .`);
+- `docker compose up -d --force-recreate app queue scheduler` — образ
+  общий для всех трёх, воркеры должны подняться на новой версии;
+- проверка: `docker compose exec app php -v` → `PHP 8.4.28`.
+
+## 2026-11-20 — безопасность nginx: обновление образа и ужесточение конфига
+
+### Уязвимости nginx
+
+- Образ `web` обновлён `nginx:1.30.6-alpine` → `nginx:1.30.7-alpine`
+  (релиз 18.11.2026). Закрыты: переполнение в управлении потоком HTTP/2
+  (CVE-2026-123007, CVSS 9.2, потенциальный RCE при выключенном ASLR),
+  бесконечный цикл при чтении тела запроса по TLS 1.3 (CVE-2026-118899,
+  DoS), use-after-free в resolver (CVE-2026-123634), use-after-free в HTTP/2
+  (CVE-2026-123633). HTTP/2 и TLS 1.3 в конфиге включены, resolver
+  используется, поэтому версия была уязвима;
+- `ssl_session_tickets off` — тикеты не используются (класс
+  CVE-2026-97629: подделка сессии при ротации ключей тикетов); кэш сессий
+  `shared:SSL:10m` остаётся.
+
+### Ужесточение конфигурации
+
+- `server_tokens off`: версия nginx больше не попадает в `Server` и на
+  страницы ошибок; `fastcgi_hide_header X-Powered-By` убирает версию PHP;
+- `client_max_body_size` снижен с `210M` для всего сайта до `8m`; крупные
+  тела разрешены только на `/livewire/` (`110m` — временные загрузки
+  Livewire/Filament, лимит файла 100 МБ). Прямые POST на 10 МБ к `/` и
+  `/login` теперь получают `413` на nginx, не занимая php-fpm;
+- PHP исполняется только через front controller: общий snippet
+  `php-fpm.conf` с жёстким `SCRIPT_FILENAME=$realpath_root/index.php` для
+  `location @laravel`, `@laravel_upload` и `~ \.php$`. Лимит тела задан в
+  именованных location, потому что внутренний редирект на `index.php`
+  сбрасывает лимит исходного `/livewire/`;
+- `docker/php/php.ini`: `upload_max_filesize` 200M → 105M,
+  `post_max_size` 210M → 110M — согласовано с nginx (файл смонтирован в
+  `app` томом, поэтому нужен `--force-recreate app`, пересборка образа не
+  требуется);
+- `Permissions-Policy`: `camera` и `xr-spatial-tracking` только для своего
+  origin (нужны WebAR), `microphone`/`geolocation` запрещены;
+- таймауты `client_header_timeout 20s`, `client_body_timeout 20s`,
+  `send_timeout 30s` против slowloris.
+
+### Проверка
+
+- `nginx -t` в `nginx:1.30.7-alpine` с самоподписанным сертификатом:
+  конфиг валиден (оба server-блока);
+- функциональный прогон в контейнере с php-fpm: `/login` и `/` с телом
+  10 МБ — `413`; `/livewire/upload-file` с 5 МБ — доходит до PHP
+  (`request_uri` и `query` корректны); `/build/manifest.json` — `200`;
+  `/.env` и `/foo/.env` — `403`; `/other.php` исполняет front controller,
+  а не сам файл; `Server: nginx` без версии, `X-Powered-By` отсутствует.
+
+### Не включено сознательно
+
+- Ограничение частоты по IP (`limit_req`) на origin: запросы идут через
+  CDN, `$binary_remote_addr` — адрес edge-сервера, лимит затронул бы всех
+  посетителей. Задача для CDN/WAF.
+- `includeSubDomains`/`preload` в HSTS: требует уверенности, что все
+  поддомены работают только по HTTPS.
+
+### Деплой (требуется)
+
+- `docker compose pull web`, затем
+  `docker compose up -d --force-recreate web app` (новый образ nginx и
+  `php.ini`; оба файла подключены томами, поэтому нужен именно recreate);
+- после выката: `curl -sI https://fotoskazkaufa.ru/` — `Server: nginx` без
+  версии, есть `Permissions-Policy`; `nginx -T | grep client_max_body_size`
+  в контейнере — `8m` и `110m`.
+
+## 2026-11-20 — Локальный SSH MCP для проверки прод-конфигурации
+
+- Добавлен проектный MCP-профиль FotoSkazka (`83.166.245.105`, root) с ключом, соответствующим предоставленному публичному ключу; профиль ограничен read-only и подтверждением каждой команды.
+- Конфигурация расположена в `.opencode/`, отдельно от глобальных и Pelvic-настроек.
+
 ## 2026-11-17 — 504 от CDN: тайминги в логах, slowlog php-fpm, X-Accel для картинок
 
 ### Разбор инцидента

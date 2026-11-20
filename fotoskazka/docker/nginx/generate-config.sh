@@ -14,7 +14,26 @@ add_header X-Content-Type-Options "nosniff" always;
 add_header X-Frame-Options "SAMEORIGIN" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Content-Security-Policy $csp_policy always;
+# Камера нужна WebAR-просмотру (location /ar/), остальные API браузера не используются.
+add_header Permissions-Policy "camera=(self), xr-spatial-tracking=(self), microphone=(), geolocation=()" always;
 HEADERS
+
+# Единая точка исполнения PHP: только public/index.php. Вынесено в snippet,
+# потому что лимит тела (client_max_body_size) действует в том location,
+# который читает тело, а не в том, откуда был внутренний редирект.
+cat > /etc/nginx/snippets/php-fpm.conf <<'PHPFPM'
+fastcgi_pass $fastcgi_upstream:9000;
+fastcgi_index index.php;
+include fastcgi_params;
+fastcgi_param SCRIPT_FILENAME $realpath_root/index.php;
+fastcgi_param SCRIPT_NAME /index.php;
+fastcgi_param DOCUMENT_ROOT $realpath_root;
+fastcgi_param HTTPS on;
+fastcgi_read_timeout 300;
+fastcgi_buffers 16 16k;
+fastcgi_buffer_size 32k;
+fastcgi_hide_header X-Powered-By;
+PHPFPM
 
 cat > "$CONF" <<EOF
 # Формат access-лога с таймингами: rt — сколько занял запрос целиком,
@@ -45,12 +64,24 @@ map \$uri \$blocked_probe {
     ~*^/(config|database|tests|routes|resources|bootstrap/cache|storage/(logs|framework|app/private))/ 1;
     ~*\.(env|sql|bak|backup|old|orig|swp|swo|tar|tar\.gz|tgz|zip|log|ini|yml|yaml|sh|dist)$ 1;
 }
+
+# Версия nginx в заголовке Server и на страницах ошибок не раскрывается.
+server_tokens off;
+
+# Таймауты против медленных клиентов (slowloris): тело и заголовки запроса
+# не должны удерживать воркер бесконечно.
+client_header_timeout 20s;
+client_body_timeout 20s;
+send_timeout 30s;
+
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN} www.${DOMAIN} _;
 
-    client_max_body_size 210M;
+    # Обычные формы и Livewire-запросы небольшие; крупные тела разрешены
+    # только на /livewire/ (см. location ниже), а не на всём сайте.
+    client_max_body_size 8m;
 
     access_log /var/log/nginx/access.log timed;
 
@@ -64,17 +95,41 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
+    # Docker-DNS резолвим при каждом запросе: nginx кэширует IP от
+    # fastcgi_pass app:9000 на постоянно, и после пересоздания app
+    # контейнера (новый IP) сайт падает в 502.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set \$fastcgi_upstream app;
+
     # Пробы сканеров (.env, .git, wp-*, бэкапы) — 403 без php-fpm.
     if (\$blocked_probe) {
         return 403;
     }
 
     location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+        try_files \$uri \$uri/ @laravel;
+    }
+
+    # Front controller. Наследует серверный лимит тела (8m): обычные формы.
+    location @laravel {
+        include /etc/nginx/snippets/php-fpm.conf;
+    }
+
+    # Тот же front controller, но с лимитом под загрузки Livewire/Filament.
+    location @laravel_upload {
+        client_max_body_size 110m;
+        include /etc/nginx/snippets/php-fpm.conf;
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
+
+    # Единственная точка, принимающая крупные тела: временные загрузки
+    # Livewire/Filament (фото, видео до 100 МБ, AR-таргеты .mind).
+    location ^~ /livewire/ {
+        client_max_body_size 110m;
+        try_files \$uri @laravel_upload;
+    }
 
     # Хэшированные ассеты Vite: годовой immutable-кэш.
     location ^~ /build/ {
@@ -130,20 +185,7 @@ server {
 
     location ~ \.php\$ {
         try_files \$uri =404;
-        # При каждом запросе заново резолвим docker-DNS: nginx кэширует
-        # IP от fastcgi_pass app:9000 на постоянно, и после пересоздания
-        # app контейнера (новый IP) сайт падает в 502.
-        resolver 127.0.0.11 valid=10s ipv6=off;
-        set \$fastcgi_upstream app;
-        fastcgi_pass \$fastcgi_upstream:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT \$realpath_root;
-        fastcgi_param HTTPS on;
-        fastcgi_read_timeout 300;
-        fastcgi_buffers 16 16k;
-        fastcgi_buffer_size 32k;
+        include /etc/nginx/snippets/php-fpm.conf;
     }
 
     # Вложенные dot-пути (/foo/.env): map ловит только начало URI.
@@ -162,7 +204,9 @@ server {
     http2 on;
     server_name ${DOMAIN} www.${DOMAIN};
 
-    client_max_body_size 210M;
+    # Обычные формы и Livewire-запросы небольшие; крупные тела разрешены
+    # только на /livewire/ (см. location ниже), а не на всём сайте.
+    client_max_body_size 8m;
 
     access_log /var/log/nginx/access.log timed;
 
@@ -172,6 +216,10 @@ server {
     ssl_prefer_server_ciphers off;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 1d;
+    # Тикеты сессий не используем: при ротации ключей утечка неинициализированного
+    # ключа позволяла подделать сессию (класс CVE-2026-97629), плюс тикеты
+    # завязаны на один сервер, а кэш сессий работает и без них.
+    ssl_session_tickets off;
 
     root /var/www/html/public;
     index index.php index.html;
@@ -179,17 +227,41 @@ server {
 
     include /etc/nginx/snippets/security-headers.conf;
 
+    # Docker-DNS резолвим при каждом запросе: nginx кэширует IP от
+    # fastcgi_pass app:9000 на постоянно, и после пересоздания app
+    # контейнера (новый IP) сайт падает в 502.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set \$fastcgi_upstream app;
+
     # Пробы сканеров (.env, .git, wp-*, бэкапы) — 403 без php-fpm.
     if (\$blocked_probe) {
         return 403;
     }
 
     location / {
-        try_files \$uri \$uri/ /index.php?\$query_string;
+        try_files \$uri \$uri/ @laravel;
+    }
+
+    # Front controller. Наследует серверный лимит тела (8m): обычные формы.
+    location @laravel {
+        include /etc/nginx/snippets/php-fpm.conf;
+    }
+
+    # Тот же front controller, но с лимитом под загрузки Livewire/Filament.
+    location @laravel_upload {
+        client_max_body_size 110m;
+        include /etc/nginx/snippets/php-fpm.conf;
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt  { access_log off; log_not_found off; try_files \$uri /index.php?\$query_string; }
+
+    # Единственная точка, принимающая крупные тела: временные загрузки
+    # Livewire/Filament (фото, видео до 100 МБ, AR-таргеты .mind).
+    location ^~ /livewire/ {
+        client_max_body_size 110m;
+        try_files \$uri @laravel_upload;
+    }
 
     # Хэшированные ассеты Vite: годовой immutable-кэш.
     location ^~ /build/ {
@@ -245,20 +317,7 @@ server {
 
     location ~ \.php\$ {
         try_files \$uri =404;
-        # При каждом запросе заново резолвим docker-DNS: nginx кэширует
-        # IP от fastcgi_pass app:9000 на постоянно, и после пересоздания
-        # app контейнера (новый IP) сайт падает в 502.
-        resolver 127.0.0.11 valid=10s ipv6=off;
-        set \$fastcgi_upstream app;
-        fastcgi_pass \$fastcgi_upstream:9000;
-        fastcgi_index index.php;
-        include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
-        fastcgi_param DOCUMENT_ROOT \$realpath_root;
-        fastcgi_param HTTPS on;
-        fastcgi_read_timeout 300;
-        fastcgi_buffers 16 16k;
-        fastcgi_buffer_size 32k;
+        include /etc/nginx/snippets/php-fpm.conf;
     }
 
     # Вложенные dot-пути (/foo/.env): map ловит только начало URI.

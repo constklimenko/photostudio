@@ -289,7 +289,7 @@ php artisan db:restore
 
 Прод-развёртывание идёт через Docker Compose и **не зависит от версии PHP на
 хосте** (на сервере может стоять PHP 7.4). Стек: `web` (nginx), `app`
-(php-fpm 8.4.27), `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler`
+(php-fpm 8.4.28), `db` (MySQL 8.0), `queue` (`queue:work`), `scheduler`
 (`schedule:work`). Ассеты собираются отдельным сервисом `node`.
 
 ### Состав
@@ -297,8 +297,8 @@ php artisan db:restore
 | Файл | Назначение |
 |---|---|
 | `docker-compose.yml` | сервисы, порты, тома, переменные |
-| `docker/php/Dockerfile` | `php:8.4.27-fpm-trixie` с обновлением пакетов Debian (`apt-get upgrade`) + расширения (`gd` с WebP, `intl`, `zip`, `bcmath`, `exif`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_sqlite`), `default-mysql-client` для `db:backup`/`db:restore` |
-| `docker/php/php.ini` | memory 512M, upload 200M, opcache |
+| `docker/php/Dockerfile` | `php:8.4.28-fpm-trixie` с обновлением пакетов Debian (`apt-get upgrade`) + расширения (`gd` с WebP, `intl`, `zip`, `bcmath`, `exif`, `opcache`, `pcntl`, `pdo_mysql`, `pdo_sqlite`), `default-mysql-client` для `db:backup`/`db:restore` |
+| `docker/php/php.ini` | memory 512M, upload 105M / post 110M (согласовано с nginx), opcache |
 | `docker/php/entrypoint.sh` | права на `storage`, `storage:link`, для `app` — `migrate --force` и `optimize` |
 | `docker/nginx/generate-config.sh` | генерирует конфиг nginx при старте (HTTP + HTTPS, если есть сертификат) |
 | `.env.docker.example` | шаблон прод-окружения |
@@ -334,7 +334,7 @@ docker compose up -d --build
 
 ### Патчи безопасности PHP
 
-Базовый образ закреплён на `php:8.4.27-fpm-trixie`, при сборке выполняется
+Базовый образ закреплён на `php:8.4.28-fpm-trixie`, при сборке выполняется
 `apt-get upgrade` — устанавливаются актуальные security-обновления Debian.
 Чтобы поднять PHP до следующего патч-релиза, достаточно:
 
@@ -345,6 +345,42 @@ docker compose build --pull
 docker compose up -d
 docker compose exec app php -v          # проверить версию PHP
 ```
+
+Если сборка падает на `apt-get` с `Temporary failure resolving
+'deb.debian.org'`, это DNS контейнера сборки (systemd-resolved на хосте
+слушает `127.0.0.53`, недоступный из bridge-сети). Обход — собрать с сетью
+хоста: `docker build --network=host -t fotoskazka-app:latest
+-f docker/php/Dockerfile .` (из каталога `fotoskazka/`).
+
+### Безопасность nginx
+
+- Образ закреплён на `nginx:1.30.7-alpine`: в 1.30.7 исправлены уязвимости
+  HTTP/2 (CVE-2026-123007), чтения тела запроса по TLS 1.3
+  (CVE-2026-118899) и use-after-free в resolver (CVE-2026-123634). При
+  обновлении тега — `docker compose pull web && docker compose up -d --force-recreate web`.
+- `server_tokens off` — версия nginx не раскрывается; `X-Powered-By` из
+  php-fpm скрывается через `fastcgi_hide_header`.
+- Лимиты тела запроса: `8m` на всё, кроме `/livewire/` — там `110m`
+  (временные загрузки Livewire/Filament: фото, видео до 100 МБ, AR-таргеты).
+  `php.ini` согласован: `upload_max_filesize = 105M`, `post_max_size = 110M`;
+  он смонтирован томом, поэтому после изменения нужен
+  `docker compose up -d --force-recreate app`, пересборка образа не требуется.
+- PHP исполняется только через front controller: `public/index.php` задан в
+  `location @laravel` / `@laravel_upload` жёстко, поэтому никакой другой
+  `.php`-файл из документа root не выполняется. Лимит тела задаётся в
+  именованном location, а не в `location /livewire/`: внутренний редирект на
+  `index.php` сбрасывает лимит исходного location.
+- HTTPS: TLS 1.2/1.3, `ssl_session_tickets off` (класс CVE-2026-97629 —
+  подделка сессии при ротации ключей тикетов), кэш сессий остаётся общим.
+- Заголовки: HSTS, `nosniff`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy`, CSP (пустая для `/admin`, `/livewire`, `/ar/`) и
+  `Permissions-Policy` (`camera`/`xr-spatial-tracking` — только для своего
+  origin, нужно WebAR).
+- Таймауты `client_header_timeout`/`client_body_timeout`/`send_timeout`
+  ограничивают удержание соединения медленными клиентами (slowloris).
+- Ограничение частоты по IP на origin сознательно не включено: запросы идут
+  через CDN, и `$binary_remote_addr` — это адрес edge-сервера. Лимитировать
+  нужно на CDN/WAF, иначе пострадают все посетители сразу.
 
 ### Отдача видео (X-Accel-Redirect)
 

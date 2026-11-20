@@ -4,7 +4,7 @@
 
 | Компонент     | Версия        |
 |---------------|---------------|
-| PHP           | 8.4.27        |
+| PHP           | 8.4.28        |
 | Laravel       | 13.16.1       |
 | MySQL         | 8.x           |
 | Filament      | 4.11.7        |
@@ -1633,7 +1633,7 @@ Filament-дерево категорий — следующая часть эт�
 Прод-развёртывание выполняется через Docker Compose (не зависит от версии PHP
 на хосте — на сервере может стоять PHP 7.4):
 
-- `docker/php/Dockerfile` — образ `php:8.4.27-fpm-trixie` с обновлением
+- `docker/php/Dockerfile` — образ `php:8.4.28-fpm-trixie` с обновлением
   security-пакетов Debian (`apt-get upgrade`) и расширениями
   `bcmath exif gd intl opcache pcntl pdo_mysql pdo_sqlite zip` (GD собран с
   поддержкой WebP/JPEG/FreeType — нужно для `MediaProcessor`);
@@ -1658,6 +1658,23 @@ Filament-дерево категорий — следующая часть эт�
 - очевидные пробы сканеров (`/.env`, `/.git`, `wp-*`, `phpmyadmin`, бэкапы,
   внутренние каталоги Laravel) обрываются в `map $request_uri $blocked_probe`
   через `return 403` до выбора location — запрос не доходит до php-fpm;
+- образ `web` закреплён на `nginx:1.30.7-alpine` (исправлены HTTP/2
+  CVE-2026-123007, TLS 1.3 CVE-2026-118899, resolver CVE-2026-123634);
+  `server_tokens off`, `X-Powered-By` скрыт, `Permissions-Policy` разрешает
+  камеру и `xr-spatial-tracking` только своему origin (WebAR);
+- PHP исполняется только как `public/index.php`: `location @laravel` и
+  `@laravel_upload` включают общий snippet `php-fpm.conf` с жёстко заданным
+  `SCRIPT_FILENAME`, другие `.php`-файлы не исполняются;
+- `client_max_body_size` — `8m` на сайте и `110m` только в `@laravel_upload`
+  (загрузки Livewire/Filament); лимит задан в именованном location, потому что
+  внутренний редирект на `index.php` сбрасывает лимит исходного location;
+  `php.ini` согласован (`upload_max_filesize = 105M`, `post_max_size = 110M`);
+- `ssl_session_tickets off` (класс CVE-2026-97629), таймауты
+  `client_header_timeout`/`client_body_timeout`/`send_timeout` против
+  slowloris;
+- ограничение частоты по IP на origin не включено: за CDN
+  `$binary_remote_addr` — адрес edge, лимит на origin затронул бы всех
+  посетителей; это задача CDN/WAF;
 - HTTPS — Let's Encrypt (webroot `/var/www/certbot`, сертификаты `/etc/letsencrypt`
   монтируются в web-контейнер); обновление — таймером `certbot` на хосте с
   deploy-hook `docker compose exec -T web nginx -s reload`;
